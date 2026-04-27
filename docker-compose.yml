@@ -1,18 +1,17 @@
   version: '3.8'
   services:
     db:
-      image: mysql:8.0
+      image: postgres:15
       container_name: jumoney-db
       environment:
-        MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-        MYSQL_DATABASE: ${MYSQL_DATABASE}
-        MYSQL_USER: ${MYSQL_USER}
-        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+        POSTGRES_DB: ${POSTGRES_DB}
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
         TZ: Asia/Seoul
       ports:
-        - "3306:3306"
+        - "5432:5432"
       volumes:
-        - mysql-data:/var/lib/mysql
+        - postgres-data:/var/lib/postgresql/data
 
     redis:
       image: redis:latest
@@ -22,4 +21,4 @@
         - "6379:6379"
 
   volumes:
-    mysql-data:
+    postgres-data:
