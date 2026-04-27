@@ -1,8 +1,8 @@
-# 📊 Database Specification (ERD)
+# Database Specification (ERD)
 
-본 문서는 '오늘의 호주머니' 프로젝트의 데이터베이스 상세 명세를 다룹니다. 총 31개의 테이블로 구성되어 있습니다.
+본 문서는 '주머니' 프로젝트의 데이터베이스 상세 명세를 다룹니다. 총 31개의 테이블로 구성되어 있습니다.
 
-## 🚨 AI Assistant Context & Rules
+## AI Assistant Context & Rules
 이 문서를 읽는 AI는 다음의 백엔드 설계 원칙을 참고하여 JPA Entity 및 DB 쿼리를 생성하라:
 1. **Database Dialect**: PostgreSQL을 사용한다.
 2. **Logical N:M (역정규화)**: `selectedOptionIds` 등 명세에 `JSON`으로 표기된 id 필드는 물리적인 매핑 테이블(FK)을 생성하지 마라. PostgreSQL의 `JSONB` 타입으로 생성하고, JPA에서는 `List<Long>` 타입 등으로 매핑하여 어플리케이션 레벨에서 관리한다.
@@ -81,6 +81,7 @@
         - **섹터 ID / sectorId / BIGINT / NOT NULL (FK)**
         - 종목 코드 / stockCode / VARCHAR(6) / NOT NULL / 예: 005930
         - 종목명 / name / VARCHAR(50) / NOT NULL / 예: 삼성전자
+        - 이미지 파일 명 / imageFileName / VARCHAR(100) / NOT NULL
         - 시장 구분 / marketType / ENUM / NOT NULL / 예: KOSPI
         - 종목 설명 / description / JSONB / NULL
         - 대장주 여부 / isMarketLeader / BOOLEAN  / NOT NULL
@@ -181,7 +182,7 @@
     - 필드
         - **주문 ID / orderId / BIGINT / NOT NULL (PK)**
         - **계좌 ID / accountId / BIGINT / NOT NULL (FK)**
-        - **종목 ID / stockId / BIGINT / NOT NULL (FK)**
+        - **종목 ID / stockId / BIGINT / Nullable (FK)**
         - 주문 유형 / orderType / ENUM / NOT NULL / 예: BUY, SELL
         - 체결가 / executionPrice / DECIMAL / NOT NULL
         - 주문 수량 / quantity / INT / NOT NULL

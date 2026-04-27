@@ -1,6 +1,6 @@
 # Home Feature Specification
 
-본 문서는 '오늘의 호주머니' 홈(Main) 화면에 노출되는 4가지 핵심 기능의 비즈니스 로직과 API/DB 연동 명세를 정의합니다.
+본 문서는 홈(Main) 화면에 노출되는 4가지 핵심 기능의 비즈니스 로직과 API/DB 연동 명세를 정의합니다.
 
 ## AI Assistant Context
 - 시스템의 복잡도를 낮추기 위해 과도한 캐싱(Redis)을 지양하고 **DB 중심의 아키텍처**를 구성한다.

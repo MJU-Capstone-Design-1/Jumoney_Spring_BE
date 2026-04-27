@@ -5,16 +5,18 @@
 
 ## 1. 프로젝트 개요
 * **서비스 명**: 주머니 (JUMONEY)
-* **주요 기능**: 거장 4인(워렌 버핏, 피터 린치, 레이 달리오, 윌리엄 오닐)의 투자 지표 기반 종목 추천 및 모의 투자 서비스입니다.
+* **주요 기능**: 설문 기반 종목 추천, 거장의 투자 지표 기반 종목 추천 및 모의 투자 서비스입니다.
 * **개발 목표**: 1GB RAM 프리티어 환경에서 안정적인 실시간 시세 처리 및 비즈니스 로직을 구현하는 것입니다.
 
 ---
 
 ## 2. 기술 스택 (Tech Stack)
-* **Framework**: Java 17 / Spring Boot 4.0.5 (MVC Pattern)
-* **Database**: AWS RDS (MySQL 8.0)
-* **Caching & Messaging**: Redis (Pub/Sub Broker)
+* **Language**: Java 17
+* **Framework**: Spring Boot 4.0.5 (MVC Pattern)
+* **Database**: PostgreSQL (Main), Redis (Cache/Real-time)
+* **ORM**: Spring Data JPA, QueryDSL
 * **Infrastructure**: AWS EC2 (t2.micro), Docker, Nginx, Certbot(SSL)
+* **Architecture**: Node.js(실시간 데이터) + Spring Boot(비즈니스 로직) MSA 구조
 * **External API**: 한국투자증권(KIS) REST API
 
 ---
@@ -23,24 +25,43 @@
 
 ### 🛰️ 데이터 파이프라인
 1.  **시세 수집**: `Node.js` 서버가 KIS WebSocket에 상시 연결되어 실시간 데이터를 수집합니다.
-2.  **데이터 중계**: 수집된 데이터는 `Redis Pub/Sub` 채널로 발행(Publish)됩니다.
-3.  **비즈니스 처리**: `Spring Boot` 서버가 Redis 채널을 구독(Subscribe)하여 추천 가중치 계산 및 비즈니스 로직을 수행합니다.
-4.  **사용자 전송**: 실시간 시세 푸시는 `Node.js`가 전담하며, `Spring Boot`는 REST API 응답에 집중합니다.
+2.  **데이터 중계**: `Node.js`에서 수집된 실시간 틱 데이터는 **Redis Stream** 및 **ZSET**에 적재됩니다.
+3.  **비즈니스 처리**: 
+ - `Spring Boot` 서버는 KIS WebSocket API를 직접 호출하지 않습니다.
+ - `Spring Boot` 서버는 KIS REST API만 직접 호출합니다. (WebClient 논블로킹 연동)
+ - `Spring Boot` 서버는 배치를 통해 사전 적재해둔 DB의 지표 데이터와 Redis(ZSET)의 인메모리 데이터로 추천 알고리즘, 차트 생성, 수익률 계산 등을 수행합니다.
+4.  **사용자 전송**: 프론트엔드로의 실시간 시세 푸시는 `Node.js`가 전담하며, `Spring Boot`는 REST API 응답에 집중합니다.
 
 ### 🌐 인프라 구성
 * **Nginx (Gateway)**: 포트 80/443 요청을 받아 `/api`는 Spring(8080)으로, 기타 경로는 Node(3000)로 분기합니다.
 * **Swap Memory**: EC2 1GB RAM 부족을 해결하기 위해 **2GB Swap 파일**을 활성화했습니다.
+* **Internal DB**: AWS RDS 비용 절감을 위해 **EC2 내부 Docker 컨테이너로 PostgreSQL과 Redis를 직접 구축**하여 운영합니다.
 
 ---
 
 ## 4. 핵심 구현 로직
+### ✅ 데이터베이스
+- `docs/2_ERD_SPEC.md` 참고
 
-### ✅ 실시간 추천 가중치 공식
-유저 설문 데이터와 실시간 시장 지표를 결합하여 추천 점수를 산출합니다.
-$Score = 추후 정의$
+### ✅ 비즈니스 로직
+- `docs/` 폴더 내 도메인별 기능 명세서(.md) 참고
+  - `HOME_FEATURE.md` (홈/랭킹)
+  - `STOCK_TERM_FEATURE.md` (주식 용어)
+  - `MASTER_INFO_FEATURE.md` (투자 거장 소개)
+  - `MOCK_INVESTMENT_FEATURE.md` (모의투자/주문)
+  - `STOCK_DETAIL_FEATURE.md` (기업 상세/차트)
 
-### ✅ Spring Batch 작업
-* **매일 04:00 AM**: KIS 재무 API를 호출하여 거장별 종목 필터링 및 `investor_recommendations` 테이블을 갱신합니다.
+### ✅ 종목 추천 알고리즘
+- `docs/3_LOGIC_DESIGN.md` 참고
+- 오늘의 호주머니: 뉴스 분석(llm) + 설문 기반 지표 필터링
+- 거장의 선택: 뉴스 분석(llm) + 거장별 투자 지표 필터링
+
+### ✅ Spring Batch & Scheduler 로직
+시스템 부하 분산을 위해 데이터 수집 주기를 분리합니다.
+- **[주간/일간 배치]**: 무거운 재무지표(`StockIndicator`) 수집 및 HTS 조건검색 필터링 결과 저장.
+- **[장 마감 배치]**: 매일 16:00 이후 당일 확정된 일/주/월/년봉 차트 데이터를 DB(`StockPrice`)에 이관.
+- **[1분 스케줄러]**: 장 중 1분마다 확정된 1분봉 데이터를 수집하여 Redis ZSET에 갱신.
+- **[1시간 스케줄러]**: 모의투자 전체 사용자의 수익률을 계산하여 랭킹(`UserRanking`) DB 갱신.
 
 ---
 
@@ -54,12 +75,11 @@ $Score = 추후 정의$
 ---
 
 ## 6. 개발 로드맵 (Roadmap)
-1.  **Phase 1**: 프로젝트 초기 세팅 및 로컬 인프라 작업
-2.  **Phase 2**: EC2 인스턴스 생성 및 RDS(MySQL) 생성, Redis 컨테이너 실행 등 인프라 작업
-3.  **Phase 3**: Redis Pub/Sub 리스너 구현
-4.  **Phase 4**: Node.js ↔ Redis ↔ Spring 서버 간 연동 파이프라인 검증
-5.  **Phase 5**: Nginx 설치 및 리버스 프록시
-6.  **Phase 6**: 도메인 연결 및 SSL(HTTPS) 적용 
-7.  **Phase 7**: KIS REST API 연동(WebClient) -> REST API 및 추천 로직 개발 + 배치 작업(Spring Batch)
-8.  **Phase 8**: 프론트 연동
-9.  **Phase 9**: CI/CD 구축
+1. **Phase 1**: 프로젝트 초기 세팅 및 로컬 인프라 작업
+2. **Phase 2**: EC2 인스턴스 생성, Docker(PostgreSQL, Redis) 컨테이너 실행 등 인프라 작업
+3. **Phase 3**: Node.js ↔ Redis(Stream/ZSET) ↔ Spring 서버 간 데이터 파이프라인 연동
+4. **Phase 4**: Nginx 설치 및 리버스 프록시
+5. **Phase 5**: 도메인 연결 및 SSL(HTTPS) 적용
+6. **Phase 6**: KIS REST API 연동(WebClient) -> REST API 및 추천 로직 개발 + Batch/Scheduler 작업
+7. **Phase 7**: 프론트엔드 API 연동
+8. **Phase 8**: Github Actions 등을 활용한 CI/CD 구축
