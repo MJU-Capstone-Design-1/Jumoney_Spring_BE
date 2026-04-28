@@ -20,7 +20,12 @@ public record ApiResponse<T>(
     }
 
     // 실패
-    public static <T> ApiResponse<T> error(ErrorCode errorCode, T data) {
-        return new ApiResponse<>(false, errorCode.getCode(), errorCode.getMessage(), data);
+    public static <T> ApiResponse<T> error(ErrorCode errorCode) {
+        return new ApiResponse<>(false, errorCode.getCode(), errorCode.getMessage(), null);
+    }
+
+    // 실패 - 커스텀 메시지
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, String customMessage) {
+        return new ApiResponse<>(false, errorCode.getCode(), customMessage, null);
     }
 }

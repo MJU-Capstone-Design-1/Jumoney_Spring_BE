@@ -13,7 +13,7 @@ public enum SuccessCode {
     NO_CONTENT(HttpStatus.NO_CONTENT, "COMMON204", "처리에 성공했습니다.")
     ;
 
-    private final HttpStatus status;
+    private final HttpStatus httpStatus;
     private final String code;
     private final String message;
 

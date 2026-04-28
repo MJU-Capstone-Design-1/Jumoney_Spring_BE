@@ -17,9 +17,11 @@ public enum ErrorCode {
 
     // 유효성 검증
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "COMMON400_VALIDATION", "입력값 검증에 실패했습니다."),
-    INVALID_PARAMETER_TYPE(HttpStatus.BAD_REQUEST, "COMMON400_TYPE", "파라미터 타입이 올바르지 않습니다.");
+    INVALID_PARAMETER_TYPE(HttpStatus.BAD_REQUEST, "COMMON400_TYPE", "파라미터 타입이 올바르지 않습니다."),
+    INVALID_REQUEST_FORMAT(HttpStatus.BAD_REQUEST, "COMMON400_FORMAT", "요청 형식이 올바르지 않습니다")
+    ;
 
-    private final HttpStatus status;
+    private final HttpStatus httpStatus;
     private final String code;
     private final String message;
 
