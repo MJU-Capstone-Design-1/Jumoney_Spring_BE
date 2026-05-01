@@ -41,7 +41,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 errorCode.getCode(), errorCode.getMessage(), getRequestURI(request));
 
         return ResponseEntity
-                .status(errorCode.getHttpStatus())
+                .status(errorCode.getStatus())
                 .body(ApiResponse.error(errorCode));
     }
 
