@@ -16,10 +16,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-// 1. 클라이언트에게 온 http 요청을 받아 JWT 예외 발생 시 JSON으로 응답
+// JWT 예외 발생 시 JSON으로 응답하는 필터 (SecurityConfig에서 직접 생성)
 @Slf4j
-// @Component로 서블릿 필터 체인에 등록 → Security 필터 체인보다 앞에서 예외 포착 가능
-@Component
 @RequiredArgsConstructor
 public class JwtExceptionFilter extends OncePerRequestFilter {
 

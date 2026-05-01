@@ -17,7 +17,7 @@ import javax.crypto.SecretKey;
 import java.util.Collections;
 import java.util.Date;
 
-// 3. 토큰 생성(createAccessToken), 검증(validateToken), 인증객체 반환(getAuthentication) 담당하는 핵심 유틸
+// 토큰 생성(createAccessToken), 검증(validateToken), 인증객체 반환(getAuthentication) 담당하는 핵심 유틸
 @Slf4j
 @Component
 @RequiredArgsConstructor

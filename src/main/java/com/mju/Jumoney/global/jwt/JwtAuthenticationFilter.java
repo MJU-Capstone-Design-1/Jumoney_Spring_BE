@@ -12,7 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-// 2. 받은 http 요청에서 토큰 추출 및 검증 -> SecurityContext에 인증 정보 저장
+// 받은 http 요청에서 토큰 추출 및 검증 -> SecurityContext에 인증 정보 저장
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
