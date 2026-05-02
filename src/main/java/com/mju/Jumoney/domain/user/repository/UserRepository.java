@@ -15,4 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 개발자용 임시 로그인을 위한 닉네임 기반 조회
     Optional<User> findByNickname(String nickname);
+
+    // 서비스 닉네임 중복 여부 확인
+    boolean existsByServiceNickname(String serviceNickname);
 }

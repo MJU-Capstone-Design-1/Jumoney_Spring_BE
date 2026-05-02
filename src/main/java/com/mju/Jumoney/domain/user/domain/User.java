@@ -43,6 +43,9 @@ public class User extends BaseSoftDeleteEntity {
     @Column(nullable = false, length = 100)
     private String nickname;
 
+    @Column(name = "service_nickname", length = 100)
+    private String serviceNickname;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role;
@@ -52,8 +55,8 @@ public class User extends BaseSoftDeleteEntity {
     private Long masterId;
 
     // ========== 비즈니스 메서드 ==========
-    public void updateNickname(String nickname) {
-        this.nickname = nickname;
+    public void updateServiceNickname(String serviceNickname) {
+        this.serviceNickname = serviceNickname;
     }
 
     // 거장 선택
