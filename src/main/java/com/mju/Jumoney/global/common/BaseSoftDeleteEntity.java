@@ -21,4 +21,7 @@ public abstract class BaseSoftDeleteEntity extends BaseEntity {
         return this.deletedAt != null;
     }
 
+    public void restore() {
+        this.deletedAt = null;
+    }
 }

@@ -14,4 +14,6 @@ public class JwtProperties {
     private String secretKey;
     private long accessTokenValidity;
     private long refreshTokenValidity;
+    private boolean cookieSecure;
+    private String cookieSameSite;
 }

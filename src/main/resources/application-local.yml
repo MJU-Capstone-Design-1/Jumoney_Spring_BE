@@ -20,3 +20,12 @@ jwt:
   secret-key: ${JWT_SECRET_KEY}
   access-token-validity: 3600000 #1시간
   refresh-token-validity: 1209600000 #14일
+  cookie-secure: false
+  cookie-same-site: Lax
+
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  client-secret: ${KAKAO_CLIENT_SECRET}
+  redirect-uri: ${KAKAO_REDIRECT_URI}
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me
