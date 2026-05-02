@@ -1,6 +1,7 @@
 package com.mju.Jumoney.global.exception;
 
 import com.mju.Jumoney.global.response.ApiResponse;
+import com.mju.Jumoney.global.response.BaseErrorCode;
 import com.mju.Jumoney.global.response.ErrorCode;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -35,7 +36,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleCustomException(
             CustomException ex, WebRequest request) {
 
-        ErrorCode errorCode = ex.getErrorCode();
+        BaseErrorCode errorCode = ex.getErrorCode();
 
         log.warn("Business Exception: code={}, message={}, uri={}",
                 errorCode.getCode(), errorCode.getMessage(), getRequestURI(request));
