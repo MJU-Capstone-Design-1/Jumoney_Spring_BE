@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -27,18 +26,6 @@ public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
-
-    // 정적 리소스 (Swagger, H2, favicon 등)는 보안 필터 무시
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> web.ignoring().requestMatchers(
-                "/v3/api-docs/**",
-                "/swagger-ui/**",
-                "/swagger-ui.html",
-                "/favicon.ico",
-                "/error"
-        );
-    }
 
     // Spring Security 메인 필터 체인
     @Bean
@@ -68,7 +55,9 @@ public class SecurityConfig {
         // API 경로별 접근 권한 설정
         http
             .authorizeHttpRequests(authz -> authz
-                    // 모든 요청 허용
+                    // 최신 보안 표준: ignoring() 대신 permitAll() 사용
+                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/favicon.ico", "/error").permitAll()
+                    // 기타 모든 요청 임시 허용
                     .anyRequest().permitAll()
             );
         /*

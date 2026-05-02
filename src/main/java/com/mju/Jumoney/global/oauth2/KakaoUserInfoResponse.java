@@ -1,6 +1,6 @@
 package com.mju.Jumoney.global.oauth2;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Map;
 import lombok.Getter;
 
 @Getter
@@ -9,8 +9,9 @@ public class KakaoUserInfoResponse {
     private final Long id;
     private final String nickname;
 
-    public KakaoUserInfoResponse(JsonNode jsonNode) {
-        this.id = jsonNode.get("id").asLong();
-        this.nickname = jsonNode.get("properties").get("nickname").asText();
+    public KakaoUserInfoResponse(Map attributes) {
+        this.id = Long.valueOf(attributes.get("id").toString());
+        Map properties = (Map) attributes.get("properties");
+        this.nickname = properties.get("nickname").toString();
     }
 }

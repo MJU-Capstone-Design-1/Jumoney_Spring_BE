@@ -16,6 +16,10 @@ spring:
       ddl-auto: update
     show-sql: true
 
+# 운영 서버에서 Nginx 리버스 프록시를 사용할 때 HTTPS 도메인을 자동으로 인식
+server:
+  forward-headers-strategy: framework
+
 jwt:
   secret-key: ${JWT_SECRET_KEY}
   access-token-validity: 3600000 #1시간
