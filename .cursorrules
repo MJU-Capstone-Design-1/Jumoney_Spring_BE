@@ -15,7 +15,7 @@
   2. `docs/ERD_SPEC.md`: 데이터베이스 테이블 구조 및 연관관계 확인
   3. `docs/{요청받은_기능_명세서}.md`: 상세 비즈니스 요구사항 확인
 
-# Coding Guidelines (Java/Spring)
+# **[중요]Coding Guidelines (Java/Spring)**
 1. **Modern Java:** Java 17 문법(Record, Text Blocks 등) 활용.
 2. **Spring Boot:** Java Config 기반 설정, Lombok 필수 사용.
 3. **Project Structure (DDD):** 패키지는 크게 `domain`과 `global`로 분리합니다.
@@ -25,6 +25,8 @@
 5. **Architecture:** Controller -> Service -> Repository 계층 구조 엄격히 준수. 비즈니스 로직은 Service에 집중.
 6. **Clean Code:** 단일 책임 원칙(SRP) 준수, 하드코딩 금지(Constant/Enum 사용).
 7. **Entity:** `@Setter` 사용 지양, `@Builder` 적극 활용.
+8. **[중요] 검증 로직, 비즈니스 로직, 조회 로직은 따로 분리하여 재활용할 수 있도록 메서드로 구현.**
+9. 메서드, 클래스 이름 위에 반드시 한 줄 설명 주석을 붙이기.
 
 # Answer Format
 - 개념 설명 시 비유와 예제 코드를 바로 제시하세요.

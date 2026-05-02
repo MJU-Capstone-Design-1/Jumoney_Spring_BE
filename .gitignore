@@ -38,3 +38,6 @@ out/
 
 # Environment variables
 .env
+
+### Querydsl ###
+src/main/generated/

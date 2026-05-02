@@ -1,6 +1,7 @@
 # Database Specification (ERD)
 
 본 문서는 '주머니' 프로젝트의 데이터베이스 상세 명세를 다룹니다. 총 31개의 테이블로 구성되어 있습니다.
+코드를 작성할 때 참고하나, 더 좋은 설계가 있을 경우 설명과 함께 변경해도 됩니다.
 
 ## AI Assistant Context & Rules
 이 문서를 읽는 AI는 다음의 백엔드 설계 원칙을 참고하여 JPA Entity 및 DB 쿼리를 생성하라:

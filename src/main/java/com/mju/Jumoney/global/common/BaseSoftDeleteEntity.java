@@ -8,17 +8,20 @@ import java.time.LocalDateTime;
 
 @Getter
 @MappedSuperclass
-public abstract class BaseSoftDeleteEntity {
+public abstract class BaseSoftDeleteEntity extends BaseEntity {
 
-    @Column
-    private LocalDateTime deleteAt;
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     public void softDelete() {
-        this.deleteAt = LocalDateTime.now();
+        this.deletedAt = LocalDateTime.now();
     }
 
     public boolean isDeleted() {
-        return this.deleteAt != null;
+        return this.deletedAt != null;
     }
 
+    public void restore() {
+        this.deletedAt = null;
+    }
 }
