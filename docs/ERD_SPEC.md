@@ -82,7 +82,6 @@
         - **섹터 ID / sectorId / BIGINT / NOT NULL (FK)**
         - 종목 코드 / stockCode / VARCHAR(6) / NOT NULL / 예: 005930
         - 종목명 / name / VARCHAR(50) / NOT NULL / 예: 삼성전자
-        - 이미지 파일 명 / imageFileName / VARCHAR(100) / NOT NULL
         - 시장 구분 / marketType / ENUM / NOT NULL / 예: KOSPI
         - 종목 설명 / description / JSONB / NULL
         - 대장주 여부 / isMarketLeader / BOOLEAN  / NOT NULL

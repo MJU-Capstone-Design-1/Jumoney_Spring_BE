@@ -12,7 +12,7 @@
 
 ## 2. 기술 스택 (Tech Stack)
 * **Language**: Java 17
-* **Framework**: Spring Boot 4.0.5 (MVC Pattern)
+* **Framework**: Spring Boot 4.0.3 (MVC Pattern)
 * **Database**: PostgreSQL (Main), Redis (Cache/Real-time)
 * **ORM**: Spring Data JPA, QueryDSL
 * **Infrastructure**: AWS EC2 (t2.micro), Docker, Nginx, Certbot(SSL)
@@ -41,7 +41,7 @@
 
 ## 4. 핵심 구현 로직
 ### ✅ 데이터베이스
-- `docs/2_ERD_SPEC.md` 참고
+- `docs/ERD_SPEC.md` 참고
 
 ### ✅ 비즈니스 로직
 - `docs/` 폴더 내 도메인별 기능 명세서(.md) 참고
@@ -52,7 +52,7 @@
   - `STOCK_DETAIL_FEATURE.md` (기업 상세/차트)
 
 ### ✅ 종목 추천 알고리즘
-- `docs/3_LOGIC_DESIGN.md` 참고
+- `docs/RECOMMEND_LOGIC.md` 참고
 - 오늘의 호주머니: 뉴스 분석(llm) + 설문 기반 지표 필터링
 - 거장의 선택: 뉴스 분석(llm) + 거장별 투자 지표 필터링
 
