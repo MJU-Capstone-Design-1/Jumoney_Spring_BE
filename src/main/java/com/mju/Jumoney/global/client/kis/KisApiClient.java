@@ -1,11 +1,19 @@
 package com.mju.Jumoney.global.client.kis;
 
 import com.mju.Jumoney.global.client.kis.dto.KisApiResponse;
+import com.mju.Jumoney.global.client.kis.dto.KisCreditBalanceMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisCreditBalanceResponse;
 import com.mju.Jumoney.global.client.kis.dto.KisCurrentPriceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.KisCurrentPriceResponse;
+import com.mju.Jumoney.global.client.kis.dto.KisDividendMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisDividendResponse;
 import com.mju.Jumoney.global.client.kis.dto.KisFinancialPeriod;
 import com.mju.Jumoney.global.client.kis.dto.KisFinancialRatioMetrics;
 import com.mju.Jumoney.global.client.kis.dto.KisFinancialRatioResponse;
+import com.mju.Jumoney.global.client.kis.dto.KisIncomeStatementMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisIncomeStatementResponse;
+import com.mju.Jumoney.global.client.kis.dto.KisInvestorTradeDailyMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisInvestorTradeDailyResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -13,6 +21,8 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 // KIS REST API 호출을 담당 (토큰 발급/캐싱은 KisTokenManager에 위임)
@@ -22,9 +32,15 @@ public class KisApiClient {
     private static final String RESULT_SUCCESS = "0";
     private static final String CUSTOMER_TYPE_PERSONAL = "P";
     private static final String MARKET_DIV_CODE_KRX = "J";
+    private static final String CREDIT_BALANCE_SCREEN_DIV_CODE = "20476";
+    private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
 
     private static final String TR_ID_CURRENT_PRICE = "FHKST01010100";
     private static final String TR_ID_FINANCIAL_RATIO = "FHKST66430300";
+    private static final String TR_ID_INCOME_STATEMENT = "FHKST66430200";
+    private static final String TR_ID_DIVIDEND = "HHKDB669102C0";
+    private static final String TR_ID_CREDIT_BALANCE = "FHPST04760000";
+    private static final String TR_ID_INVESTOR_TRADE_DAILY = "FHPTJ04160001";
 
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
@@ -44,7 +60,7 @@ public class KisApiClient {
         this.kisMetricMapper = kisMetricMapper;
     }
 
-    // 주식현재가 시세: PER/PBR/시가총액/거래대금/현재가 fallback을 한 번에 가져옵니다.
+    // 주식현재가 시세 API (FHKST01010100): PER/PBR/시가총액/거래대금/현재가 fallback을 한 번에 가져옵니다.
     // 반환 타입은 필요한 데이터만 모아둔 DTO, 파라메터는 종목 코드
     public KisCurrentPriceMetrics getCurrentPrice(String stockCode) {
         // webClient로 GET 요청
@@ -75,12 +91,12 @@ public class KisApiClient {
         return kisMetricMapper.toCurrentPriceMetrics(response.output());
     }
 
-    // 국내주식 재무비율: 분기별 배열을 받아 EPS 성장률/ROE/부채비율 계산의 원천 데이터로 사용합니다.
+    // 국내주식 재무비율 API (FHKST66430300): 분기별 배열을 받아 EPS 성장률/ROE/부채비율 계산의 원천 데이터로 사용합니다.
     public List<KisFinancialRatioMetrics> getFinancialRatios(String stockCode) {
         return getFinancialRatios(stockCode, KisFinancialPeriod.QUARTER);
     }
 
-    // YEAR/QUARTER를 선택할 수 있게 열어두어 배치 정책 변경 시 API 클라이언트를 다시 고치지 않도록 합니다.
+    // 국내주식 재무비율 API (FHKST66430300): YEAR/QUARTER를 선택할 수 있게 열어두어 배치 정책 변경 시 API 클라이언트를 다시 고치지 않도록 합니다.
     public List<KisFinancialRatioMetrics> getFinancialRatios(String stockCode, KisFinancialPeriod period) {
         KisFinancialRatioResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -104,6 +120,113 @@ public class KisApiClient {
                 .toList();
     }
 
+    // 국내주식 손익계산서 API (FHKST66430200): 매출액/영업이익과 결산년월을 가져와 성장률, 영업이익률 계산에 사용합니다.
+    public List<KisIncomeStatementMetrics> getIncomeStatements(String stockCode) {
+        return getIncomeStatements(stockCode, KisFinancialPeriod.QUARTER);
+    }
+
+    // 국내주식 손익계산서 API (FHKST66430200): 재무비율과 동일하게 YEAR/QUARTER 조회를 지원합니다.
+    public List<KisIncomeStatementMetrics> getIncomeStatements(String stockCode, KisFinancialPeriod period) {
+        KisIncomeStatementResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/uapi/domestic-stock/v1/finance/income-statement")
+                        .queryParam("fid_div_cls_code", period.getCode())
+                        .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                        .queryParam("fid_input_iscd", stockCode)
+                        .build())
+                .headers(headers -> setKisHeaders(headers, TR_ID_INCOME_STATEMENT))
+                .retrieve()
+                .bodyToMono(KisIncomeStatementResponse.class)
+                .onErrorMap(e -> new KisApiException("[KIS] 손익계산서 조회 실패: stockCode=" + stockCode, e))
+                .block();
+
+        validateSuccess(response, TR_ID_INCOME_STATEMENT);
+        if (response.output() == null) {
+            return List.of();
+        }
+        return response.output().stream()
+                .map(kisMetricMapper::toIncomeStatementMetrics)
+                .toList();
+    }
+
+    // 예탁원정보(배당일정) API (HHKDB669102C0): 기간 내 배당 이벤트를 조회해 현금배당금 기반 시가배당률 계산에 사용합니다.
+    public List<KisDividendMetrics> getDividends(String stockCode, LocalDate from, LocalDate to) {
+        KisDividendResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/uapi/domestic-stock/v1/ksdinfo/dividend")
+                        .queryParam("cts", "")
+                        .queryParam("gb1", "0")
+                        .queryParam("f_dt", formatDate(from))
+                        .queryParam("t_dt", formatDate(to))
+                        .queryParam("sht_cd", stockCode)
+                        .queryParam("high_gb", "0")
+                        .build())
+                .headers(headers -> setKisHeaders(headers, TR_ID_DIVIDEND))
+                .retrieve()
+                .bodyToMono(KisDividendResponse.class)
+                .onErrorMap(e -> new KisApiException("[KIS] 배당일정 조회 실패: stockCode=" + stockCode, e))
+                .block();
+
+        validateSuccess(response, TR_ID_DIVIDEND);
+        if (response.output() == null) {
+            return List.of();
+        }
+        return response.output().stream()
+                .map(kisMetricMapper::toDividendMetrics)
+                .toList();
+    }
+
+    // 국내주식 신용잔고 일별추이 API (FHPST04760000): 레이 달리오 조건의 전체 융자 잔고 비율을 배치로 적재합니다.
+    public List<KisCreditBalanceMetrics> getDailyCreditBalances(String stockCode, LocalDate settlementDate) {
+        KisCreditBalanceResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/uapi/domestic-stock/v1/quotations/daily-credit-balance")
+                        .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                        .queryParam("fid_cond_scr_div_code", CREDIT_BALANCE_SCREEN_DIV_CODE)
+                        .queryParam("fid_input_iscd", stockCode)
+                        .queryParam("fid_input_date_1", formatDate(settlementDate))
+                        .build())
+                .headers(headers -> setKisHeaders(headers, TR_ID_CREDIT_BALANCE))
+                .retrieve()
+                .bodyToMono(KisCreditBalanceResponse.class)
+                .onErrorMap(e -> new KisApiException("[KIS] 신용잔고 조회 실패: stockCode=" + stockCode, e))
+                .block();
+
+        validateSuccess(response, TR_ID_CREDIT_BALANCE);
+        if (response.output() == null) {
+            return List.of();
+        }
+        return response.output().stream()
+                .map(kisMetricMapper::toCreditBalanceMetrics)
+                .toList();
+    }
+
+    // 종목별 투자자매매동향(일별) API (FHPTJ04160001): 최근 20거래일 기관 순매수 합산의 원천 데이터를 가져옵니다.
+    public List<KisInvestorTradeDailyMetrics> getInvestorTradesDaily(String stockCode, LocalDate date) {
+        KisInvestorTradeDailyResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily")
+                        .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                        .queryParam("fid_input_iscd", stockCode)
+                        .queryParam("fid_input_date_1", formatDate(date))
+                        .queryParam("fid_org_adj_prc", "")
+                        .queryParam("fid_etc_cls_code", "")
+                        .build())
+                .headers(headers -> setKisHeaders(headers, TR_ID_INVESTOR_TRADE_DAILY))
+                .retrieve()
+                .bodyToMono(KisInvestorTradeDailyResponse.class)
+                .onErrorMap(e -> new KisApiException("[KIS] 투자자매매동향 조회 실패: stockCode=" + stockCode, e))
+                .block();
+
+        validateSuccess(response, TR_ID_INVESTOR_TRADE_DAILY);
+        if (response.output() == null) {
+            return List.of();
+        }
+        return response.output().stream()
+                .map(kisMetricMapper::toInvestorTradeDailyMetrics)
+                .toList();
+    }
+
     // kis api 헤더 설정
     private void setKisHeaders(HttpHeaders headers, String trId) {
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -124,5 +247,9 @@ public class KisApiClient {
                     + ", msg_cd=" + response.messageCode()
                     + ", msg=" + response.message());
         }
+    }
+
+    private String formatDate(LocalDate date) {
+        return KIS_DATE_FORMATTER.format(date);
     }
 }

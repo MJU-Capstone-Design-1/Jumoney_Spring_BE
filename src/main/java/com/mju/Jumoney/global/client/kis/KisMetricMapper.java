@@ -1,9 +1,17 @@
 package com.mju.Jumoney.global.client.kis;
 
+import com.mju.Jumoney.global.client.kis.dto.KisCreditBalanceMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisCreditBalanceOutput;
 import com.mju.Jumoney.global.client.kis.dto.KisCurrentPriceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.KisCurrentPriceOutput;
+import com.mju.Jumoney.global.client.kis.dto.KisDividendMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisDividendOutput;
 import com.mju.Jumoney.global.client.kis.dto.KisFinancialRatioMetrics;
 import com.mju.Jumoney.global.client.kis.dto.KisFinancialRatioOutput;
+import com.mju.Jumoney.global.client.kis.dto.KisIncomeStatementMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisIncomeStatementOutput;
+import com.mju.Jumoney.global.client.kis.dto.KisInvestorTradeDailyMetrics;
+import com.mju.Jumoney.global.client.kis.dto.KisInvestorTradeDailyOutput;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -35,6 +43,39 @@ public class KisMetricMapper {
                 toBigDecimal(output.roe()),
                 toBigDecimal(output.eps()),
                 toBigDecimal(output.debtRatio())
+        );
+    }
+
+    public KisIncomeStatementMetrics toIncomeStatementMetrics(KisIncomeStatementOutput output) {
+        return new KisIncomeStatementMetrics(
+                output.settlementYearMonth(),
+                toBigDecimal(output.sales()),
+                toBigDecimal(output.operatingProfit())
+        );
+    }
+
+    public KisDividendMetrics toDividendMetrics(KisDividendOutput output) {
+        return new KisDividendMetrics(
+                output.recordDate(),
+                output.stockCode(),
+                output.stockName(),
+                output.dividendKind(),
+                toBigDecimal(output.cashDividendPerShare())
+        );
+    }
+
+    public KisCreditBalanceMetrics toCreditBalanceMetrics(KisCreditBalanceOutput output) {
+        return new KisCreditBalanceMetrics(
+                output.tradeDate(),
+                output.settlementDate(),
+                toBigDecimal(output.totalLoanBalanceRate())
+        );
+    }
+
+    public KisInvestorTradeDailyMetrics toInvestorTradeDailyMetrics(KisInvestorTradeDailyOutput output) {
+        return new KisInvestorTradeDailyMetrics(
+                output.businessDate(),
+                toBigDecimal(output.institutionNetBuyQuantity())
         );
     }
 
