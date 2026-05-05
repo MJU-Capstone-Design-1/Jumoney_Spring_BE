@@ -3,3 +3,18 @@ spring:
     name: Jumoney
   profiles:
     active: local
+
+# KIS 한국투자증권 API 설정
+kis:
+  url: "https://openapi.koreainvestment.com:9443"
+  appkey: ${KIS_APP_KEY}
+  appsecret: ${KIS_APP_SECRET}
+  client:
+    connect-timeout-millis: 5000  # 5초
+    read-timeout-seconds: 10      # 10초
+    write-timeout-seconds: 10     # 10초
+    response-timeout-seconds: 10  # 10초
+    max-in-memory-size: 2097152   # 2MB (2 * 1024 * 1024)
+    pool:
+      max-connections: 100
+      max-idle-seconds: 20
