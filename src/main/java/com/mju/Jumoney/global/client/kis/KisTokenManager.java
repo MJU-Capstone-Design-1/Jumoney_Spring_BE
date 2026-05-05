@@ -138,13 +138,13 @@ public class KisTokenManager {
                 .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
                         clientResponse.bodyToMono(String.class).map(body -> {
                             log.error("[KIS] 토큰 발급 클라이언트 에러: {}", body);
-                            return new RuntimeException("한국투자증권 API 클라이언트 에러: " + body);
+                            return new KisApiException("한국투자증권 API 클라이언트 에러: " + body);
                         })
                 )
                 .onStatus(HttpStatusCode::is5xxServerError, clientResponse ->
                         clientResponse.bodyToMono(String.class).map(body -> {
                             log.error("[KIS] 토큰 발급 서버 에러: {}", body);
-                            return new RuntimeException("한국투자증권 API 서버 에러: " + body);
+                            return new KisApiException("한국투자증권 API 서버 에러: " + body);
                         })
                 )
                 .bodyToMono(KisTokenResponse.class)
@@ -152,7 +152,7 @@ public class KisTokenManager {
 
         if (response == null || response.accessToken() == null) {
             log.error("[KIS] 한국투자증권 토큰 발급 실패 (응답이 비어있음)");
-            throw new RuntimeException("한국투자증권 API 토큰 발급 실패");
+            throw new KisApiException("한국투자증권 API 토큰 발급 실패");
         }
 
         log.info("[KIS] Access Token 신규 발급 완료");
