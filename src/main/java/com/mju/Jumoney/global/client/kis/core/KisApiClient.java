@@ -5,6 +5,8 @@ import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceResponse;
 import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceResponse;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthResponse;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendResponse;
 import com.mju.Jumoney.global.client.kis.enums.KisFinancialPeriod;
@@ -36,6 +38,7 @@ public class KisApiClient {
     private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
 
     private static final String TR_ID_CURRENT_PRICE = "FHKST01010100";
+    private static final String TR_ID_EXECUTION_STRENGTH = "FHKST01010300";
     private static final String TR_ID_FINANCIAL_RATIO = "FHKST66430300";
     private static final String TR_ID_INCOME_STATEMENT = "FHKST66430200";
     private static final String TR_ID_DIVIDEND = "HHKDB669102C0";
@@ -89,6 +92,27 @@ public class KisApiClient {
         }
         // kisMetricMapper로 BigDecimal로만 이루어진 객체로 변환
         return kisMetricMapper.toCurrentPriceMetrics(response.output());
+    }
+
+    // 주식현재가 체결 API (FHKST01010300): 초단기 추천 정렬에 사용할 당일 체결강도(tday_rltv)를 가져옵니다.
+    public KisExecutionStrengthMetrics getExecutionStrength(String stockCode) {
+        KisExecutionStrengthResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/uapi/domestic-stock/v1/quotations/inquire-ccnl")
+                        .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                        .queryParam("fid_input_iscd", stockCode)
+                        .build())
+                .headers(headers -> setKisHeaders(headers, TR_ID_EXECUTION_STRENGTH))
+                .retrieve()
+                .bodyToMono(KisExecutionStrengthResponse.class)
+                .onErrorMap(e -> new KisApiException("[KIS] 현재가 체결 조회 실패: stockCode=" + stockCode, e))
+                .block();
+
+        validateSuccess(response, TR_ID_EXECUTION_STRENGTH);
+        if (response.output() == null || response.output().isEmpty()) {
+            throw new KisApiException("[KIS] 현재가 체결 응답 output이 비어있습니다. stockCode=" + stockCode);
+        }
+        return kisMetricMapper.toExecutionStrengthMetrics(response.output().get(0));
     }
 
     // 국내주식 재무비율 API (FHKST66430300): 분기별 배열을 받아 EPS 성장률/ROE/부채비율 계산의 원천 데이터로 사용합니다.

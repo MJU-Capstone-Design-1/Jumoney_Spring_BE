@@ -4,6 +4,8 @@ import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceOutput;
 import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceOutput;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthOutput;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendOutput;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
@@ -33,6 +35,15 @@ public class KisMetricMapper {
                 toBigDecimal(output.accumulatedTradeAmount()),
                 toBigDecimal(output.twoHundredFiftyDayHighPriceRate()),
                 toBigDecimal(output.fiftyTwoWeekHighPriceRate())
+        );
+    }
+
+    public KisExecutionStrengthMetrics toExecutionStrengthMetrics(KisExecutionStrengthOutput output) {
+        return new KisExecutionStrengthMetrics(
+                output.executionTime(),
+                toBigDecimal(output.currentPrice()),
+                toBigDecimal(output.executionVolume()),
+                toBigDecimal(output.executionStrength())
         );
     }
 

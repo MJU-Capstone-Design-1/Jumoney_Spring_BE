@@ -18,6 +18,7 @@ import java.util.function.Supplier;
 public class KisSmokeService {
 
     private static final String TR_ID_CURRENT_PRICE = "FHKST01010100";
+    private static final String TR_ID_EXECUTION_STRENGTH = "FHKST01010300";
     private static final String TR_ID_FINANCIAL_RATIO = "FHKST66430300";
     private static final String TR_ID_INCOME_STATEMENT = "FHKST66430200";
     private static final String TR_ID_DIVIDEND = "HHKDB669102C0";
@@ -31,15 +32,17 @@ public class KisSmokeService {
 
         results.add(callSingle(1, "주식현재가 시세", TR_ID_CURRENT_PRICE,
                 () -> kisApiClient.getCurrentPrice(stockCode)));
-        results.add(callList(2, "국내주식 재무비율", TR_ID_FINANCIAL_RATIO,
+        results.add(callSingle(2, "주식현재가 체결", TR_ID_EXECUTION_STRENGTH,
+                () -> kisApiClient.getExecutionStrength(stockCode)));
+        results.add(callList(3, "국내주식 재무비율", TR_ID_FINANCIAL_RATIO,
                 () -> kisApiClient.getFinancialRatios(stockCode)));
-        results.add(callList(3, "국내주식 손익계산서", TR_ID_INCOME_STATEMENT,
+        results.add(callList(4, "국내주식 손익계산서", TR_ID_INCOME_STATEMENT,
                 () -> kisApiClient.getIncomeStatements(stockCode)));
-        results.add(callList(4, "예탁원정보 배당일정", TR_ID_DIVIDEND,
+        results.add(callList(5, "예탁원정보 배당일정", TR_ID_DIVIDEND,
                 () -> kisApiClient.getDividends(stockCode, dividendFrom, dividendTo)));
-        results.add(callList(5, "국내주식 신용잔고 일별추이", TR_ID_CREDIT_BALANCE,
+        results.add(callList(6, "국내주식 신용잔고 일별추이", TR_ID_CREDIT_BALANCE,
                 () -> kisApiClient.getDailyCreditBalances(stockCode, baseDate)));
-        results.add(callList(6, "종목별 투자자매매동향 일별", TR_ID_INVESTOR_TRADE_DAILY,
+        results.add(callList(7, "종목별 투자자매매동향 일별", TR_ID_INVESTOR_TRADE_DAILY,
                 () -> kisApiClient.getInvestorTradesDaily(stockCode, baseDate)));
 
         int successCount = (int) results.stream()
