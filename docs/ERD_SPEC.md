@@ -97,8 +97,8 @@
         - 부채비율 / debtRatio / DECIMAL / NOT NULL
         - 영업이익 / operatingProfit / BIGINT / NOT NULL
         - 영업이익 증가율 / operatingProfitGrowthRate / DECIMAL / NOT NULL
-        - 현금배당금 / cashDividend / DECIMAL / NOT NULL
-        - 배당성향 / payoutRatio / DECIMAL / NOT NULL
+        - 현금배당금 / cashDividend / DECIMAL / NOT NULL / 기간 내 주당배당금(DPS) 합계
+        - 배당성향 / payoutRatio / DECIMAL / NULL / `기간 내 주당배당금(DPS) 합계 / EPS * 100`으로 계산, DPS 또는 EPS 결측 시 NULL
         - ROE / roe / DECIMAL / NOT NULL
         - PER / per / DECIMAL / NOT NULL
         - PBR / pbr / DECIMAL / NOT NULL
