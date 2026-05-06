@@ -48,6 +48,7 @@ public class KisApiClient {
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
     private final KisMetricMapper kisMetricMapper;
+    private final KisRateLimiter kisRateLimiter;
 
     @Value("${kis.appkey}")
     private String appKey;
@@ -57,15 +58,18 @@ public class KisApiClient {
 
     public KisApiClient(@Qualifier("kisWebClient") WebClient webClient,
                         KisTokenManager kisTokenManager,
-                        KisMetricMapper kisMetricMapper) {
+                        KisMetricMapper kisMetricMapper,
+                        KisRateLimiter kisRateLimiter) {
         this.webClient = webClient;
         this.kisTokenManager = kisTokenManager;
         this.kisMetricMapper = kisMetricMapper;
+        this.kisRateLimiter = kisRateLimiter;
     }
 
     // 주식현재가 시세 API (FHKST01010100): PER/PBR/시가총액/거래대금/현재가 fallback을 한 번에 가져옵니다.
     // 반환 타입은 필요한 데이터만 모아둔 DTO, 파라메터는 종목 코드
     public KisCurrentPriceMetrics getCurrentPrice(String stockCode) {
+        kisRateLimiter.acquire();
         // webClient로 GET 요청
         KisCurrentPriceResponse response = webClient.get()
                 // 요청 주소 세팅
@@ -96,6 +100,7 @@ public class KisApiClient {
 
     // 주식현재가 체결 API (FHKST01010300): 초단기 추천 정렬에 사용할 당일 체결강도(tday_rltv)를 가져옵니다.
     public KisExecutionStrengthMetrics getExecutionStrength(String stockCode) {
+        kisRateLimiter.acquire();
         KisExecutionStrengthResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/quotations/inquire-ccnl")
@@ -122,6 +127,7 @@ public class KisApiClient {
 
     // 국내주식 재무비율 API (FHKST66430300): YEAR/QUARTER를 선택할 수 있게 열어두어 배치 정책 변경 시 API 클라이언트를 다시 고치지 않도록 합니다.
     public List<KisFinancialRatioMetrics> getFinancialRatios(String stockCode, KisFinancialPeriod period) {
+        kisRateLimiter.acquire();
         KisFinancialRatioResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/finance/financial-ratio")
@@ -151,6 +157,7 @@ public class KisApiClient {
 
     // 국내주식 손익계산서 API (FHKST66430200): 재무비율과 동일하게 YEAR/QUARTER 조회를 지원합니다.
     public List<KisIncomeStatementMetrics> getIncomeStatements(String stockCode, KisFinancialPeriod period) {
+        kisRateLimiter.acquire();
         KisIncomeStatementResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/finance/income-statement")
@@ -175,6 +182,7 @@ public class KisApiClient {
 
     // 예탁원정보(배당일정) API (HHKDB669102C0): 기간 내 배당 이벤트를 조회해 현금배당금 기반 시가배당률 계산에 사용합니다.
     public List<KisDividendMetrics> getDividends(String stockCode, LocalDate from, LocalDate to) {
+        kisRateLimiter.acquire();
         KisDividendResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/ksdinfo/dividend")
@@ -202,6 +210,7 @@ public class KisApiClient {
 
     // 국내주식 신용잔고 일별추이 API (FHPST04760000): 레이 달리오 조건의 전체 융자 잔고 비율을 배치로 적재합니다.
     public List<KisCreditBalanceMetrics> getDailyCreditBalances(String stockCode, LocalDate settlementDate) {
+        kisRateLimiter.acquire();
         KisCreditBalanceResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/quotations/daily-credit-balance")
@@ -227,6 +236,7 @@ public class KisApiClient {
 
     // 종목별 투자자매매동향(일별) API (FHPTJ04160001): 최근 20거래일 기관 순매수 합산의 원천 데이터를 가져옵니다.
     public List<KisInvestorTradeDailyMetrics> getInvestorTradesDaily(String stockCode, LocalDate date) {
+        kisRateLimiter.acquire();
         KisInvestorTradeDailyResponse response = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/uapi/domestic-stock/v1/quotations/investor-trade-by-stock-daily")

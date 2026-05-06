@@ -9,6 +9,8 @@ kis:
   url: "https://openapi.koreainvestment.com:9443"
   appkey: ${KIS_APP_KEY}
   appsecret: ${KIS_APP_SECRET}
+  rate-limit:
+    min-interval-millis: 250
   client:
     connect-timeout-millis: 5000  # 5초
     read-timeout-seconds: 10      # 10초
