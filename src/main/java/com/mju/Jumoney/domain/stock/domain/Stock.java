@@ -11,8 +11,8 @@ import java.util.List;
 
 @Entity
 @Table(
-    name = "stocks",
-    indexes = { @Index(name = "idx_stock_code", columnList = "stock_code", unique = true) }
+        name = "stocks",
+        indexes = {@Index(name = "idx_stock_code", columnList = "stock_code", unique = true)}
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
