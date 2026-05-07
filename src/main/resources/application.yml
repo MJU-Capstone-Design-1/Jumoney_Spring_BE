@@ -11,6 +11,13 @@ kis:
   appsecret: ${KIS_APP_SECRET}
   rate-limit:
     min-interval-millis: 250
+  hts:
+    user-id: ${KIS_HTS_USER_ID}
+    conditions:
+      stability-seq: "3"
+      safe-pursuit-seq: "2"
+      profit-pursuit-seq: "1"
+      aggressive-seq: "0"
   client:
     connect-timeout-millis: 5000  # 5초
     read-timeout-seconds: 10      # 10초

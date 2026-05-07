@@ -1,6 +1,8 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeApiResult;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeResponse;
 import lombok.RequiredArgsConstructor;
@@ -78,5 +80,13 @@ public class KisSmokeService {
         } catch (Exception e) {
             return KisSmokeApiResult.failure(step, name, trId, e.getMessage());
         }
+    }
+
+    public List<KisHtsConditionTitleOutput> getHtsConditionTitles(String htsUserId) {
+        return kisApiClient.getHtsConditionTitles(htsUserId);
+    }
+
+    public List<KisHtsConditionResultOutput> getHtsConditionResults(String htsUserId, String seq) {
+        return kisApiClient.getHtsConditionResults(htsUserId, seq);
     }
 }

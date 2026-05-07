@@ -1,21 +1,25 @@
 package com.mju.Jumoney.global.client.kis.core;
 
 import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
-import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
-import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceResponse;
-import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
-import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceResponse;
-import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
-import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthResponse;
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultResponse;
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleResponse;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendResponse;
-import com.mju.Jumoney.global.client.kis.enums.KisFinancialPeriod;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioResponse;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisIncomeStatementMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisIncomeStatementResponse;
+import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
+import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceResponse;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthResponse;
+import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
+import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceResponse;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyResponse;
+import com.mju.Jumoney.global.client.kis.enums.KisFinancialPeriod;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -35,6 +39,8 @@ public class KisApiClient {
     private static final String CUSTOMER_TYPE_PERSONAL = "P";
     private static final String MARKET_DIV_CODE_KRX = "J";
     private static final String CREDIT_BALANCE_SCREEN_DIV_CODE = "20476";
+    private static final String EMPTY_HTS_RESULT_CODE = "MCA05918";
+    private static final String HTS_CONDITION_NOT_SAVED_CODE = "MCA05762";
     private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
 
     private static final String TR_ID_CURRENT_PRICE = "FHKST01010100";
@@ -44,6 +50,8 @@ public class KisApiClient {
     private static final String TR_ID_DIVIDEND = "HHKDB669102C0";
     private static final String TR_ID_CREDIT_BALANCE = "FHPST04760000";
     private static final String TR_ID_INVESTOR_TRADE_DAILY = "FHPTJ04160001";
+    private static final String TR_ID_HTS_CONDITION_TITLE = "HHKST03900300";
+    private static final String TR_ID_HTS_CONDITION_RESULT = "HHKST03900400";
 
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
@@ -261,6 +269,55 @@ public class KisApiClient {
                 .toList();
     }
 
+    // 종목조건검색 목록조회 API (HHKST03900300): HTS에 서버저장된 사용자 조건의 seq 목록을 가져옵니다.
+    public List<KisHtsConditionTitleOutput> getHtsConditionTitles(String htsUserId) {
+        kisRateLimiter.acquire();
+        KisHtsConditionTitleResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/uapi/domestic-stock/v1/quotations/psearch-title")
+                        .queryParam("user_id", htsUserId)
+                        .build())
+                .headers(headers -> setKisHeaders(headers, TR_ID_HTS_CONDITION_TITLE))
+                .retrieve()
+                .bodyToMono(KisHtsConditionTitleResponse.class)
+                .onErrorMap(e -> new KisApiException("[KIS] HTS 조건검색 목록 조회 실패: userId=" + htsUserId, e))
+                .block();
+
+        validateHtsConditionSaved(response, htsUserId);
+        validateSuccess(response, TR_ID_HTS_CONDITION_TITLE);
+        if (response.output() == null) {
+            return List.of();
+        }
+        return response.output();
+    }
+
+    // 종목조건검색조회 API (HHKST03900400): HTS 조건 seq에 해당하는 종목 결과를 가져옵니다.
+    public List<KisHtsConditionResultOutput> getHtsConditionResults(String htsUserId, String seq) {
+        kisRateLimiter.acquire();
+        KisHtsConditionResultResponse response = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/uapi/domestic-stock/v1/quotations/psearch-result")
+                        .queryParam("user_id", htsUserId)
+                        .queryParam("seq", seq)
+                        .build())
+                .headers(headers -> setKisHeaders(headers, TR_ID_HTS_CONDITION_RESULT))
+                .retrieve()
+                .bodyToMono(KisHtsConditionResultResponse.class)
+                .onErrorMap(e -> new KisApiException("[KIS] HTS 조건검색 결과 조회 실패: userId=" + htsUserId + ", seq=" + seq, e))
+                .block();
+
+        validateHtsConditionSaved(response, htsUserId);
+        if (response != null && EMPTY_HTS_RESULT_CODE.equals(response.messageCode())) {
+            return List.of();
+        }
+
+        validateSuccess(response, TR_ID_HTS_CONDITION_RESULT);
+        if (response.output() == null) {
+            return List.of();
+        }
+        return response.output();
+    }
+
     // kis api 헤더 설정
     private void setKisHeaders(HttpHeaders headers, String trId) {
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -280,6 +337,14 @@ public class KisApiClient {
             throw new KisApiException("[KIS] API 실패: tr_id=" + trId
                     + ", msg_cd=" + response.messageCode()
                     + ", msg=" + response.message());
+        }
+    }
+
+    private void validateHtsConditionSaved(KisApiResponse response, String htsUserId) {
+        if (response != null && HTS_CONDITION_NOT_SAVED_CODE.equals(response.messageCode())) {
+            throw new KisApiException("[KIS] HTS 조건검색 조건이 서버저장되지 않았거나 API에서 조회 가능한 상태가 아닙니다. "
+                    + "eFriend Plus [0110] 조건검색 화면에서 조건을 등록한 뒤 왼쪽 하단의 사용자조건 서버저장을 실행하세요. "
+                    + "htsUserId=" + htsUserId + ", msg=" + response.message());
         }
     }
 

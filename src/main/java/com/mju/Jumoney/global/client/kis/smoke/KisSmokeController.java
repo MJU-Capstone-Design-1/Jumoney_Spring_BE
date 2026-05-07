@@ -1,5 +1,7 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
+import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeResponse;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
@@ -7,15 +9,18 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Tag(name = "Local KIS Smoke", description = "local 프로필 전용 KIS API 호출 검증")
 @RestController
@@ -25,6 +30,9 @@ import java.time.LocalDate;
 public class KisSmokeController {
 
     private final KisSmokeService kisSmokeService;
+
+    @Value("${kis.hts.user-id:}")
+    private String configuredHtsUserId;
 
     @Operation(
             summary = "KIS API 호출 검증",
@@ -59,5 +67,48 @@ public class KisSmokeController {
         );
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "HTS 조건검색 목록조회 검증",
+            description = "local 프로필에서만 활성화됩니다. HTS에 서버저장된 조건명과 seq 목록을 조회합니다."
+    )
+    @GetMapping("/hts/titles")
+    public ResponseEntity<ApiResponse<List<KisHtsConditionTitleOutput>>> htsConditionTitles(
+            @Parameter(description = "HTS ID. 생략 시 kis.hts.user-id 설정값 사용")
+            @RequestParam(required = false) String userId
+    ) {
+        String resolvedUserId = resolveHtsUserId(userId);
+        List<KisHtsConditionTitleOutput> response = kisSmokeService.getHtsConditionTitles(resolvedUserId);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "HTS 조건검색 결과조회 검증",
+            description = "local 프로필에서만 활성화됩니다. HTS 조건 seq로 종목검색 결과를 조회합니다. DB에는 저장하지 않습니다."
+    )
+    @GetMapping("/hts/results")
+    public ResponseEntity<ApiResponse<List<KisHtsConditionResultOutput>>> htsConditionResults(
+            @Parameter(description = "조건 seq", example = "0")
+            @RequestParam String seq,
+
+            @Parameter(description = "HTS ID. 생략 시 kis.hts.user-id 설정값 사용")
+            @RequestParam(required = false) String userId
+    ) {
+        String resolvedUserId = resolveHtsUserId(userId);
+        List<KisHtsConditionResultOutput> response = kisSmokeService.getHtsConditionResults(resolvedUserId, seq);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    private String resolveHtsUserId(String userId) {
+        if (StringUtils.hasText(userId)) {
+            return userId;
+        }
+        if (StringUtils.hasText(configuredHtsUserId)) {
+            return configuredHtsUserId;
+        }
+        throw new IllegalStateException("HTS ID가 필요합니다. userId 파라미터 또는 kis.hts.user-id를 설정하세요.");
     }
 }
