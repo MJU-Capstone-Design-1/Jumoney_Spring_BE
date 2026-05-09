@@ -104,9 +104,9 @@
         - PER / per / DECIMAL / NOT NULL
         - PBR / pbr / DECIMAL / NOT NULL
         - 당기 EPS / currentEps / DECIMAL / NOT NULL
-        - 전년 동기 EPS / lastYearEps / DECIMAL / NOT NULL
+        - 전년 동기 EPS / lastYearEps / DECIMAL / NULL / 신규 상장주 등 전년도 EPS가 없으면 NULL
         - 당기 매출액 / currentSales / BIGINT / NOT NULL
-        - 전년 동기 매출액 / lastYearSales / BIGINT / NOT NULL
+        - 전년 동기 매출액 / lastYearSales / BIGINT / NULL / 신규 상장주 등 전년도 매출액이 없으면 NULL
         - 신용잔고율 / marginDebtRate / DECIMAL / NOT NULL
         - 52주 신고가 대비 현재가 비율 / high52WeekRate / DECIMAL / NOT NULL
         - 최근 20거래일 기관 순매수 합계 / instNetBuy20Days / BIGINT / NOT NULL

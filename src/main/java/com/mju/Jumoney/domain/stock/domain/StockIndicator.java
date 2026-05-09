@@ -70,13 +70,13 @@ public class StockIndicator {
     @Column(name = "current_eps", nullable = false, precision = 19, scale = 4)
     private BigDecimal currentEps;
 
-    @Column(name = "last_year_eps", nullable = false, precision = 19, scale = 4)
+    @Column(name = "last_year_eps", precision = 19, scale = 4)
     private BigDecimal lastYearEps;
 
     @Column(name = "current_sales", nullable = false)
     private Long currentSales;
 
-    @Column(name = "last_year_sales", nullable = false)
+    @Column(name = "last_year_sales")
     private Long lastYearSales;
 
     @Column(name = "margin_debt_rate", nullable = false, precision = 19, scale = 4)

@@ -2,7 +2,10 @@ package com.mju.Jumoney.global.client.kis.smoke;
 
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
+import com.mju.Jumoney.global.client.kis.smoke.dto.HtsConditionBatchRunResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeResponse;
+import com.mju.Jumoney.global.client.kis.smoke.dto.StockIndicatorBatchRunResponse;
+import com.mju.Jumoney.global.client.kis.smoke.dto.StockIndicatorBatchStatusResponse;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +18,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -102,6 +106,51 @@ public class KisSmokeController {
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
 
+    @Operation(
+            summary = "HTS 조건검색 배치 수동 실행",
+            description = "local 프로필에서만 활성화됩니다. 설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다."
+    )
+    @PostMapping("/batch/hts-conditions")
+    public ResponseEntity<ApiResponse<HtsConditionBatchRunResponse>> runHtsConditionBatch(
+            @Parameter(description = "저장 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
+    ) {
+        HtsConditionBatchRunResponse response = kisSmokeService.runHtsConditionBatch(resolveBaseDate(baseDate));
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "종목 지표 배치 수동 실행",
+            description = "local 프로필에서만 활성화됩니다. Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다."
+    )
+    @PostMapping("/batch/stock-indicators")
+    public ResponseEntity<ApiResponse<StockIndicatorBatchRunResponse>> runStockIndicatorBatch(
+            @Parameter(description = "지표 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
+    ) {
+        StockIndicatorBatchRunResponse response = kisSmokeService.runStockIndicatorBatch(resolveBaseDate(baseDate));
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "종목 지표 배치 적재 상태 확인",
+            description = "local 프로필에서만 활성화됩니다. 기준월 stock_indicators 적재 건수, 누락 종목, 필수 컬럼 null 건수를 조회합니다."
+    )
+    @GetMapping("/batch/stock-indicators/status")
+    public ResponseEntity<ApiResponse<StockIndicatorBatchStatusResponse>> getStockIndicatorBatchStatus(
+            @Parameter(description = "확인 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
+    ) {
+        StockIndicatorBatchStatusResponse response = kisSmokeService.getStockIndicatorBatchStatus(resolveBaseDate(baseDate));
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
     private String resolveHtsUserId(String userId) {
         if (StringUtils.hasText(userId)) {
             return userId;
@@ -110,5 +159,9 @@ public class KisSmokeController {
             return configuredHtsUserId;
         }
         throw new IllegalStateException("HTS ID가 필요합니다. userId 파라미터 또는 kis.hts.user-id를 설정하세요.");
+    }
+
+    private LocalDate resolveBaseDate(LocalDate baseDate) {
+        return baseDate == null ? LocalDate.now() : baseDate;
     }
 }

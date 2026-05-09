@@ -76,6 +76,7 @@ public class HtsConditionBatchService {
                 .toList();
 
         htsStockRepository.deleteBySearchTypeAndBaseDate(searchType, baseDate);
+        htsStockRepository.flush();
         htsStockRepository.saveAll(htsStocks);
 
         int skippedCount = stockCodesInKisResult.size() - htsStocks.size();
