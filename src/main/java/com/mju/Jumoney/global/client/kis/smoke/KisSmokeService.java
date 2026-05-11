@@ -157,8 +157,7 @@ public class KisSmokeService {
 
     private BatchJobRunResponse runBatchJob(Job job, String jobName, LocalDate baseDate) {
         JobParameters jobParameters = new JobParametersBuilder()
-                .addLocalDate(StockDataBatchJobConfig.JOB_PARAM_BASE_DATE, baseDate, false)
-                .addLong("runId", System.currentTimeMillis())
+                .addLocalDate(StockDataBatchJobConfig.JOB_PARAM_BASE_DATE, baseDate, true)
                 .toJobParameters();
 
         try {

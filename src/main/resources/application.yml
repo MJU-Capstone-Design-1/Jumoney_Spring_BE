@@ -6,8 +6,6 @@ spring:
   batch:
     job:
       enabled: false
-    jdbc:
-      initialize-schema: always
 
 # KIS 한국투자증권 API 설정
 kis:

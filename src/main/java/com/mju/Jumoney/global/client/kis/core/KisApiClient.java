@@ -24,15 +24,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 // KIS REST API 호출을 담당 (토큰 발급/캐싱은 KisTokenManager에 위임)
@@ -407,13 +408,17 @@ public class KisApiClient {
         if (message != null && (
                 message.contains("응답 output이 비어있습니다")
                         || message.contains("HTS 조건검색 조건이 서버저장되지 않았거나")
+                        || message.contains("[KIS] API 실패:")
                         || message.contains(EMPTY_HTS_RESULT_CODE)
                         || message.contains(HTS_CONDITION_NOT_SAVED_CODE)
         )) {
             return false;
         }
 
-        return true;
+        return rootCause instanceof java.io.IOException
+                || rootCause instanceof TimeoutException
+                || rootCause.getClass().getName().contains("Timeout")
+                || message != null && message.contains("Connection prematurely closed");
     }
 
     private Throwable rootCause(Throwable throwable) {

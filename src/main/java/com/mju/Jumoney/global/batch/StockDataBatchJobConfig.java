@@ -15,6 +15,9 @@ import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
+import org.springframework.transaction.interceptor.TransactionAttribute;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -57,6 +60,7 @@ public class StockDataBatchJobConfig {
                     jobExecution.getExecutionContext().putInt(RESULT_FAILURE_COUNT, result.failureCount());
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
+                .transactionAttribute(nonTransactionalTaskletAttribute())
                 .build();
     }
 
@@ -84,7 +88,15 @@ public class StockDataBatchJobConfig {
                     );
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
+                .transactionAttribute(nonTransactionalTaskletAttribute())
                 .build();
+    }
+
+    private TransactionAttribute nonTransactionalTaskletAttribute() {
+        DefaultTransactionAttribute transactionAttribute = new DefaultTransactionAttribute();
+        // PROPAGATION_NOT_SUPPORTED -> 트랜잭션 없이 코드 실행
+        transactionAttribute.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
+        return transactionAttribute;
     }
 
     private LocalDate resolveBaseDate(Object baseDate) {

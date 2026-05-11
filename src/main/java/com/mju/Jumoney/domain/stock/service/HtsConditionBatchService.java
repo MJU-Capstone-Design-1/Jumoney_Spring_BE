@@ -1,9 +1,7 @@
 package com.mju.Jumoney.domain.stock.service;
 
-import com.mju.Jumoney.domain.stock.domain.HtsStock;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.enums.HtsSearchType;
-import com.mju.Jumoney.domain.stock.repository.HtsStockRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
@@ -11,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
@@ -28,7 +25,7 @@ public class HtsConditionBatchService {
 
     private final KisApiClient kisApiClient;
     private final StockRepository stockRepository;
-    private final HtsStockRepository htsStockRepository;
+    private final HtsConditionPersistenceService htsConditionPersistenceService;
 
     @Value("${kis.hts.user-id:}")
     private String htsUserId;
@@ -45,7 +42,6 @@ public class HtsConditionBatchService {
     @Value("${kis.hts.conditions.aggressive-seq:}")
     private String aggressiveSeq;
 
-    @Transactional
     public Map<HtsSearchType, Integer> syncAll(LocalDate baseDate) {
         validateConfig();
 
@@ -57,7 +53,6 @@ public class HtsConditionBatchService {
         return result;
     }
 
-    @Transactional
     public int sync(HtsSearchType searchType, String seq, LocalDate baseDate) {
         List<KisHtsConditionResultOutput> htsResults = kisApiClient.getHtsConditionResults(htsUserId, seq);
         List<String> stockCodesInKisResult = htsResults.stream()
@@ -69,25 +64,22 @@ public class HtsConditionBatchService {
         Map<String, Stock> kospi200StocksByCode = stockRepository.findByStockCodeIn(stockCodesInKisResult).stream()
                 .collect(Collectors.toMap(Stock::getStockCode, Function.identity()));
 
-        List<HtsStock> htsStocks = stockCodesInKisResult.stream()
+        List<Stock> selectedStocks = stockCodesInKisResult.stream()
                 .map(kospi200StocksByCode::get)
                 .filter(stock -> stock != null)
-                .map(stock -> HtsStock.create(stock, searchType, baseDate))
                 .toList();
 
-        htsStockRepository.deleteBySearchTypeAndBaseDate(searchType, baseDate);
-        htsStockRepository.flush();
-        htsStockRepository.saveAll(htsStocks);
+        htsConditionPersistenceService.replace(searchType, baseDate, selectedStocks);
 
-        int skippedCount = stockCodesInKisResult.size() - htsStocks.size();
+        int skippedCount = stockCodesInKisResult.size() - selectedStocks.size();
         if (skippedCount > 0) {
             log.warn("[HTS Condition Batch] KOSPI 200 대상이 아닌 조건검색 종목 제외: searchType={}, receivedCount={}, savedCount={}, skippedCount={}",
-                    searchType, stockCodesInKisResult.size(), htsStocks.size(), skippedCount);
+                    searchType, stockCodesInKisResult.size(), selectedStocks.size(), skippedCount);
         }
 
         log.info("[HTS Condition Batch] 조건검색 결과 저장 완료: searchType={}, baseDate={}, receivedCount={}, savedCount={}",
-                searchType, baseDate, stockCodesInKisResult.size(), htsStocks.size());
-        return htsStocks.size();
+                searchType, baseDate, stockCodesInKisResult.size(), selectedStocks.size());
+        return selectedStocks.size();
     }
 
     private Map<HtsSearchType, String> configuredSequences() {

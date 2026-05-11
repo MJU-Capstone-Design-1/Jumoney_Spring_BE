@@ -16,6 +16,10 @@ spring:
       ddl-auto: update
     show-sql: true
 
+  batch:
+    jdbc:
+      initialize-schema: always
+
 # 운영 서버에서 Nginx 리버스 프록시를 사용할 때 HTTPS 도메인을 자동으로 인식
 server:
   forward-headers-strategy: framework

@@ -1,12 +1,9 @@
 package com.mju.Jumoney.domain.stock.service;
 
 import com.mju.Jumoney.domain.stock.domain.Stock;
-import com.mju.Jumoney.domain.stock.domain.StockIndicator;
 import com.mju.Jumoney.domain.stock.exception.StockErrorCode;
 import com.mju.Jumoney.domain.stock.exception.StockIndicatorBatchException;
-import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
-import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
@@ -15,6 +12,7 @@ import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyMetrics;
 import com.mju.Jumoney.global.client.kis.enums.KisFinancialPeriod;
+import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,8 +37,8 @@ public class StockIndicatorBatchService {
     private static final int INVESTOR_TRADE_DAYS = 20;
 
     private final StockRepository stockRepository;
-    private final StockIndicatorRepository stockIndicatorRepository;
     private final KisApiClient kisApiClient;
+    private final StockIndicatorPersistenceService stockIndicatorPersistenceService;
 
     // Stock 테이블의 전체 종목을 순회하며 StockIndicator를 적재합니다.
     // 한 종목이 실패해도 전체 배치를 중단하지 않고 다음 종목을 계속 처리합니다.
@@ -113,31 +111,9 @@ public class StockIndicatorBatchService {
         BigDecimal requiredMarginDebtRate = required(marginDebtRate, "marginDebtRate");
         BigDecimal requiredHigh52WeekRate = required(high52WeekRate, "high52WeekRate");
 
-        // stock + baseTime은 unique key입니다. 기존 행이 있으면 갱신하고 없으면 새로 생성합니다.
-        StockIndicator stockIndicator = stockIndicatorRepository.findByStockAndBaseTime(stock, baseTime)
-                .orElseGet(() -> StockIndicator.create(
-                        stock,
-                        baseTime,
-                        marketCap,
-                        debtRatio,
-                        operatingProfit,
-                        operatingProfitGrowthRate,
-                        dps,
-                        dividendYield,
-                        payoutRatio,
-                        roe,
-                        per,
-                        pbr,
-                        currentEps,
-                        lastYearEps,
-                        currentSales,
-                        lastYearSales,
-                        requiredMarginDebtRate,
-                        requiredHigh52WeekRate,
-                        instNetBuy20Days
-                ));
-
-        stockIndicator.updateMetrics(
+        stockIndicatorPersistenceService.upsert(new StockIndicatorPersistenceService.StockIndicatorMetrics(
+                stock,
+                baseTime,
                 marketCap,
                 debtRatio,
                 operatingProfit,
@@ -155,9 +131,7 @@ public class StockIndicatorBatchService {
                 requiredMarginDebtRate,
                 requiredHigh52WeekRate,
                 instNetBuy20Days
-        );
-
-        stockIndicatorRepository.save(stockIndicator);
+        ));
     }
 
     // 연간 재무비율 응답 중 가장 최신 결산년월 데이터를 현재 지표로 사용합니다.
