@@ -126,7 +126,7 @@ public class KisSmokeController {
     )
     @PostMapping("/batch/stock-indicators")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runStockIndicatorBatch(
-            @Parameter(description = "지표 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
+            @Parameter(description = "지표 기준일. 생략 시 오늘 날짜. 단, 오늘 기준 배치는 15:40 이후 가능", example = "2026-05-07")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
@@ -163,4 +163,5 @@ public class KisSmokeController {
     private LocalDate resolveBaseDate(LocalDate baseDate) {
         return baseDate == null ? LocalDate.now() : baseDate;
     }
+
 }

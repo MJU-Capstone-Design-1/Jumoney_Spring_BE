@@ -26,6 +26,11 @@ kis:
       safe-pursuit-seq: "2"
       profit-pursuit-seq: "1"
       aggressive-seq: "0"
+  batch:
+    stock-indicator:
+      zone-id: Asia/Seoul
+      today-available-after: "15:40"
+      cron: "0 0 6 ? * SAT"
   client:
     connect-timeout-millis: 5000  # 5초
     read-timeout-seconds: 10      # 10초
