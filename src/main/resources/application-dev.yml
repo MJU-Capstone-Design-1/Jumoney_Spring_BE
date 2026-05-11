@@ -15,6 +15,13 @@ spring:
     hibernate:
       ddl-auto: none
 
+kis:
+  batch:
+    stock-indicator:
+      enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:true}
+    hts-condition:
+      enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:true}
+
 jwt:
   secret-key: ${JWT_SECRET_KEY}
   access-token-validity: 3600000 #1시간

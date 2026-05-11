@@ -29,11 +29,11 @@ kis:
   batch:
     zone-id: Asia/Seoul
     stock-indicator:
-      enabled: true
+      enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}
       today-available-after: "15:40"
       cron: "0 0 6 * * TUE-SAT"
     hts-condition:
-      enabled: true
+      enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:false}
       cron: "0 30 6 * * TUE-SAT"
   client:
     connect-timeout-millis: 5000  # 5초
