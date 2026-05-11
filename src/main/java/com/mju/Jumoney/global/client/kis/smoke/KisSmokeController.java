@@ -107,7 +107,8 @@ public class KisSmokeController {
 
     @Operation(
             summary = "HTS 조건검색 배치 수동 실행",
-            description = "local 프로필에서만 활성화됩니다. 설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다."
+            description = "local 프로필에서만 활성화됩니다. 설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다. "
+                    + "수동 실행은 요청한 baseDate를 그대로 사용하며, 생략 시 오늘 날짜를 사용합니다. 정기 스케줄은 직전 평일 기준으로 실행됩니다."
     )
     @PostMapping("/batch/hts-conditions")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runHtsConditionBatch(
@@ -122,7 +123,10 @@ public class KisSmokeController {
 
     @Operation(
             summary = "종목 지표 배치 수동 실행",
-            description = "local 프로필에서만 활성화됩니다. Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다."
+            description = "local 프로필에서만 활성화됩니다. Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다. "
+                    + "수동 실행은 요청한 baseDate를 그대로 사용하며, 생략 시 오늘 날짜를 사용합니다. "
+                    + "단, 오늘 기준 실행은 KIS 투자자매매동향 일별 API 제한 때문에 15:40 이후에만 가능합니다. "
+                    + "정기 스케줄은 직전 평일 기준으로 실행됩니다."
     )
     @PostMapping("/batch/stock-indicators")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runStockIndicatorBatch(
@@ -137,7 +141,8 @@ public class KisSmokeController {
 
     @Operation(
             summary = "종목 지표 배치 적재 상태 확인",
-            description = "local 프로필에서만 활성화됩니다. 기준월 stock_indicators 적재 건수, 누락 종목, 필수 컬럼 null 건수를 조회합니다."
+            description = "local 프로필에서만 활성화됩니다. 기준일이 속한 기준월(baseTime=yyyyMM)의 stock_indicators 적재 건수, "
+                    + "누락 종목, 필수 컬럼 null 건수를 조회합니다. baseDate 생략 시 오늘 날짜 기준월을 사용합니다."
     )
     @GetMapping("/batch/stock-indicators/status")
     public ResponseEntity<ApiResponse<StockIndicatorBatchStatusResponse>> getStockIndicatorBatchStatus(
