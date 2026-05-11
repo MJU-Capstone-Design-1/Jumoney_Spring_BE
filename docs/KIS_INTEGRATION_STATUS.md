@@ -103,6 +103,9 @@
 ## StockIndicator Batch
 
 - `StockIndicatorBatchService`는 Stock 테이블의 전체 종목을 순회하며 `StockIndicator`를 `stock + baseTime(yyyyMM)` 기준으로 upsert한다.
+- 정기 스케줄 기준일은 실행일의 직전 평일이다. 화요일~토요일 오전 배치가 전일 장 마감 데이터를 적재하는 것을 기본 정책으로 한다.
+- 기본 스케줄은 `stockIndicatorBatchJob` 화요일~토요일 06:00, `htsConditionBatchJob` 화요일~토요일 06:30(`Asia/Seoul`)이다.
+- 수동 실행은 요청한 `baseDate`를 그대로 사용한다. 단, `stockIndicatorBatchJob`은 오늘 기준 실행 시 KIS 투자자매매동향 일별 API(`FHPTJ04160001`) 제한 때문에 15:40 전 실행을 차단한다.
 - 재무비율과 손익계산서는 연간 데이터(`KisFinancialPeriod.YEAR`)를 사용한다.
 - 최신 결산년월 데이터를 현재 값으로, 그 이전 결산년월 데이터를 전년 값으로 사용한다.
 - 신규 상장주처럼 전년도 재무 데이터가 없는 종목도 적재 대상에 포함한다.

@@ -5,7 +5,7 @@ import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutp
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
-import com.mju.Jumoney.domain.stock.service.StockIndicatorBatchAvailability;
+import com.mju.Jumoney.global.batch.BatchBaseDateResolver;
 import com.mju.Jumoney.global.batch.StockDataBatchJobConfig;
 import com.mju.Jumoney.global.client.kis.smoke.dto.BatchJobRunResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeApiResult;
@@ -47,7 +47,7 @@ public class KisSmokeService {
     private final JobOperator jobOperator;
     private final Job stockIndicatorBatchJob;
     private final Job htsConditionBatchJob;
-    private final StockIndicatorBatchAvailability stockIndicatorBatchAvailability;
+    private final BatchBaseDateResolver batchBaseDateResolver;
 
     public KisSmokeService(KisApiClient kisApiClient,
                            StockRepository stockRepository,
@@ -55,14 +55,14 @@ public class KisSmokeService {
                            JobOperator jobOperator,
                            @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME) Job stockIndicatorBatchJob,
                            @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob,
-                           StockIndicatorBatchAvailability stockIndicatorBatchAvailability) {
+                           BatchBaseDateResolver batchBaseDateResolver) {
         this.kisApiClient = kisApiClient;
         this.stockRepository = stockRepository;
         this.stockIndicatorRepository = stockIndicatorRepository;
         this.jobOperator = jobOperator;
         this.stockIndicatorBatchJob = stockIndicatorBatchJob;
         this.htsConditionBatchJob = htsConditionBatchJob;
-        this.stockIndicatorBatchAvailability = stockIndicatorBatchAvailability;
+        this.batchBaseDateResolver = batchBaseDateResolver;
     }
 
     public KisSmokeResponse smoke(String stockCode, LocalDate baseDate, LocalDate dividendFrom, LocalDate dividendTo) {
@@ -131,7 +131,7 @@ public class KisSmokeService {
     }
 
     public BatchJobRunResponse runStockIndicatorBatch(LocalDate baseDate) {
-        stockIndicatorBatchAvailability.validateAvailable(baseDate);
+        batchBaseDateResolver.validateStockIndicatorManualBaseDate(baseDate);
         return runBatchJob(stockIndicatorBatchJob, StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME, baseDate);
     }
 

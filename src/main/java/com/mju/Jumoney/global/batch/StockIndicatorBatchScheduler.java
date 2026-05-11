@@ -1,6 +1,5 @@
 package com.mju.Jumoney.global.batch;
 
-import com.mju.Jumoney.domain.stock.service.StockIndicatorBatchAvailability;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.Job;
@@ -19,17 +18,17 @@ import java.time.LocalDate;
 public class StockIndicatorBatchScheduler {
 
     private final JobOperator jobOperator;
-    private final StockIndicatorBatchAvailability stockIndicatorBatchAvailability;
+    private final BatchBaseDateResolver batchBaseDateResolver;
 
     @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME)
     private final Job stockIndicatorBatchJob;
 
     @Scheduled(
-            cron = "${kis.batch.stock-indicator.cron:0 0 6 ? * SAT}",
-            zone = "${kis.batch.stock-indicator.zone-id:Asia/Seoul}"
+            cron = "${kis.batch.stock-indicator.cron:0 0 6 * * TUE-SAT}",
+            zone = "${kis.batch.zone-id:Asia/Seoul}"
     )
     public void runStockIndicatorBatch() throws Exception {
-        LocalDate baseDate = stockIndicatorBatchAvailability.latestAvailableBaseDate();
+        LocalDate baseDate = batchBaseDateResolver.resolveScheduledBaseDate();
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLocalDate(StockDataBatchJobConfig.JOB_PARAM_BASE_DATE, baseDate, true)
                 .toJobParameters();

@@ -46,6 +46,7 @@ public class StockDataBatchJobConfig {
                 .build();
     }
 
+    // TODO: daily 지표와 financial 지표 batch 분리 (추후 리팩토링)
     @Bean
     public Step stockIndicatorBatchStep(JobRepository jobRepository,
                                         PlatformTransactionManager transactionManager) {
