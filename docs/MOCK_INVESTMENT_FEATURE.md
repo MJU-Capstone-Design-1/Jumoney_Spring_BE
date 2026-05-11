@@ -31,7 +31,7 @@
 - **사용 테이블**: `Sector`, `Stock`
 - **로직**:
     1. 선택된 섹터 ID(`sectorId`)와 대장주 여부(`isMarketLeader = true`) 조건으로 `Stock` 테이블을 조회.
-    2. 해당 종목의 기업명(`name`), 로고 파일명(`imageFileName`)을 DTO로 묶어 반환.
+    2. 해당 종목의 기업명(`name`), 종목 코드를 DTO로 묶어 반환.
 
 ---
 
@@ -54,7 +54,7 @@
 - **사용 테이블**: `Portfolio`, `Stock`
 - **로직**:
     1. `Portfolio` 테이블에서 보유 종목 리스트, 수량(`quantity`), 평균 매입 단가(`averagePurchasePrice`) 조회.
-    2. `Stock` 테이블과 JOIN하여 기업명(`name`), 로고 파일명(`imageFileName`), 태그 등 기본 정보 조회.
+    2. `Stock` 테이블과 JOIN하여 기업명(`name`), 종목 코드, 태그 등 기본 정보 조회.
     3. 실시간 현재가를 Redis에서 조회. (실패 시 DB(`StockPrice`)에서 해당 종목의 가장 최근 `closePrice` 조회)
     4. **개별 종목 실시간 손익 연산**:
         - 평가 손익 = (실시간 현재가 - `averagePurchasePrice`) * `quantity`
@@ -64,7 +64,7 @@
 - **기능**: 특정 분야(섹터)에 속한 종목들의 실시간 시세 및 등락률 리스트 조회.
 - **사용 테이블**: `Stock`, `Sector`
 - **로직**:
-    1. `Stock` 테이블에서 해당 `sectorId`로 종목 리스트, 기업명, 로고 파일명(`imageFileName`) 등 조회.
+    1. `Stock` 테이블에서 해당 `sectorId`로 종목 리스트, 기업명 등 조회.
     2. 각 종목의 실시간 현재가, 전일 대비 상승/하락 금액, 전일 대비율(등락률)을 Redis에서 조회하여 병합 후 반환.
     3. 실패 시 DB에서 최신 데이터 조회
 

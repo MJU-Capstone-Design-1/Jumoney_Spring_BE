@@ -82,7 +82,6 @@
         - **섹터 ID / sectorId / BIGINT / NOT NULL (FK)**
         - 종목 코드 / stockCode / VARCHAR(6) / NOT NULL / 예: 005930
         - 종목명 / name / VARCHAR(50) / NOT NULL / 예: 삼성전자
-        - 이미지 파일 명 / imageFileName / VARCHAR(100) / NOT NULL
         - 시장 구분 / marketType / ENUM / NOT NULL / 예: KOSPI
         - 종목 설명 / description / JSONB / NULL
         - 대장주 여부 / isMarketLeader / BOOLEAN  / NOT NULL
@@ -98,15 +97,16 @@
         - 부채비율 / debtRatio / DECIMAL / NOT NULL
         - 영업이익 / operatingProfit / BIGINT / NOT NULL
         - 영업이익 증가율 / operatingProfitGrowthRate / DECIMAL / NOT NULL
-        - 현금배당금 / cashDividend / DECIMAL / NOT NULL
-        - 배당성향 / payoutRatio / DECIMAL / NOT NULL
+        - 주당배당금 / dps / DECIMAL / NOT NULL / 기간 내 주당배당금(DPS) 합계
+        - 시가배당률 / dividendYield / DECIMAL / NOT NULL / `DPS / 현재가 * 100`으로 계산
+        - 배당성향 / payoutRatio / DECIMAL / NULL / `기간 내 주당배당금(DPS) 합계 / EPS * 100`으로 계산, DPS 또는 EPS 결측 시 NULL
         - ROE / roe / DECIMAL / NOT NULL
         - PER / per / DECIMAL / NOT NULL
         - PBR / pbr / DECIMAL / NOT NULL
         - 당기 EPS / currentEps / DECIMAL / NOT NULL
-        - 전년 동기 EPS / lastYearEps / DECIMAL / NOT NULL
+        - 전년 동기 EPS / lastYearEps / DECIMAL / NULL / 신규 상장주 등 전년도 EPS가 없으면 NULL
         - 당기 매출액 / currentSales / BIGINT / NOT NULL
-        - 전년 동기 매출액 / lastYearSales / BIGINT / NOT NULL
+        - 전년 동기 매출액 / lastYearSales / BIGINT / NULL / 신규 상장주 등 전년도 매출액이 없으면 NULL
         - 신용잔고율 / marginDebtRate / DECIMAL / NOT NULL
         - 52주 신고가 대비 현재가 비율 / high52WeekRate / DECIMAL / NOT NULL
         - 최근 20거래일 기관 순매수 합계 / instNetBuy20Days / BIGINT / NOT NULL

@@ -5,12 +5,11 @@
 ## AI Assistant Context (개발 원칙)
 1. **아키텍처 일관성**: Spring Boot는 KIS 웹소켓을 직접 호출하지 않는다. 실시간 데이터는 Node.js가 수집하여 Redis에 적재한 값을 사용한다.
 2. **차트 데이터 결합 (DB + Redis Hybrid)**: 차트를 그릴 때 무거운 과거 데이터는 반드시 RDBMS(`StockPrice`)에서 조회한다. 인메모리(Redis)는 오직 '현재 장 중에 변하고 있는 최신 데이터(오늘의 캔들)'만 담당하며, Spring Boot가 DB 데이터의 마지막에 Redis 데이터를 이어 붙여 프론트엔드로 응답한다.
-3. **이미지 자원**: 기업 로고는 `Stock` 테이블의 `imageFileName` 필드값을 활용하여 로컬 정적 자원 경로를 반환한다.
 
 ---
 
 ## 1. 기업 상세 정보 조회
-- **기능**: 기업명, 로고, 실시간 시세, 전일 대비 등락률, 거래량 및 주요 재무 지표 조회.
+- **기능**: 기업명, 실시간 시세, 전일 대비 등락률, 거래량 및 주요 재무 지표 조회.
 - **사용 테이블**: `Stock`, `StockIndicator`, `StockPrice`
 - **로직**:
     1. **기본 정보**: `Stock` 테이블에서 `name`, `imageFileName`, `description` 및 섹터 정보를 조회.
