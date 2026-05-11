@@ -3,18 +3,20 @@ package com.mju.Jumoney.global.client.kis.smoke;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
-import com.mju.Jumoney.domain.stock.enums.HtsSearchType;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
-import com.mju.Jumoney.domain.stock.service.HtsConditionBatchService;
-import com.mju.Jumoney.domain.stock.service.StockIndicatorBatchService;
-import com.mju.Jumoney.global.client.kis.smoke.dto.HtsConditionBatchRunResponse;
+import com.mju.Jumoney.global.batch.StockDataBatchJobConfig;
+import com.mju.Jumoney.global.client.kis.smoke.dto.BatchJobRunResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeApiResult;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.MissingStockIndicatorResponse;
-import com.mju.Jumoney.global.client.kis.smoke.dto.StockIndicatorBatchRunResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.StockIndicatorBatchStatusResponse;
-import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -23,12 +25,10 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 
 @Service
 @Profile("local")
-@RequiredArgsConstructor
 public class KisSmokeService {
 
     private static final DateTimeFormatter BASE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
@@ -41,10 +41,25 @@ public class KisSmokeService {
     private static final String TR_ID_INVESTOR_TRADE_DAILY = "FHPTJ04160001";
 
     private final KisApiClient kisApiClient;
-    private final HtsConditionBatchService htsConditionBatchService;
-    private final StockIndicatorBatchService stockIndicatorBatchService;
     private final StockRepository stockRepository;
     private final StockIndicatorRepository stockIndicatorRepository;
+    private final JobOperator jobOperator;
+    private final Job stockIndicatorBatchJob;
+    private final Job htsConditionBatchJob;
+
+    public KisSmokeService(KisApiClient kisApiClient,
+                           StockRepository stockRepository,
+                           StockIndicatorRepository stockIndicatorRepository,
+                           JobOperator jobOperator,
+                           @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME) Job stockIndicatorBatchJob,
+                           @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob) {
+        this.kisApiClient = kisApiClient;
+        this.stockRepository = stockRepository;
+        this.stockIndicatorRepository = stockIndicatorRepository;
+        this.jobOperator = jobOperator;
+        this.stockIndicatorBatchJob = stockIndicatorBatchJob;
+        this.htsConditionBatchJob = htsConditionBatchJob;
+    }
 
     public KisSmokeResponse smoke(String stockCode, LocalDate baseDate, LocalDate dividendFrom, LocalDate dividendTo) {
         List<KisSmokeApiResult> results = new ArrayList<>();
@@ -107,14 +122,12 @@ public class KisSmokeService {
         return kisApiClient.getHtsConditionResults(htsUserId, seq);
     }
 
-    public HtsConditionBatchRunResponse runHtsConditionBatch(LocalDate baseDate) {
-        Map<HtsSearchType, Integer> savedCounts = htsConditionBatchService.syncAll(baseDate);
-        return HtsConditionBatchRunResponse.of(baseDate, savedCounts);
+    public BatchJobRunResponse runHtsConditionBatch(LocalDate baseDate) {
+        return runBatchJob(htsConditionBatchJob, StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME, baseDate);
     }
 
-    public StockIndicatorBatchRunResponse runStockIndicatorBatch(LocalDate baseDate) {
-        StockIndicatorBatchService.StockIndicatorBatchResult result = stockIndicatorBatchService.syncAll(baseDate);
-        return StockIndicatorBatchRunResponse.from(result);
+    public BatchJobRunResponse runStockIndicatorBatch(LocalDate baseDate) {
+        return runBatchJob(stockIndicatorBatchJob, StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME, baseDate);
     }
 
     public StockIndicatorBatchStatusResponse getStockIndicatorBatchStatus(LocalDate baseDate) {
@@ -140,5 +153,19 @@ public class KisSmokeService {
 
     private String toBaseTime(LocalDate baseDate) {
         return YearMonth.from(baseDate).format(BASE_TIME_FORMATTER);
+    }
+
+    private BatchJobRunResponse runBatchJob(Job job, String jobName, LocalDate baseDate) {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLocalDate(StockDataBatchJobConfig.JOB_PARAM_BASE_DATE, baseDate, false)
+                .addLong("runId", System.currentTimeMillis())
+                .toJobParameters();
+
+        try {
+            JobExecution jobExecution = jobOperator.start(job, jobParameters);
+            return BatchJobRunResponse.from(jobName, baseDate, jobExecution);
+        } catch (Exception e) {
+            throw new IllegalStateException("Spring Batch Job 실행 실패: jobName=" + jobName + ", baseDate=" + baseDate, e);
+        }
     }
 }

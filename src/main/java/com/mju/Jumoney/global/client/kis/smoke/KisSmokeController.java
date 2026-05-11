@@ -2,9 +2,8 @@ package com.mju.Jumoney.global.client.kis.smoke;
 
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
-import com.mju.Jumoney.global.client.kis.smoke.dto.HtsConditionBatchRunResponse;
+import com.mju.Jumoney.global.client.kis.smoke.dto.BatchJobRunResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeResponse;
-import com.mju.Jumoney.global.client.kis.smoke.dto.StockIndicatorBatchRunResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.StockIndicatorBatchStatusResponse;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
@@ -111,12 +110,12 @@ public class KisSmokeController {
             description = "local 프로필에서만 활성화됩니다. 설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다."
     )
     @PostMapping("/batch/hts-conditions")
-    public ResponseEntity<ApiResponse<HtsConditionBatchRunResponse>> runHtsConditionBatch(
+    public ResponseEntity<ApiResponse<BatchJobRunResponse>> runHtsConditionBatch(
             @Parameter(description = "저장 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
-        HtsConditionBatchRunResponse response = kisSmokeService.runHtsConditionBatch(resolveBaseDate(baseDate));
+        BatchJobRunResponse response = kisSmokeService.runHtsConditionBatch(resolveBaseDate(baseDate));
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
@@ -126,12 +125,12 @@ public class KisSmokeController {
             description = "local 프로필에서만 활성화됩니다. Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다."
     )
     @PostMapping("/batch/stock-indicators")
-    public ResponseEntity<ApiResponse<StockIndicatorBatchRunResponse>> runStockIndicatorBatch(
+    public ResponseEntity<ApiResponse<BatchJobRunResponse>> runStockIndicatorBatch(
             @Parameter(description = "지표 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
-        StockIndicatorBatchRunResponse response = kisSmokeService.runStockIndicatorBatch(resolveBaseDate(baseDate));
+        BatchJobRunResponse response = kisSmokeService.runStockIndicatorBatch(resolveBaseDate(baseDate));
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
