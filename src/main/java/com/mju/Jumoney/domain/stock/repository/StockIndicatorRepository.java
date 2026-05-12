@@ -20,6 +20,18 @@ public interface StockIndicatorRepository extends JpaRepository<StockIndicator, 
     long countByBaseTime(String baseTime);
 
     @Query("""
+            select si
+            from StockIndicator si
+            join fetch si.stock
+            where si.baseTime = :baseTime
+              and si.stock.id in :stockIds
+            """)
+    List<StockIndicator> findByBaseTimeAndStockIdsWithStock(
+            @Param("baseTime") String baseTime,
+            @Param("stockIds") List<Long> stockIds
+    );
+
+    @Query("""
             select max(si.baseTime)
             from StockIndicator si
             """)
@@ -119,6 +131,7 @@ public interface StockIndicatorRepository extends JpaRepository<StockIndicator, 
             where si.baseTime = :baseTime
               and (
                    si.marketCap is null
+                or si.accumulatedTradeAmount is null
                 or si.debtRatio is null
                 or si.operatingProfit is null
                 or si.operatingProfitGrowthRate is null

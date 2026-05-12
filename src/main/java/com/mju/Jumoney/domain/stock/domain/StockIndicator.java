@@ -40,6 +40,9 @@ public class StockIndicator {
     @Column(name = "market_cap", nullable = false)
     private Long marketCap;
 
+    @Column(name = "accumulated_trade_amount", nullable = false)
+    private Long accumulatedTradeAmount;
+
     @Column(name = "debt_ratio", nullable = false, precision = 19, scale = 4)
     private BigDecimal debtRatio;
 
@@ -94,6 +97,7 @@ public class StockIndicator {
             Stock stock,
             String baseTime,
             Long marketCap,
+            Long accumulatedTradeAmount,
             BigDecimal debtRatio,
             Long operatingProfit,
             BigDecimal operatingProfitGrowthRate,
@@ -115,6 +119,7 @@ public class StockIndicator {
                 .stock(stock)
                 .baseTime(baseTime)
                 .marketCap(marketCap)
+                .accumulatedTradeAmount(accumulatedTradeAmount)
                 .debtRatio(debtRatio)
                 .operatingProfit(operatingProfit)
                 .operatingProfitGrowthRate(operatingProfitGrowthRate)
@@ -136,6 +141,7 @@ public class StockIndicator {
 
     public void updateMetrics(
             Long marketCap,
+            Long accumulatedTradeAmount,
             BigDecimal debtRatio,
             Long operatingProfit,
             BigDecimal operatingProfitGrowthRate,
@@ -154,6 +160,7 @@ public class StockIndicator {
             Long instNetBuy20Days
     ) {
         this.marketCap = marketCap;
+        this.accumulatedTradeAmount = accumulatedTradeAmount;
         this.debtRatio = debtRatio;
         this.operatingProfit = operatingProfit;
         this.operatingProfitGrowthRate = operatingProfitGrowthRate;

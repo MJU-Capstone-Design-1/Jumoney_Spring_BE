@@ -49,4 +49,10 @@ public class SurveyQuestion {
                 .displayOrder(displayOrder)
                 .build();
     }
+
+    public void updateContent(String content, String description, int displayOrder) {
+        this.content = content;
+        this.description = description;
+        this.displayOrder = displayOrder;
+    }
 }

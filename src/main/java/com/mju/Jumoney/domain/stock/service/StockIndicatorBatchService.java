@@ -104,6 +104,7 @@ public class StockIndicatorBatchService {
         );
 
         Long marketCap = requiredLong(currentPrice.marketCap(), "marketCap");
+        Long accumulatedTradeAmount = requiredLong(currentPrice.accumulatedTradeAmount(), "accumulatedTradeAmount");
         BigDecimal debtRatio = required(currentFinancialRatio.debtRatio(), "debtRatio");
         Long operatingProfit = requiredLong(currentIncomeStatement.operatingProfit(), "operatingProfit");
         BigDecimal operatingProfitGrowthRate = required(currentFinancialRatio.operatingProfitGrowthRate(), "operatingProfitGrowthRate");
@@ -121,6 +122,7 @@ public class StockIndicatorBatchService {
                 stock,
                 baseTime,
                 marketCap,
+                accumulatedTradeAmount,
                 debtRatio,
                 operatingProfit,
                 operatingProfitGrowthRate,

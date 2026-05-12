@@ -21,7 +21,6 @@ public record HojumoneySurveyResponse(
     public record SurveyOptionResponse(
             Long optionId,
             String content,
-            String logicCode,
             int displayOrder,
             List<Long> restrictedOptionIds,
             List<SurveyOptionIndicatorDescription> description

@@ -25,6 +25,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -105,15 +106,16 @@ public class DataInitializer implements ApplicationRunner {
 
         for (SurveyQuestionInitDto questionDto : questionDtos) {
             SurveyQuestion question = surveyQuestionRepository.findByQuestionType(questionDto.questionType())
-                    .orElseGet(() -> surveyQuestionRepository.save(SurveyQuestion.create(
-                            questionDto.questionType(),
-                            questionDto.content(),
-                            questionDto.description(),
-                            questionDto.displayOrder()
-                    )));
+                .orElseGet(() -> surveyQuestionRepository.save(SurveyQuestion.create(
+                        questionDto.questionType(),
+                        questionDto.content(),
+                        questionDto.description(),
+                        questionDto.displayOrder()
+                )));
+            question.updateContent(questionDto.content(), questionDto.description(), questionDto.displayOrder());
 
             for (SurveyOptionInitDto optionDto : questionDto.options()) {
-                surveyOptionRepository.findByLogicCode(optionDto.logicCode())
+                SurveyOption option = surveyOptionRepository.findByLogicCode(optionDto.logicCode())
                         .orElseGet(() -> surveyOptionRepository.save(SurveyOption.create(
                                 question,
                                 optionDto.content(),
@@ -121,8 +123,19 @@ public class DataInitializer implements ApplicationRunner {
                                 optionDto.description(),
                                 optionDto.displayOrder()
                         )));
+                option.updateContent(optionDto.content(), optionDto.description(), optionDto.displayOrder());
             }
         }
+
+        List<Long> hojumoneyOptionIds = new ArrayList<>();
+        for (SurveyQuestionInitDto questionDto : questionDtos) {
+            for (SurveyOptionInitDto optionDto : questionDto.options()) {
+                SurveyOption option = surveyOptionRepository.findByLogicCode(optionDto.logicCode())
+                        .orElseThrow(() -> new IllegalStateException("설문 선택지 초기화 실패: logicCode=" + optionDto.logicCode()));
+                hojumoneyOptionIds.add(option.getId());
+            }
+        }
+        surveyOptionRestrictionRepository.deleteBySourceOptionIdIn(hojumoneyOptionIds);
 
         for (SurveyQuestionInitDto questionDto : questionDtos) {
             for (SurveyOptionInitDto optionDto : questionDto.options()) {
@@ -136,12 +149,7 @@ public class DataInitializer implements ApplicationRunner {
                     SurveyOption restrictedOption = surveyOptionRepository.findByLogicCode(restrictedLogicCode)
                             .orElseThrow(() -> new IllegalStateException("제한 선택지 초기화 실패: logicCode=" + restrictedLogicCode));
 
-                    if (!surveyOptionRestrictionRepository.existsBySourceOptionIdAndRestrictedOptionId(
-                            option.getId(),
-                            restrictedOption.getId()
-                    )) {
-                        surveyOptionRestrictionRepository.save(SurveyOptionRestriction.create(option, restrictedOption));
-                    }
+                    surveyOptionRestrictionRepository.save(SurveyOptionRestriction.create(option, restrictedOption));
                 }
             }
         }

@@ -22,7 +22,7 @@ public class HojumoneyRiskFilterService {
 
     public List<HojumoneyRiskCandidate> findCandidates(SurveyLogicCode riskProfile) {
         HtsSearchType searchType = toHtsSearchType(riskProfile);
-        LocalDate baseDate = htsStockRepository.findLatestBaseDate()
+        LocalDate baseDate = htsStockRepository.findLatestBaseDateBySearchType(searchType)
                 .orElseThrow(() -> new CustomException(RecommendationErrorCode.HTS_STOCK_BASE_DATE_NOT_FOUND));
 
         return htsStockRepository.findBySearchTypeAndBaseDateWithStock(searchType, baseDate)

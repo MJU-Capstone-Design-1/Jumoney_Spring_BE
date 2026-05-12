@@ -17,8 +17,9 @@ public interface HtsStockRepository extends JpaRepository<HtsStock, Long> {
     @Query("""
             select max(hs.baseDate)
             from HtsStock hs
+            where hs.searchType = :searchType
             """)
-    Optional<LocalDate> findLatestBaseDate();
+    Optional<LocalDate> findLatestBaseDateBySearchType(@Param("searchType") HtsSearchType searchType);
 
     @Query("""
             select hs

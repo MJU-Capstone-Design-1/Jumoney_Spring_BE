@@ -61,4 +61,10 @@ public class SurveyOption {
                 .displayOrder(displayOrder)
                 .build();
     }
+
+    public void updateContent(String content, List<SurveyOptionIndicatorDescription> description, int displayOrder) {
+        this.content = content;
+        this.description = description;
+        this.displayOrder = displayOrder;
+    }
 }

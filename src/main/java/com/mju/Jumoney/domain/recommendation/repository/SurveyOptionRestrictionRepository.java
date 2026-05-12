@@ -8,9 +8,9 @@ import java.util.List;
 
 public interface SurveyOptionRestrictionRepository extends JpaRepository<SurveyOptionRestriction, Long> {
 
-    boolean existsBySourceOptionIdAndRestrictedOptionId(Long sourceOptionId, Long restrictedOptionId);
-
     List<SurveyOptionRestriction> findBySourceOptionId(Long sourceOptionId);
 
     List<SurveyOptionRestriction> findBySourceOptionIdIn(Collection<Long> sourceOptionIds);
+
+    void deleteBySourceOptionIdIn(Collection<Long> sourceOptionIds);
 }
