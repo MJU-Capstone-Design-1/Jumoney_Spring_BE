@@ -13,7 +13,10 @@ public enum RecommendationErrorCode implements BaseErrorCode {
     DUPLICATE_SURVEY_QUESTION_SELECTION(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_DUPLICATE_QUESTION", "각 설문 문항에서는 하나의 선택지만 선택할 수 있습니다."),
     MISSING_SURVEY_QUESTION_SELECTION(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_MISSING_QUESTION", "모든 설문 문항에 대해 선택지가 필요합니다."),
     RESTRICTED_SURVEY_OPTION_SELECTION(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_RESTRICTED_OPTION", "함께 선택할 수 없는 설문 선택지가 포함되어 있습니다."),
-    INVALID_SURVEY_LOGIC_CODE(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_LOGIC_CODE", "설문 선택지의 로직 코드가 문항 타입과 일치하지 않습니다.");
+    INVALID_SURVEY_LOGIC_CODE(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_LOGIC_CODE", "설문 선택지의 로직 코드가 문항 타입과 일치하지 않습니다."),
+    STOCK_INDICATOR_BASE_TIME_NOT_FOUND(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_STOCK_INDICATOR_BASE_TIME", "추천에 사용할 종목 지표 데이터가 없습니다."),
+    HTS_STOCK_BASE_DATE_NOT_FOUND(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_HTS_STOCK_BASE_DATE", "추천에 사용할 HTS 조건검색 데이터가 없습니다."),
+    INVALID_RECOMMENDATION_LOGIC_CODE(HttpStatus.BAD_REQUEST, "RECOMMENDATION400_INVALID_LOGIC_CODE", "추천 필터에 사용할 수 없는 설문 로직 코드입니다.");
 
     private final HttpStatus status;
     private final String code;
