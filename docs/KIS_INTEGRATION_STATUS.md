@@ -41,6 +41,10 @@
 
 - Node 서버는 여러 실전 계정/app key를 활용해 KOSPI 200 종목의 `H0STCNT0` 국내주식 실시간체결가(KRX)를 구독하고 Redis에 적재할 수 있다.
 - Spring은 실시간성 추천/차트 데이터에 대해 KIS REST를 반복 호출하지 않고 Redis를 우선 조회한다.
+- Spring은 Redis 연결을 앱 내부 캐시용 Redis와 Node 실시간 피드 조회용 Redis로 논리 분리한다.
+  - local 프로필: 앱 Redis는 로컬 Redis, 실시간 피드 Redis는 SSH 터널로 연결한 배포 Redis를 사용한다.
+  - dev/prod 프로필: 두 연결이 같은 운영 Redis를 바라볼 수 있지만, 코드에서는 역할을 분리한다.
+  - 실시간 피드 Redis는 `RealtimeRedisReader`를 통해 읽기 전용으로 접근한다.
 - `H0STCNT0`에서 Spring/추천/차트가 활용할 주요 필드는 다음과 같다.
 
 | Field | Usage |

@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -26,10 +28,17 @@ public class RedisConfig {
     private int port;
     @Value("${spring.data.redis.password}")
     private String password;
+    @Value("${realtime.redis.host}")
+    private String realtimeHost;
+    @Value("${realtime.redis.port}")
+    private int realtimePort;
+    @Value("${realtime.redis.password:}")
+    private String realtimePassword;
 
     // Redis 연결 팩토리 (Lettuce)
     // Lettuce를 사용하여 비동기(Non-blocking)로 동작
     @Bean
+    @Primary
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(host, port);
         // 운영 환경에서는 비밀번호 필요
@@ -39,10 +48,28 @@ public class RedisConfig {
         return new LettuceConnectionFactory(config);
     }
 
+    // Node 서버가 적재한 실시간 피드 전용 Redis 연결.
+    @Bean("realtimeRedisConnectionFactory")
+    public RedisConnectionFactory realtimeRedisConnectionFactory() {
+        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(realtimeHost, realtimePort);
+        if (realtimePassword != null && !realtimePassword.isBlank()) {
+            config.setPassword(realtimePassword);
+        }
+        return new LettuceConnectionFactory(config);
+    }
+
     // 문자열 전용 StringRedisTemplate (파싱을 생략한 단순 조회)
     // JWT refresh token, Node.js 틱 데이터 조회, 단순 캐시값 등
     @Bean
+    @Primary
     public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {
+        return new StringRedisTemplate(connectionFactory);
+    }
+
+    @Bean("realtimeStringRedisTemplate")
+    public StringRedisTemplate realtimeStringRedisTemplate(
+            @Qualifier("realtimeRedisConnectionFactory") RedisConnectionFactory connectionFactory
+    ) {
         return new StringRedisTemplate(connectionFactory);
     }
 
