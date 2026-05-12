@@ -44,10 +44,10 @@ public class DataInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) throws Exception {
         log.info("[DataInitializer] 애플리케이션 초기 데이터 세팅 시작");
-        
+
         initStockData();
         initHojumoneySurveyData();
-        
+
         log.info("[DataInitializer] 애플리케이션 초기 데이터 세팅 완료");
     }
 
@@ -62,7 +62,8 @@ public class DataInitializer implements ApplicationRunner {
         ClassPathResource resource = new ClassPathResource("data/stock_data.json");
         List<StockInitDto> stockDtos = objectMapper.readValue(
                 new java.io.InputStreamReader(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8),
-                new TypeReference<List<StockInitDto>>() {}
+                new TypeReference<List<StockInitDto>>() {
+                }
         );
 
         for (StockInitDto dto : stockDtos) {
@@ -98,17 +99,18 @@ public class DataInitializer implements ApplicationRunner {
         ClassPathResource resource = new ClassPathResource("data/hojumoney_survey_data.json");
         List<SurveyQuestionInitDto> questionDtos = objectMapper.readValue(
                 new java.io.InputStreamReader(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8),
-                new TypeReference<List<SurveyQuestionInitDto>>() {}
+                new TypeReference<List<SurveyQuestionInitDto>>() {
+                }
         );
 
         for (SurveyQuestionInitDto questionDto : questionDtos) {
             SurveyQuestion question = surveyQuestionRepository.findByQuestionType(questionDto.questionType())
-                .orElseGet(() -> surveyQuestionRepository.save(SurveyQuestion.create(
-                        questionDto.questionType(),
-                        questionDto.content(),
-                        questionDto.description(),
-                        questionDto.displayOrder()
-                )));
+                    .orElseGet(() -> surveyQuestionRepository.save(SurveyQuestion.create(
+                            questionDto.questionType(),
+                            questionDto.content(),
+                            questionDto.description(),
+                            questionDto.displayOrder()
+                    )));
 
             for (SurveyOptionInitDto optionDto : questionDto.options()) {
                 surveyOptionRepository.findByLogicCode(optionDto.logicCode())

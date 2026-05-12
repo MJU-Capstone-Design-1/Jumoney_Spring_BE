@@ -1,7 +1,7 @@
 package com.mju.Jumoney.global.client.kis.dto.price;
 
-import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
 
 // KIS 공통 응답 필드와 현재가 시세 output을 함께 받는 DTO입니다.
 public record KisCurrentPriceResponse(

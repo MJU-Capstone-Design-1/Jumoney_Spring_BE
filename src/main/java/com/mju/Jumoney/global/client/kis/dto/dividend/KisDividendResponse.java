@@ -1,7 +1,7 @@
 package com.mju.Jumoney.global.client.kis.dto.dividend;
 
-import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
 
 import java.util.List;
 

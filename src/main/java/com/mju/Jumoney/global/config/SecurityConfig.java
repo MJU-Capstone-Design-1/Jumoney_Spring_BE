@@ -37,29 +37,29 @@ public class SecurityConfig {
 
         // Stateless(JWT)를 위한 기본 설정
         http
-            // CSRF 보호 비활성화
-            .csrf(AbstractHttpConfigurer::disable)
-            // 폼 로그인, HTTP Basic 인증 비활성화
-            .formLogin(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable)
-            // 세션 관리 정책을 STATELESS로 설정 (서버가 세션을 만들지 않음)
-            .sessionManagement(session ->
-                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            );
+                // CSRF 보호 비활성화
+                .csrf(AbstractHttpConfigurer::disable)
+                // 폼 로그인, HTTP Basic 인증 비활성화
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                // 세션 관리 정책을 STATELESS로 설정 (서버가 세션을 만들지 않음)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                );
 
         // CORS 및 헤더 프레임 허용 설정
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(headers -> headers.frameOptions(frameOptions -> frameOptions.sameOrigin()));
 
         // API 경로별 접근 권한 설정
         http
-            .authorizeHttpRequests(authz -> authz
-                    // 최신 보안 표준: ignoring() 대신 permitAll() 사용
-                    .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/favicon.ico", "/error").permitAll()
-                    // 기타 모든 요청 임시 허용
-                    .anyRequest().permitAll()
-            );
+                .authorizeHttpRequests(authz -> authz
+                        // 최신 보안 표준: ignoring() 대신 permitAll() 사용
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/favicon.ico", "/error").permitAll()
+                        // 기타 모든 요청 임시 허용
+                        .anyRequest().permitAll()
+                );
         /*
         // TODO: 추후 인증된 사용자만 허용되도록 코드 교체
         http
@@ -75,8 +75,8 @@ public class SecurityConfig {
         // 커스텀 필터 체인 순서 배치
         // 예외 처리 필터 -> JWT 인증 필터 -> 기본 인증 필터 순서로 등록
         http
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -95,7 +95,7 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         // 모든 API 경로에 이 CORS 설정을 적용
-        source.registerCorsConfiguration("/**", config); 
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }

@@ -1,4 +1,4 @@
-    package com.mju.Jumoney.global.response;
+package com.mju.Jumoney.global.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

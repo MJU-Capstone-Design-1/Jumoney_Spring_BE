@@ -146,6 +146,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static String getRequestURI(WebRequest request) {
         return request.getDescription(false).replace("uri=", "");
     }
+
     private static String getStackTrace(Exception ex) {
         return stream(ex.getStackTrace())
                 .limit(5)

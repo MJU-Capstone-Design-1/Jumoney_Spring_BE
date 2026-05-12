@@ -22,8 +22,7 @@ public enum ErrorCode implements BaseErrorCode {
 
     // JWT 인증
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH401_TOKEN_EXPIRED", "토큰이 만료되었습니다."),
-    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH401_INVALID_TOKEN", "유효하지 않은 토큰입니다.")
-    ;
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH401_INVALID_TOKEN", "유효하지 않은 토큰입니다.");
 
     private final HttpStatus status;
     private final String code;

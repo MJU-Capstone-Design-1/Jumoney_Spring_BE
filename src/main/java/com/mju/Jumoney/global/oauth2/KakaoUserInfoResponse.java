@@ -1,7 +1,8 @@
 package com.mju.Jumoney.global.oauth2;
 
-import java.util.Map;
 import lombok.Getter;
+
+import java.util.Map;
 
 @Getter
 // 카카오에서 받아온 사용자 정보(JSON)를 파싱하는 DTO

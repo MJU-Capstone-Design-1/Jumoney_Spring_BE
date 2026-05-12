@@ -59,7 +59,7 @@ public class WebClientConfig {
     // KIS API 전용 WebClient 빈
     @Bean(name = "kisWebClient")
     public WebClient kisWebClient(ConnectionProvider provider) {
-        
+
         // HttpClient 세부 튜닝: TCP/IP 레벨에서의 타임아웃 방어막 설정
         HttpClient httpClient = HttpClient.create(provider)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeoutMillis) // 연결 맺기 타임아웃
