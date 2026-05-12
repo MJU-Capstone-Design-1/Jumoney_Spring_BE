@@ -1,0 +1,210 @@
+[
+  {
+    "questionType": "INVESTMENT_PURPOSE",
+    "content": "당신의 투자 목적은 무엇인가요?",
+    "description": "투자 목적에 따라 재무 지표 조건을 다르게 적용합니다.",
+    "displayOrder": 1,
+    "options": [
+      {
+        "content": "안정적인 자산 보호",
+        "logicCode": "CAPITAL_PROTECTION",
+        "displayOrder": 1,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "시가총액 상위 50위",
+            "indicatorDescription": "시장의 신뢰를 받는 대형주를 우선 검토합니다."
+          },
+          {
+            "indicatorName": "부채비율 100% 이하",
+            "indicatorDescription": "부채 부담이 낮은 기업을 선별합니다."
+          },
+          {
+            "indicatorName": "최근 3개년 영업이익 0 이상",
+            "indicatorDescription": "영업이익이 흑자인 기업을 선별합니다."
+          }
+        ]
+      },
+      {
+        "content": "배당 수익",
+        "logicCode": "DIVIDEND_INCOME",
+        "displayOrder": 2,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "시가배당률 4% ~ 8%",
+            "indicatorDescription": "주가 대비 배당 매력이 있는 기업을 선별합니다."
+          },
+          {
+            "indicatorName": "배당성향 25% ~ 80%",
+            "indicatorDescription": "이익 대비 배당이 과도하지 않은 기업을 선별합니다."
+          }
+        ]
+      },
+      {
+        "content": "자산의 꾸준한 성장",
+        "logicCode": "STEADY_GROWTH",
+        "displayOrder": 3,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "ROE 8% 이상",
+            "indicatorDescription": "자기자본을 효율적으로 활용하는 기업을 선별합니다."
+          },
+          {
+            "indicatorName": "EPS 성장률 5% 이상",
+            "indicatorDescription": "주당순이익이 성장하는 기업을 선별합니다."
+          }
+        ]
+      },
+      {
+        "content": "시세 차익",
+        "logicCode": "CAPITAL_GAIN",
+        "displayOrder": 4,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "PER 10배 이하",
+            "indicatorDescription": "이익 대비 주가 부담이 낮은 기업을 선별합니다."
+          },
+          {
+            "indicatorName": "PBR 1배 이하",
+            "indicatorDescription": "순자산 대비 저평가된 기업을 선별합니다."
+          },
+          {
+            "indicatorName": "영업이익 증가율 0% 이상",
+            "indicatorDescription": "영업이익이 성장 중인 기업을 선별합니다."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "questionType": "RISK_PROFILE",
+    "content": "어느 정도의 위험을 감수할 수 있나요?",
+    "description": "위험 성향에 따라 HTS 조건검색 기반 후보군을 다르게 적용합니다.",
+    "displayOrder": 2,
+    "options": [
+      {
+        "content": "매우 낮음",
+        "logicCode": "STABILITY",
+        "displayOrder": 1,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "베타 0.7 이하",
+            "indicatorDescription": "시장 변동보다 낮게 움직이는 종목을 선별합니다."
+          },
+          {
+            "indicatorName": "볼린저 밴드 등락폭 15% 이하",
+            "indicatorDescription": "가격 변동성이 낮은 종목을 선별합니다."
+          }
+        ]
+      },
+      {
+        "content": "낮음",
+        "logicCode": "SAFE_PURSUIT",
+        "displayOrder": 2,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "베타 1.0 이하",
+            "indicatorDescription": "시장 평균 이하의 변동성을 가진 종목을 선별합니다."
+          },
+          {
+            "indicatorName": "볼린저 밴드 등락폭 25% 이하",
+            "indicatorDescription": "과도한 변동성을 제한합니다."
+          }
+        ]
+      },
+      {
+        "content": "높음",
+        "logicCode": "PROFIT_PURSUIT",
+        "displayOrder": 3,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "베타 1.0 ~ 1.2",
+            "indicatorDescription": "일정 수준의 시장 민감도를 허용합니다."
+          },
+          {
+            "indicatorName": "RSI 50 ~ 65",
+            "indicatorDescription": "상승 흐름이 있으나 과열 전인 종목을 선별합니다."
+          }
+        ]
+      },
+      {
+        "content": "매우 높음",
+        "logicCode": "AGGRESSIVE",
+        "displayOrder": 4,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "베타 1.1 이상",
+            "indicatorDescription": "시장보다 민감하게 움직이는 종목을 허용합니다."
+          },
+          {
+            "indicatorName": "RSI 60 이상",
+            "indicatorDescription": "강한 매수세가 있는 종목을 선별합니다."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "questionType": "INVESTMENT_HORIZON",
+    "content": "선호하는 투자 호흡은 어떻게 되나요?",
+    "description": "투자 기간에 따라 최종 추천 후보의 정렬 기준을 다르게 적용합니다.",
+    "displayOrder": 3,
+    "options": [
+      {
+        "content": "초단기(1일)",
+        "logicCode": "ULTRA_SHORT",
+        "displayOrder": 1,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "체결강도 상위순",
+            "indicatorDescription": "당일 매수세가 강한 종목을 우선 정렬합니다."
+          }
+        ]
+      },
+      {
+        "content": "단기(1주일)",
+        "logicCode": "SHORT",
+        "displayOrder": 2,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "거래대금 상위순",
+            "indicatorDescription": "시장 관심과 유동성이 큰 종목을 우선 정렬합니다."
+          }
+        ]
+      },
+      {
+        "content": "중기(3달)",
+        "logicCode": "MID",
+        "displayOrder": 3,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "EPS 성장률 상위순",
+            "indicatorDescription": "이익 성장성이 높은 종목을 우선 정렬합니다."
+          }
+        ]
+      },
+      {
+        "content": "장기(1년)",
+        "logicCode": "LONG",
+        "displayOrder": 4,
+        "restrictedLogicCodes": [],
+        "description": [
+          {
+            "indicatorName": "ROE 상위순",
+            "indicatorDescription": "장기 수익성이 좋은 종목을 우선 정렬합니다."
+          }
+        ]
+      }
+    ]
+  }
+]
