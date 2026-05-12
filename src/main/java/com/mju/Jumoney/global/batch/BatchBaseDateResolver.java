@@ -3,7 +3,6 @@ package com.mju.Jumoney.global.batch;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -13,17 +12,24 @@ public class BatchBaseDateResolver {
 
     private final ZoneId zoneId;
     private final LocalTime stockIndicatorTodayAvailableAfter;
+    private final int openingDayLookbackDays;
+    private final MarketCalendarService marketCalendarService;
 
     public BatchBaseDateResolver(
             @Value("${kis.batch.zone-id:Asia/Seoul}") String zoneId,
-            @Value("${kis.batch.stock-indicator.today-available-after:15:40}") String stockIndicatorTodayAvailableAfter
+            @Value("${kis.batch.stock-indicator.today-available-after:15:40}") String stockIndicatorTodayAvailableAfter,
+            @Value("${kis.batch.opening-day-lookback-days:14}") int openingDayLookbackDays,
+            MarketCalendarService marketCalendarService
     ) {
         this.zoneId = ZoneId.of(zoneId);
         this.stockIndicatorTodayAvailableAfter = LocalTime.parse(stockIndicatorTodayAvailableAfter);
+        this.openingDayLookbackDays = openingDayLookbackDays;
+        this.marketCalendarService = marketCalendarService;
     }
 
     public LocalDate resolveScheduledBaseDate() {
-        return previousWeekday(today());
+        LocalDate today = today();
+        return marketCalendarService.resolvePreviousOpenDay(today, openingDayLookbackDays, zoneId);
     }
 
     public void validateStockIndicatorManualBaseDate(LocalDate baseDate) {
@@ -43,16 +49,4 @@ public class BatchBaseDateResolver {
         return LocalDate.now(zoneId);
     }
 
-    private LocalDate previousWeekday(LocalDate date) {
-        LocalDate previousDate = date.minusDays(1);
-        while (isWeekend(previousDate)) {
-            previousDate = previousDate.minusDays(1);
-        }
-        return previousDate;
-    }
-
-    private boolean isWeekend(LocalDate date) {
-        return date.getDayOfWeek() == DayOfWeek.SATURDAY
-                || date.getDayOfWeek() == DayOfWeek.SUNDAY;
-    }
 }

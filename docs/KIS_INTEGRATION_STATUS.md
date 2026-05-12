@@ -103,7 +103,8 @@
 ## StockIndicator Batch
 
 - `StockIndicatorBatchService`는 Stock 테이블의 전체 종목을 순회하며 `StockIndicator`를 `stock + baseTime(yyyyMM)` 기준으로 upsert한다.
-- 정기 스케줄 기준일은 실행일의 직전 평일이다. 화요일~토요일 오전 배치가 전일 장 마감 데이터를 적재하는 것을 기본 정책으로 한다.
+- 정기 스케줄 기준일은 KIS 국내휴장일조회 API(`CTCA0903R`)의 `opnd_yn=Y` 기준 직전 개장일이다. 화요일~토요일 오전 배치가 전일 장 마감 데이터를 적재하는 것을 기본 정책으로 한다.
+- 국내휴장일조회 API 결과는 Node 서버와 공유할 수 있도록 Redis 날짜별 key(`market:calendar:KRX:yyyyMMdd`)에 JSON으로 적재한다. 스케줄러는 Redis에서 직전 개장일을 먼저 찾고, 캐시가 없으면 KIS API를 호출해 Redis를 갱신한 뒤 계산한다. 서버 메모리 캐시는 사용하지 않는다.
 - 기본 스케줄은 `stockIndicatorBatchJob` 화요일~토요일 06:00, `htsConditionBatchJob` 화요일~토요일 06:30(`Asia/Seoul`)이다.
 - 스케줄러는 공통/local 설정에서 기본 비활성화되어 있으며, `KIS_STOCK_INDICATOR_SCHEDULER_ENABLED`, `KIS_HTS_CONDITION_SCHEDULER_ENABLED`로 켤 수 있다. `dev` 프로필은 기본 활성화한다.
 - 수동 실행은 요청한 `baseDate`를 그대로 사용한다. 단, `stockIndicatorBatchJob`은 오늘 기준 실행 시 KIS 투자자매매동향 일별 API(`FHPTJ04160001`) 제한 때문에 15:40 전 실행을 차단한다.

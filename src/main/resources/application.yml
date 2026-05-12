@@ -28,6 +28,7 @@ kis:
       aggressive-seq: "0"
   batch:
     zone-id: Asia/Seoul
+    opening-day-lookback-days: 14
     stock-indicator:
       enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}
       today-available-after: "15:40"
