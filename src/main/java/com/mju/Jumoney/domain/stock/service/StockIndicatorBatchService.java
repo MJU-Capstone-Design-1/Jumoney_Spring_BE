@@ -12,6 +12,7 @@ import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyMetrics;
 import com.mju.Jumoney.global.client.kis.enums.KisFinancialPeriod;
+import com.mju.Jumoney.global.batch.BatchBaseDateResolver;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,12 +40,12 @@ public class StockIndicatorBatchService {
     private final StockRepository stockRepository;
     private final KisApiClient kisApiClient;
     private final StockIndicatorPersistenceService stockIndicatorPersistenceService;
-    private final StockIndicatorBatchAvailability stockIndicatorBatchAvailability;
+    private final BatchBaseDateResolver batchBaseDateResolver;
 
     // Stock 테이블의 전체 종목을 순회하며 StockIndicator를 적재합니다.
     // 한 종목이 실패해도 전체 배치를 중단하지 않고 다음 종목을 계속 처리합니다.
     public StockIndicatorBatchResult syncAll(LocalDate baseDate) {
-        stockIndicatorBatchAvailability.validateAvailable(baseDate);
+        batchBaseDateResolver.validateStockIndicatorManualBaseDate(baseDate);
 
         String baseTime = toBaseTime(baseDate);
         int successCount = 0; // 성공 개수
@@ -69,7 +70,7 @@ public class StockIndicatorBatchService {
 
     // 운영 배치 전 특정 종목만 수동 검증할 때 사용하는 단건 동기화 메서드입니다.
     public void syncOne(Long stockId, LocalDate baseDate) {
-        stockIndicatorBatchAvailability.validateAvailable(baseDate);
+        batchBaseDateResolver.validateStockIndicatorManualBaseDate(baseDate);
 
         Stock stock = stockRepository.findById(stockId)
                 .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));

@@ -11,6 +11,8 @@ import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioResponse;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisIncomeStatementMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisIncomeStatementResponse;
+import com.mju.Jumoney.global.client.kis.dto.market.KisDomesticHolidayOutput;
+import com.mju.Jumoney.global.client.kis.dto.market.KisDomesticHolidayResponse;
 import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceResponse;
 import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
@@ -58,6 +60,7 @@ public class KisApiClient {
     private static final String TR_ID_INVESTOR_TRADE_DAILY = "FHPTJ04160001";
     private static final String TR_ID_HTS_CONDITION_TITLE = "HHKST03900300";
     private static final String TR_ID_HTS_CONDITION_RESULT = "HHKST03900400";
+    private static final String TR_ID_DOMESTIC_HOLIDAY = "CTCA0903R";
 
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
@@ -338,6 +341,31 @@ public class KisApiClient {
             }
 
             validateSuccess(response, TR_ID_HTS_CONDITION_RESULT);
+            if (response.output() == null) {
+                return List.of();
+            }
+            return response.output();
+        });
+    }
+
+    // 국내휴장일조회 API (CTCA0903R): 기준일 이후의 영업일/거래일/개장일 정보를 조회합니다.
+    public List<KisDomesticHolidayOutput> getDomesticHolidays(LocalDate baseDate) {
+        return callWithRetry("국내휴장일조회", formatDate(baseDate), () -> {
+            kisRateLimiter.acquire();
+            KisDomesticHolidayResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/chk-holiday")
+                            .queryParam("BASS_DT", formatDate(baseDate))
+                            .queryParam("CTX_AREA_NK", "")
+                            .queryParam("CTX_AREA_FK", "")
+                            .build())
+                    .headers(headers -> setKisHeaders(headers, TR_ID_DOMESTIC_HOLIDAY))
+                    .retrieve()
+                    .bodyToMono(KisDomesticHolidayResponse.class)
+                    .onErrorMap(e -> new KisApiException("[KIS] 국내휴장일조회 실패: baseDate=" + baseDate, e))
+                    .block();
+
+            validateSuccess(response, TR_ID_DOMESTIC_HOLIDAY);
             if (response.output() == null) {
                 return List.of();
             }

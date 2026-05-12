@@ -46,6 +46,7 @@ public class StockDataBatchJobConfig {
                 .build();
     }
 
+    // TODO: daily 지표와 financial 지표 batch 분리 (추후 리팩토링)
     @Bean
     public Step stockIndicatorBatchStep(JobRepository jobRepository,
                                         PlatformTransactionManager transactionManager) {
@@ -58,6 +59,12 @@ public class StockDataBatchJobConfig {
                     jobExecution.getExecutionContext().putInt(RESULT_TOTAL_COUNT, result.totalCount());
                     jobExecution.getExecutionContext().putInt(RESULT_SUCCESS_COUNT, result.successCount());
                     jobExecution.getExecutionContext().putInt(RESULT_FAILURE_COUNT, result.failureCount());
+                    if (result.failureCount() > 0) {
+                        throw new IllegalStateException("종목 지표 배치 실패 종목이 존재합니다. totalCount="
+                                + result.totalCount()
+                                + ", successCount=" + result.successCount()
+                                + ", failureCount=" + result.failureCount());
+                    }
                     return RepeatStatus.FINISHED;
                 }, transactionManager)
                 .transactionAttribute(nonTransactionalTaskletAttribute())
