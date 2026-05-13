@@ -11,7 +11,6 @@ public record StockIndicatorBatchStatusResponse(
         long missingCount,
         long invalidRequiredFieldCount,
         boolean complete,
-        List<MissingStockIndicatorResponse> missingStocks,
-        List<InvalidStockIndicatorResponse> invalidStocks
+        List<MissingStockIndicatorResponse> missingStocks
 ) {
 }
