@@ -61,7 +61,7 @@ public class HojumoneyRecommendationService {
         attachMissingIndicators(candidatesByStockId);
         populateSortMetricValues(candidatesByStockId.values(), selection.investmentHorizon());
 
-        String sortMetricName = sortMetricName(selection.investmentHorizon());
+        String sortMetricKey = sortMetricKey(selection.investmentHorizon());
         List<HojumoneyRecommendationCandidate> eligibleCandidates = candidatesByStockId.values().stream()
                 .filter(candidate -> candidate.getIndicator() != null)
                 .filter(candidate -> candidate.getSortMetricValue() != null)
@@ -81,7 +81,7 @@ public class HojumoneyRecommendationService {
                         candidate,
                         selection.investmentPurpose(),
                         selection.riskProfile(),
-                        sortMetricName,
+                        sortMetricKey,
                         currentPrices.get(candidate.getStock().getStockCode())
                 ))
                 .toList();
@@ -207,11 +207,11 @@ public class HojumoneyRecommendationService {
                 .divide(indicator.getLastYearEps(), RATIO_SCALE, RoundingMode.HALF_UP);
     }
 
-    private String sortMetricName(SurveyLogicCode investmentHorizon) {
+    private String sortMetricKey(SurveyLogicCode investmentHorizon) {
         return switch (investmentHorizon) {
-            case ULTRA_SHORT -> "체결강도";
-            case SHORT -> "거래대금";
-            case MID -> "EPS 성장률";
+            case ULTRA_SHORT -> "EXECUTION_STRENGTH";
+            case SHORT -> "ACCUMULATED_TRADE_AMOUNT";
+            case MID -> "EPS_GROWTH_RATE";
             case LONG -> "ROE";
             default -> throw new CustomException(RecommendationErrorCode.INVALID_RECOMMENDATION_LOGIC_CODE);
         };
@@ -221,7 +221,7 @@ public class HojumoneyRecommendationService {
             HojumoneyRecommendationCandidate candidate,
             SurveyLogicCode investmentPurpose,
             SurveyLogicCode riskProfile,
-            String sortMetricName,
+            String sortMetricKey,
             StockCurrentPriceSnapshot currentPrice
     ) {
         Stock stock = candidate.getStock();
@@ -232,7 +232,7 @@ public class HojumoneyRecommendationService {
                 0,
                 responseTags(candidate, investmentPurpose, riskProfile),
                 candidate.matchedConditionCount(),
-                sortMetricName,
+                sortMetricKey,
                 candidate.getSortMetricValue(),
                 currentPrice == null ? null : currentPrice.currentPrice(),
                 currentPrice == null ? null : currentPrice.changeRate()
@@ -267,7 +267,7 @@ public class HojumoneyRecommendationService {
                     i + 1,
                     item.tags(),
                     item.matchedConditionCount(),
-                    item.sortMetricName(),
+                    item.sortMetricKey(),
                     item.sortMetricValue(),
                     item.currentPrice(),
                     item.changeRate()

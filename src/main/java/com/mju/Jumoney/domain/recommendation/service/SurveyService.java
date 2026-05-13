@@ -80,6 +80,7 @@ public class SurveyService {
     ) {
         return new HojumoneySurveyResponse.SurveyOptionResponse(
                 option.getId(),
+                option.getLogicCode(),
                 option.getContent(),
                 option.getDisplayOrder(),
                 restrictedOptionIdsBySourceOptionId.getOrDefault(option.getId(), List.of()),

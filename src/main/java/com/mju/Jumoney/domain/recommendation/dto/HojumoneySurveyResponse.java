@@ -1,6 +1,7 @@
 package com.mju.Jumoney.domain.recommendation.dto;
 
 import com.mju.Jumoney.domain.recommendation.enums.SurveyQuestionType;
+import com.mju.Jumoney.domain.recommendation.enums.SurveyLogicCode;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public record HojumoneySurveyResponse(
 
     public record SurveyOptionResponse(
             Long optionId,
+            SurveyLogicCode logicCode,
             String content,
             int displayOrder,
             List<Long> restrictedOptionIds,

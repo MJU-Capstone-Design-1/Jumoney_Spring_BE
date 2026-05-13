@@ -20,7 +20,7 @@ public class HojumoneyRecommendationController {
 
     private final HojumoneyRecommendationService hojumoneyRecommendationService;
 
-    @Operation(summary = "오늘의 호주머니 추천 계산", description = "설문 선택지 ID 3개를 기반으로 오늘의 호주머니 추천 후보를 계산합니다.")
+    @Operation(summary = "오늘의 호주머니 추천 종목 조회", description = "설문 선택지 ID 3개를 기반으로 오늘의 호주머니 추천 종목을 조회합니다.")
     @PostMapping("/hojumoney")
     public ResponseEntity<ApiResponse<HojumoneyRecommendationResponse>> recommend(
             @Valid @RequestBody HojumoneyRecommendationRequest request

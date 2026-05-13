@@ -20,7 +20,7 @@ public record HojumoneyRecommendationResponse(
             int rank,
             List<SurveyLogicCode> tags,
             int matchedConditionCount,
-            String sortMetricName,
+            String sortMetricKey,
             BigDecimal sortMetricValue,
             BigDecimal currentPrice,
             BigDecimal changeRate
