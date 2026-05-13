@@ -79,6 +79,8 @@ public class HojumoneyRecommendationService {
         List<HojumoneyRecommendationResponse.RecommendedStockResponse> recommendations = topCandidates.stream()
                 .map(candidate -> toRecommendedStockResponse(
                         candidate,
+                        selection.investmentPurpose(),
+                        selection.riskProfile(),
                         sortMetricName,
                         currentPrices.get(candidate.getStock().getStockCode())
                 ))
@@ -217,6 +219,8 @@ public class HojumoneyRecommendationService {
 
     private HojumoneyRecommendationResponse.RecommendedStockResponse toRecommendedStockResponse(
             HojumoneyRecommendationCandidate candidate,
+            SurveyLogicCode investmentPurpose,
+            SurveyLogicCode riskProfile,
             String sortMetricName,
             StockCurrentPriceSnapshot currentPrice
     ) {
@@ -226,13 +230,28 @@ public class HojumoneyRecommendationService {
                 stock.getStockCode(),
                 stock.getName(),
                 0,
-                candidate.getTags().stream().toList(),
+                responseTags(candidate, investmentPurpose, riskProfile),
                 candidate.matchedConditionCount(),
                 sortMetricName,
                 candidate.getSortMetricValue(),
                 currentPrice == null ? null : currentPrice.currentPrice(),
                 currentPrice == null ? null : currentPrice.changeRate()
         );
+    }
+
+    private List<SurveyLogicCode> responseTags(
+            HojumoneyRecommendationCandidate candidate,
+            SurveyLogicCode investmentPurpose,
+            SurveyLogicCode riskProfile
+    ) {
+        List<SurveyLogicCode> tags = new ArrayList<>();
+        if (candidate.getTags().contains(HojumoneyRecommendationTag.INDICATOR_MATCH)) {
+            tags.add(investmentPurpose);
+        }
+        if (candidate.getTags().contains(HojumoneyRecommendationTag.RISK_PROFILE_MATCH)) {
+            tags.add(riskProfile);
+        }
+        return tags;
     }
 
     private List<HojumoneyRecommendationResponse.RecommendedStockResponse> rank(

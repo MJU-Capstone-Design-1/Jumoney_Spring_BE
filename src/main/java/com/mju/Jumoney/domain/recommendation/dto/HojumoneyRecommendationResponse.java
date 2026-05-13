@@ -1,6 +1,5 @@
 package com.mju.Jumoney.domain.recommendation.dto;
 
-import com.mju.Jumoney.domain.recommendation.enums.HojumoneyRecommendationTag;
 import com.mju.Jumoney.domain.recommendation.enums.SurveyLogicCode;
 
 import java.math.BigDecimal;
@@ -19,7 +18,7 @@ public record HojumoneyRecommendationResponse(
             String stockCode,
             String stockName,
             int rank,
-            List<HojumoneyRecommendationTag> tags,
+            List<SurveyLogicCode> tags,
             int matchedConditionCount,
             String sortMetricName,
             BigDecimal sortMetricValue,
