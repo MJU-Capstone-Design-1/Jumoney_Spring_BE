@@ -35,12 +35,18 @@
 - local 프로필도 실전 계좌 API를 사용하므로 운영 기본값과 동일한 `250ms` 간격을 따른다.
 - 이 제한은 `KisApiClient`의 모든 REST API 호출에 공통 적용한다. 개별 서비스나 배치가 별도 병렬 호출을 추가하더라도 같은 계정/app key 제한을 공유해야 한다.
 - 여러 실전 계정/app key를 연결하면 REST 처리량을 늘릴 수 있지만, 토큰 캐시/RateLimiter/호출 라우팅을 credential별로 분리해야 하므로 현재는 구현하지 않는다. 필요 시 `KisCredentialProvider`와 credential별 `KisTokenManager`, `KisRateLimiter`로 확장한다.
-- 초단기 추천 체결강도는 Node WebSocket 서버가 Redis에 적재한 `H0STCNT0` 값을 우선 사용한다. Redis 값이 없을 때만 Spring REST `FHKST01010300`을 후보 종목에 대해 온디맨드 fallback으로 호출하고 짧게 캐싱한다. `StockIndicator` 배치에는 저장하지 않는다.
+- 초단기 추천 체결강도는 종목 지표 배치가 `FHKST01010300`의 `tday_rltv`를 읽어 `StockIndicator.executionStrength`에 직전 확정값으로 저장한다.
+- 추천 API는 체결강도 정렬 시 DB 확정값을 사용하며, 사용자 요청 중 Spring REST `FHKST01010300` fallback을 호출하지 않는다.
 
 ## Realtime WebSocket Data
 
 - Node 서버는 여러 실전 계정/app key를 활용해 KOSPI 200 종목의 `H0STCNT0` 국내주식 실시간체결가(KRX)를 구독하고 Redis에 적재할 수 있다.
-- Spring은 실시간성 추천/차트 데이터에 대해 KIS REST를 반복 호출하지 않고 Redis를 우선 조회한다.
+- Spring은 장중 실시간성 추천/차트 데이터에 대해 KIS REST를 반복 호출하지 않고 Redis를 우선 조회한다.
+- 장외 시간에는 Redis가 새 틱을 받지 않으므로, 사용자 응답은 장 마감 확정 데이터나 배치 적재 데이터가 우선 기준이 된다.
+- Spring은 Redis 연결을 앱 내부 캐시용 Redis와 Node 실시간 피드 조회용 Redis로 논리 분리한다.
+  - local 프로필: 앱 Redis는 로컬 Redis, 실시간 피드 Redis는 SSH 터널로 연결한 배포 Redis를 사용한다.
+  - dev/prod 프로필: 두 연결이 같은 운영 Redis를 바라볼 수 있지만, 코드에서는 역할을 분리한다.
+  - 실시간 피드 Redis는 `RealtimeRedisReader`를 통해 읽기 전용으로 접근한다.
 - `H0STCNT0`에서 Spring/추천/차트가 활용할 주요 필드는 다음과 같다.
 
 | Field | Usage |
@@ -125,8 +131,11 @@
 |---|---|---|
 | 국내주식 기타주요비율 | `FHKST66430500` | `payout_rate` 신뢰 불가. 배당성향은 자체 계산한다. |
 
-## Pending Integrations
+## Realtime Integration Contract
 
-| API | TR ID | Usage |
-|---|---|---|
-| 국내주식 실시간체결가 | `H0STCNT0` | 소수 관심종목 실시간 체결 데이터. 추천 체결강도 정렬은 REST `FHKST01010300` 우선 |
+| Source | Usage |
+|---|---|
+| Node Redis `stock:latest:{code}` | 장중 최신 현재가, 등락률, 누적 거래량, 체결강도 조회 |
+| Node Redis `stock:history:{code}` | 장중 최근 틱 이력 조회 |
+| Node Redis `stream:stock:ticks` | 이벤트성 후처리와 소비자 확장 |
+| Spring REST `FHKST01010300` | Redis 부재 또는 운영 보정이 필요한 경우의 제한적 fallback |

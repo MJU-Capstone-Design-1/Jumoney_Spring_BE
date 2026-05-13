@@ -15,6 +15,12 @@ spring:
     hibernate:
       ddl-auto: none
 
+realtime:
+  redis:
+    host: ${REALTIME_REDIS_HOST:${REDIS_HOST}}
+    port: ${REALTIME_REDIS_PORT:6379}
+    password: ${REALTIME_REDIS_PASSWORD:${REDIS_PASSWORD}}
+
 kis:
   batch:
     stock-indicator:

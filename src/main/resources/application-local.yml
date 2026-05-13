@@ -20,6 +20,12 @@ spring:
     jdbc:
       initialize-schema: always
 
+realtime:
+  redis:
+    host: ${REALTIME_REDIS_HOST:localhost}
+    port: ${REALTIME_REDIS_PORT:16379}
+    password: ${REALTIME_REDIS_PASSWORD:${REDIS_PASSWORD}}
+
 kis:
   batch:
     stock-indicator:

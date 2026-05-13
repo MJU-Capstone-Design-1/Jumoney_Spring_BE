@@ -4,16 +4,16 @@ import com.mju.Jumoney.global.response.BaseErrorCode;
 import lombok.Getter;
 
 @Getter
-public class CustomException extends RuntimeException{
+public class CustomException extends RuntimeException {
 
     private final BaseErrorCode errorCode;
 
-    public CustomException(BaseErrorCode errorCode){
+    public CustomException(BaseErrorCode errorCode) {
         super(errorCode.getMessage());
         this.errorCode = errorCode;
     }
 
-    public CustomException(BaseErrorCode errorCode, String detail){
+    public CustomException(BaseErrorCode errorCode, String detail) {
         super(errorCode.getMessage() + " " + detail);
         this.errorCode = errorCode;
     }

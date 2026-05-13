@@ -15,6 +15,7 @@ public enum Role {
     public String getKey() {
         return key;
     }
+
     public String getDescription() {
         return description;
     }

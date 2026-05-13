@@ -344,19 +344,22 @@
         - **`SurveyOption`**(1:N)
     - 필드
         - **설문 문항 ID / surveyQuestionId / BIGINT / NOT NULL (PK)**
+        - 문항 타입 / questionType / ENUM / NOT NULL / UNIQUE
         - 문항 내용 / content / VARCHAR(255) / NOT NULL
         - 문항 설명 / description / TEXT / NOT NULL
+        - 표시 순서 / displayOrder / INT / NOT NULL
 
 - **`SurveyOption`: 설문 선택지 테이블**
     - 관계
         - **`SurveyQuestion`**(N:1)
+        - **`SurveyOptionRestriction`**(1:N, source option)
+        - **`SurveyOptionRestriction`**(1:N, restricted option)
         - **`HojumoneyRecommenndation`**(Logical N:M)
     - 필드
         - **설문 선택지 ID / surveyOptionId / BIGINT / NOT NULL (PK)**
         - **설문 문항 ID / surveyQuestionId / BIGINT / NOT NULL (FK)**
         - 선택지 내용 / content / VARCHAR(255) / NOT NULL
         - 로직 코드 / logicCode / ENUM / NOT NULL
-        - 제한 선택지 ID / restrictedOptionIds / JSONB / NULL / 예: [5, 6, 8]
         - 선택지 설명 / description / JSONB / NOT NULL / 예:
             ```json
             [
@@ -370,6 +373,18 @@
               }
             ]
             ```
+        - 표시 순서 / displayOrder / INT / NOT NULL
+
+- **`SurveyOptionRestriction`: 설문 선택지 제한 매핑 테이블**
+    - 관계
+        - **`SurveyOption`**(N:1, sourceOption)
+        - **`SurveyOption`**(N:1, restrictedOption)
+    - 필드
+        - **제한 매핑 ID / restrictionId / BIGINT / NOT NULL (PK)**
+        - **기준 선택지 ID / sourceOptionId / BIGINT / NOT NULL (FK)**
+        - **제한 선택지 ID / restrictedOptionId / BIGINT / NOT NULL (FK)**
+    - 제약
+        - `(sourceOptionId, restrictedOptionId)` UNIQUE
 
 - **`HojumoneyRecommendation`: 호주머니 추천 결과 테이블**
     - 관계

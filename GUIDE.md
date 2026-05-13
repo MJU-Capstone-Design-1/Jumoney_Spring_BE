@@ -36,6 +36,10 @@
 * **Nginx (Gateway)**: 포트 80/443 요청을 받아 `/api`는 Spring(8080)으로, 기타 경로는 Node(3000)로 분기합니다.
 * **Swap Memory**: EC2 1GB RAM 부족을 해결하기 위해 **2GB Swap 파일**을 활성화했습니다.
 * **Internal DB**: AWS RDS 비용 절감을 위해 **EC2 내부 Docker 컨테이너로 PostgreSQL과 Redis를 직접 구축**하여 운영합니다.
+* **Local Realtime Feed Access**: 로컬 Spring 개발 환경은 SSH 터널로 EC2 내부 Redis를 `localhost:16379` 등에 포워딩해 Node 서버가 적재한 실시간 데이터를 읽을 수 있습니다. 앱 내부 캐시 Redis와 실시간 피드 Redis는 설정과 코드에서 역할을 분리합니다.
+  - 예시 터널: `ssh -i <pem-path> -L 16379:127.0.0.1:6379 <user>@<ec2-host>`
+  - 로컬 환경 변수 예시: `REALTIME_REDIS_HOST=localhost`, `REALTIME_REDIS_PORT=16379`, `REALTIME_REDIS_PASSWORD=<redis-password>`
+  - 로컬 검증 API: `/api/local/realtime-redis/value`, `/api/local/realtime-redis/hash`, `/api/local/realtime-redis/zset`
 
 ---
 

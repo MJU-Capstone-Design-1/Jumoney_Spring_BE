@@ -1,9 +1,9 @@
 package com.mju.Jumoney.domain.user.exception;
 
+import com.mju.Jumoney.global.response.BaseErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import com.mju.Jumoney.global.response.BaseErrorCode;
 
 @Getter
 @RequiredArgsConstructor

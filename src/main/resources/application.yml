@@ -47,5 +47,12 @@ kis:
       max-idle-seconds: 20
 
 stock:
-  execution-strength:
-    cache-ttl-seconds: 180
+  current-price:
+    cache-ttl-seconds: 600
+    realtime-freshness-seconds: 180
+
+realtime:
+  redis:
+    host: ${REALTIME_REDIS_HOST:localhost}
+    port: ${REALTIME_REDIS_PORT:6379}
+    password: ${REALTIME_REDIS_PASSWORD:}

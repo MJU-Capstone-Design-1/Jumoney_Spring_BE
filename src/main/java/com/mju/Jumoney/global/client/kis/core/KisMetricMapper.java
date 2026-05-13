@@ -1,17 +1,17 @@
 package com.mju.Jumoney.global.client.kis.core;
 
-import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
-import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceOutput;
-import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
-import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceOutput;
-import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
-import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthOutput;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendOutput;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioOutput;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisIncomeStatementMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisIncomeStatementOutput;
+import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
+import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceOutput;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthOutput;
+import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
+import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceOutput;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyOutput;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +29,7 @@ public class KisMetricMapper {
     public KisCurrentPriceMetrics toCurrentPriceMetrics(KisCurrentPriceOutput output) {
         return new KisCurrentPriceMetrics(
                 toBigDecimal(output.currentPrice()),
+                toBigDecimal(output.changeRate()),
                 toBigDecimal(output.marketCap()),
                 toBigDecimal(output.per()),
                 toBigDecimal(output.pbr()),

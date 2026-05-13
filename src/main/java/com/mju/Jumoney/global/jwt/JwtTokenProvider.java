@@ -72,7 +72,7 @@ public class JwtTokenProvider {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
     }
-        
+
     public Authentication getAuthentication(String token) {
         Claims claims = getClaims(token);
         Long userId = Long.valueOf(claims.getSubject());
