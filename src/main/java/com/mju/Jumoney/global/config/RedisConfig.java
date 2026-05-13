@@ -49,8 +49,8 @@ public class RedisConfig {
         return new LettuceConnectionFactory(config);
     }
 
-    // 문자열 전용 StringRedisTemplate (파싱을 생략한 단순 조회)
-    // JWT refresh token, Node.js 틱 데이터 조회, 단순 캐시값 등
+    // 앱 내부 Redis 전용 StringRedisTemplate.
+    // JWT refresh token, REST fallback 캐시값 등을 저장합니다.
     @Bean
     @Primary
     public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory connectionFactory) {

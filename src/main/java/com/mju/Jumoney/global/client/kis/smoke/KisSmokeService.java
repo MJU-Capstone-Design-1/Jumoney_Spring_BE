@@ -139,6 +139,9 @@ public class KisSmokeService {
         List<MissingStockIndicatorResponse> missingStocks = stockIndicatorRepository.findStocksWithoutIndicator(baseTime).stream()
                 .map(MissingStockIndicatorResponse::from)
                 .toList();
+        List<InvalidStockIndicatorResponse> invalidStocks = stockIndicatorRepository.findInvalidRequiredFieldsByBaseTime(baseTime).stream()
+                .map(InvalidStockIndicatorResponse::from)
+                .toList();
 
         return new StockIndicatorBatchStatusResponse(
                 baseDate,
@@ -147,8 +150,9 @@ public class KisSmokeService {
                 indicatorCount,
                 missingStocks.size(),
                 invalidRequiredFieldCount,
-                stockCount == indicatorCount && missingStocks.isEmpty() && invalidRequiredFieldCount == 0,
-                missingStocks
+                stockCount == indicatorCount && missingStocks.isEmpty() && invalidStocks.isEmpty(),
+                missingStocks,
+                invalidStocks
         );
     }
 

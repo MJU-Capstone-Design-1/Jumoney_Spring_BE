@@ -25,6 +25,7 @@ public class StockIndicatorPersistenceService {
                         metrics.baseTime(),
                         metrics.marketCap(),
                         metrics.accumulatedTradeAmount(),
+                        metrics.executionStrength(),
                         metrics.debtRatio(),
                         metrics.operatingProfit(),
                         metrics.operatingProfitGrowthRate(),
@@ -46,6 +47,7 @@ public class StockIndicatorPersistenceService {
         stockIndicator.updateMetrics(
                 metrics.marketCap(),
                 metrics.accumulatedTradeAmount(),
+                metrics.executionStrength(),
                 metrics.debtRatio(),
                 metrics.operatingProfit(),
                 metrics.operatingProfitGrowthRate(),
@@ -72,6 +74,7 @@ public class StockIndicatorPersistenceService {
             String baseTime,
             Long marketCap,
             Long accumulatedTradeAmount,
+            BigDecimal executionStrength,
             BigDecimal debtRatio,
             Long operatingProfit,
             BigDecimal operatingProfitGrowthRate,

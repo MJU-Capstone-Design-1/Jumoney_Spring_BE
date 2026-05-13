@@ -132,6 +132,7 @@ public interface StockIndicatorRepository extends JpaRepository<StockIndicator, 
               and (
                    si.marketCap is null
                 or si.accumulatedTradeAmount is null
+                or si.executionStrength is null
                 or si.debtRatio is null
                 or si.operatingProfit is null
                 or si.operatingProfitGrowthRate is null
@@ -148,4 +149,31 @@ public interface StockIndicatorRepository extends JpaRepository<StockIndicator, 
               )
             """)
     long countInvalidRequiredFieldsByBaseTime(@Param("baseTime") String baseTime);
+
+    @Query("""
+            select si
+            from StockIndicator si
+            join fetch si.stock
+            where si.baseTime = :baseTime
+              and (
+                   si.marketCap is null
+                or si.accumulatedTradeAmount is null
+                or si.executionStrength is null
+                or si.debtRatio is null
+                or si.operatingProfit is null
+                or si.operatingProfitGrowthRate is null
+                or si.dps is null
+                or si.dividendYield is null
+                or si.roe is null
+                or si.per is null
+                or si.pbr is null
+                or si.currentEps is null
+                or si.currentSales is null
+                or si.marginDebtRate is null
+                or si.high52WeekRate is null
+                or si.instNetBuy20Days is null
+              )
+            order by si.stock.stockCode
+            """)
+    List<StockIndicator> findInvalidRequiredFieldsByBaseTime(@Param("baseTime") String baseTime);
 }

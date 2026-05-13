@@ -38,12 +38,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
         BaseErrorCode errorCode = ex.getErrorCode();
 
-        log.warn("Business Exception: code={}, message={}, uri={}",
-                errorCode.getCode(), errorCode.getMessage(), getRequestURI(request));
+        log.warn("Business Exception: code={}, message={}, detail={}, uri={}",
+                errorCode.getCode(), errorCode.getMessage(), ex.getMessage(), getRequestURI(request));
 
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ApiResponse.error(errorCode));
+                .body(ApiResponse.error(errorCode, ex.getMessage()));
     }
 
     // @Valid + @RequestBody 유효성 검증 실패 시

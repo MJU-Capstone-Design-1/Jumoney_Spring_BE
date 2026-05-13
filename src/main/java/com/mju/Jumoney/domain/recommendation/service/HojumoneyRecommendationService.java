@@ -6,8 +6,9 @@ import com.mju.Jumoney.domain.recommendation.enums.SurveyLogicCode;
 import com.mju.Jumoney.domain.recommendation.exception.RecommendationErrorCode;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.domain.StockIndicator;
+import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
-import com.mju.Jumoney.domain.stock.service.StockExecutionStrengthService;
+import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class HojumoneyRecommendationService {
     private final HojumoneyIndicatorFilterService indicatorFilterService;
     private final HojumoneyRiskFilterService riskFilterService;
     private final StockIndicatorRepository stockIndicatorRepository;
-    private final StockExecutionStrengthService stockExecutionStrengthService;
+    private final StockCurrentPriceService stockCurrentPriceService;
 
     public HojumoneyRecommendationResponse recommend(HojumoneyRecommendationRequest request) {
         HojumoneySurveySelection selection = surveySelectionService.validateAndClassify(request.selectedOptionIds());
@@ -67,9 +68,20 @@ public class HojumoneyRecommendationService {
                 .sorted(candidateComparator(selection.investmentHorizon()))
                 .toList();
 
-        List<HojumoneyRecommendationResponse.RecommendedStockResponse> recommendations = eligibleCandidates.stream()
+        List<HojumoneyRecommendationCandidate> topCandidates = eligibleCandidates.stream()
                 .limit(DEFAULT_RECOMMENDATION_LIMIT)
-                .map(candidate -> toRecommendedStockResponse(candidate, sortMetricName))
+                .toList();
+        Map<String, StockCurrentPriceSnapshot> currentPrices = stockCurrentPriceService.getCurrentPrices(
+                topCandidates.stream()
+                        .map(candidate -> candidate.getStock().getStockCode())
+                        .toList()
+        );
+        List<HojumoneyRecommendationResponse.RecommendedStockResponse> recommendations = topCandidates.stream()
+                .map(candidate -> toRecommendedStockResponse(
+                        candidate,
+                        sortMetricName,
+                        currentPrices.get(candidate.getStock().getStockCode())
+                ))
                 .toList();
 
         return new HojumoneyRecommendationResponse(
@@ -105,27 +117,9 @@ public class HojumoneyRecommendationService {
             Collection<HojumoneyRecommendationCandidate> candidates,
             SurveyLogicCode investmentHorizon
     ) {
-        if (investmentHorizon == SurveyLogicCode.ULTRA_SHORT) {
-            populateUltraShortSortMetricValues(candidates);
-            return;
-        }
-
         candidates.stream()
                 .filter(candidate -> candidate.getIndicator() != null)
                 .forEach(candidate -> candidate.setSortMetricValue(sortMetricValue(candidate, investmentHorizon)));
-    }
-
-    private void populateUltraShortSortMetricValues(Collection<HojumoneyRecommendationCandidate> candidates) {
-        Map<String, BigDecimal> executionStrengths = stockExecutionStrengthService.getExecutionStrengths(
-                candidates.stream()
-                        .filter(candidate -> candidate.getIndicator() != null)
-                        .map(candidate -> candidate.getStock().getStockCode())
-                        .toList()
-        );
-
-        candidates.forEach(candidate -> candidate.setSortMetricValue(
-                executionStrengths.get(candidate.getStock().getStockCode())
-        ));
     }
 
     private Comparator<HojumoneyRecommendationCandidate> candidateComparator(SurveyLogicCode investmentHorizon) {
@@ -149,12 +143,54 @@ public class HojumoneyRecommendationService {
     private BigDecimal sortMetricValue(HojumoneyRecommendationCandidate candidate, SurveyLogicCode investmentHorizon) {
         StockIndicator indicator = candidate.getIndicator();
         return switch (investmentHorizon) {
-            case ULTRA_SHORT -> candidate.getSortMetricValue();
-            case SHORT -> BigDecimal.valueOf(indicator.getAccumulatedTradeAmount());
+            case ULTRA_SHORT -> requiredIndicatorMetric(
+                    indicator,
+                    candidate.getStock(),
+                    "executionStrength",
+                    indicator.getExecutionStrength()
+            );
+            case SHORT -> BigDecimal.valueOf(requiredLongIndicatorMetric(
+                    indicator,
+                    candidate.getStock(),
+                    "accumulatedTradeAmount"
+            ));
             case MID -> epsGrowthRate(indicator);
-            case LONG -> indicator.getRoe();
+            case LONG -> requiredIndicatorMetric(indicator, candidate.getStock(), "roe", indicator.getRoe());
             default -> throw new CustomException(RecommendationErrorCode.INVALID_RECOMMENDATION_LOGIC_CODE);
         };
+    }
+
+    private Long requiredLongIndicatorMetric(StockIndicator indicator, Stock stock, String fieldName) {
+        Long value = switch (fieldName) {
+            case "accumulatedTradeAmount" -> indicator.getAccumulatedTradeAmount();
+            default -> throw new CustomException(RecommendationErrorCode.INVALID_RECOMMENDATION_LOGIC_CODE);
+        };
+        if (value == null) {
+            throwMissingIndicatorMetric(stock, indicator.getBaseTime(), fieldName);
+        }
+        return value;
+    }
+
+    private BigDecimal requiredIndicatorMetric(
+            StockIndicator indicator,
+            Stock stock,
+            String fieldName,
+            BigDecimal value
+    ) {
+        if (value == null) {
+            throwMissingIndicatorMetric(stock, indicator.getBaseTime(), fieldName);
+        }
+        return value;
+    }
+
+    private void throwMissingIndicatorMetric(Stock stock, String baseTime, String fieldName) {
+        throw new CustomException(
+                RecommendationErrorCode.STOCK_INDICATOR_REQUIRED_METRIC_MISSING,
+                "stockCode=" + stock.getStockCode()
+                        + ", stockName=" + stock.getName()
+                        + ", baseTime=" + baseTime
+                        + ", field=" + fieldName
+        );
     }
 
     private BigDecimal epsGrowthRate(StockIndicator indicator) {
@@ -181,7 +217,8 @@ public class HojumoneyRecommendationService {
 
     private HojumoneyRecommendationResponse.RecommendedStockResponse toRecommendedStockResponse(
             HojumoneyRecommendationCandidate candidate,
-            String sortMetricName
+            String sortMetricName,
+            StockCurrentPriceSnapshot currentPrice
     ) {
         Stock stock = candidate.getStock();
         return new HojumoneyRecommendationResponse.RecommendedStockResponse(
@@ -192,7 +229,9 @@ public class HojumoneyRecommendationService {
                 candidate.getTags().stream().toList(),
                 candidate.matchedConditionCount(),
                 sortMetricName,
-                candidate.getSortMetricValue()
+                candidate.getSortMetricValue(),
+                currentPrice == null ? null : currentPrice.currentPrice(),
+                currentPrice == null ? null : currentPrice.changeRate()
         );
     }
 
@@ -210,7 +249,9 @@ public class HojumoneyRecommendationService {
                     item.tags(),
                     item.matchedConditionCount(),
                     item.sortMetricName(),
-                    item.sortMetricValue()
+                    item.sortMetricValue(),
+                    item.currentPrice(),
+                    item.changeRate()
             ));
         }
         return ranked;

@@ -9,6 +9,7 @@ import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisIncomeStatementMetrics;
 import com.mju.Jumoney.global.client.kis.dto.price.KisCurrentPriceMetrics;
+import com.mju.Jumoney.global.client.kis.dto.price.KisExecutionStrengthMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisCreditBalanceMetrics;
 import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyMetrics;
 import com.mju.Jumoney.global.client.kis.enums.KisFinancialPeriod;
@@ -81,15 +82,16 @@ public class StockIndicatorBatchService {
     // KIS REST API 여러 개를 호출해 StockIndicator 한 행에 필요한 지표를 조립하고 upsert합니다.
     private void sync(Stock stock, LocalDate baseDate, String baseTime) {
         KisCurrentPriceMetrics currentPrice = kisApiClient.getCurrentPrice(stock.getStockCode());
+        KisExecutionStrengthMetrics executionStrengthMetrics = kisApiClient.getExecutionStrength(stock.getStockCode());
         List<KisFinancialRatioMetrics> financialRatios = kisApiClient.getFinancialRatios(stock.getStockCode(), KisFinancialPeriod.YEAR);
         List<KisIncomeStatementMetrics> incomeStatements = kisApiClient.getIncomeStatements(stock.getStockCode(), KisFinancialPeriod.YEAR);
         List<KisDividendMetrics> dividends = kisApiClient.getDividends(stock.getStockCode(), baseDate.minusYears(1), baseDate);
         List<KisCreditBalanceMetrics> creditBalances = kisApiClient.getDailyCreditBalances(stock.getStockCode(), baseDate);
         List<KisInvestorTradeDailyMetrics> investorTrades = kisApiClient.getInvestorTradesDaily(stock.getStockCode(), baseDate);
 
-        KisFinancialRatioMetrics currentFinancialRatio = latestFinancialRatio(financialRatios);
+        KisFinancialRatioMetrics currentFinancialRatio = latestFinancialRatio(financialRatios, stock, baseTime);
         KisFinancialRatioMetrics lastYearFinancialRatio = previousFinancialRatio(financialRatios);
-        KisIncomeStatementMetrics currentIncomeStatement = latestIncomeStatement(incomeStatements);
+        KisIncomeStatementMetrics currentIncomeStatement = latestIncomeStatement(incomeStatements, stock, baseTime);
         KisIncomeStatementMetrics lastYearIncomeStatement = previousIncomeStatement(incomeStatements);
 
         // 배당 관련 값은 최근 1년 DPS 합계 기준으로 계산합니다.
@@ -103,26 +105,28 @@ public class StockIndicatorBatchService {
                 currentPrice.twoHundredFiftyDayHighPriceRate()
         );
 
-        Long marketCap = requiredLong(currentPrice.marketCap(), "marketCap");
-        Long accumulatedTradeAmount = requiredLong(currentPrice.accumulatedTradeAmount(), "accumulatedTradeAmount");
-        BigDecimal debtRatio = required(currentFinancialRatio.debtRatio(), "debtRatio");
-        Long operatingProfit = requiredLong(currentIncomeStatement.operatingProfit(), "operatingProfit");
-        BigDecimal operatingProfitGrowthRate = required(currentFinancialRatio.operatingProfitGrowthRate(), "operatingProfitGrowthRate");
-        BigDecimal roe = required(currentFinancialRatio.roe(), "roe");
-        BigDecimal per = required(currentPrice.per(), "per");
-        BigDecimal pbr = required(currentPrice.pbr(), "pbr");
-        BigDecimal currentEps = required(currentFinancialRatio.eps(), "currentEps");
+        Long marketCap = requiredLong(currentPrice.marketCap(), "marketCap", stock, baseTime);
+        Long accumulatedTradeAmount = requiredLong(currentPrice.accumulatedTradeAmount(), "accumulatedTradeAmount", stock, baseTime);
+        BigDecimal executionStrength = required(executionStrengthMetrics.executionStrength(), "executionStrength", stock, baseTime);
+        BigDecimal debtRatio = required(currentFinancialRatio.debtRatio(), "debtRatio", stock, baseTime);
+        Long operatingProfit = requiredLong(currentIncomeStatement.operatingProfit(), "operatingProfit", stock, baseTime);
+        BigDecimal operatingProfitGrowthRate = required(currentFinancialRatio.operatingProfitGrowthRate(), "operatingProfitGrowthRate", stock, baseTime);
+        BigDecimal roe = required(currentFinancialRatio.roe(), "roe", stock, baseTime);
+        BigDecimal per = required(currentPrice.per(), "per", stock, baseTime);
+        BigDecimal pbr = required(currentPrice.pbr(), "pbr", stock, baseTime);
+        BigDecimal currentEps = required(currentFinancialRatio.eps(), "currentEps", stock, baseTime);
         BigDecimal lastYearEps = lastYearFinancialRatio == null ? null : lastYearFinancialRatio.eps();
-        Long currentSales = requiredLong(currentIncomeStatement.sales(), "currentSales");
+        Long currentSales = requiredLong(currentIncomeStatement.sales(), "currentSales", stock, baseTime);
         Long lastYearSales = lastYearIncomeStatement == null ? null : optionalLong(lastYearIncomeStatement.sales());
-        BigDecimal requiredMarginDebtRate = required(marginDebtRate, "marginDebtRate");
-        BigDecimal requiredHigh52WeekRate = required(high52WeekRate, "high52WeekRate");
+        BigDecimal requiredMarginDebtRate = required(marginDebtRate, "marginDebtRate", stock, baseTime);
+        BigDecimal requiredHigh52WeekRate = required(high52WeekRate, "high52WeekRate", stock, baseTime);
 
         stockIndicatorPersistenceService.upsert(new StockIndicatorPersistenceService.StockIndicatorMetrics(
                 stock,
                 baseTime,
                 marketCap,
                 accumulatedTradeAmount,
+                executionStrength,
                 debtRatio,
                 operatingProfit,
                 operatingProfitGrowthRate,
@@ -143,10 +147,17 @@ public class StockIndicatorBatchService {
     }
 
     // 연간 재무비율 응답 중 가장 최신 결산년월 데이터를 현재 지표로 사용합니다.
-    private KisFinancialRatioMetrics latestFinancialRatio(List<KisFinancialRatioMetrics> financialRatios) {
+    private KisFinancialRatioMetrics latestFinancialRatio(
+            List<KisFinancialRatioMetrics> financialRatios,
+            Stock stock,
+            String baseTime
+    ) {
         return sortedFinancialRatios(financialRatios).stream()
                 .findFirst()
-                .orElseThrow(() -> new StockIndicatorBatchException(StockErrorCode.STOCK_INDICATOR_CURRENT_FINANCIAL_RATIO_MISSING));
+                .orElseThrow(() -> new StockIndicatorBatchException(
+                        StockErrorCode.STOCK_INDICATOR_CURRENT_FINANCIAL_RATIO_MISSING,
+                        stockDetail(stock, baseTime)
+                ));
     }
 
     // 최신 결산년월 바로 이전 데이터를 전년 지표로 사용합니다. 신규 상장주는 전년 지표가 없을 수 있습니다.
@@ -166,10 +177,17 @@ public class StockIndicatorBatchService {
     }
 
     // 연간 손익계산서 응답 중 가장 최신 결산년월 데이터를 현재 매출/영업이익으로 사용합니다.
-    private KisIncomeStatementMetrics latestIncomeStatement(List<KisIncomeStatementMetrics> incomeStatements) {
+    private KisIncomeStatementMetrics latestIncomeStatement(
+            List<KisIncomeStatementMetrics> incomeStatements,
+            Stock stock,
+            String baseTime
+    ) {
         return sortedIncomeStatements(incomeStatements).stream()
                 .findFirst()
-                .orElseThrow(() -> new StockIndicatorBatchException(StockErrorCode.STOCK_INDICATOR_CURRENT_INCOME_STATEMENT_MISSING));
+                .orElseThrow(() -> new StockIndicatorBatchException(
+                        StockErrorCode.STOCK_INDICATOR_CURRENT_INCOME_STATEMENT_MISSING,
+                        stockDetail(stock, baseTime)
+                ));
     }
 
     // 최신 결산년월 바로 이전 데이터를 전년 매출로 사용합니다. 신규 상장주는 전년 매출이 없을 수 있습니다.
@@ -257,19 +275,19 @@ public class StockIndicatorBatchService {
     }
 
     // nullable=false 컬럼에 잘못된 0을 저장하지 않기 위해 필수 지표 누락은 종목 단위 실패로 처리합니다.
-    private BigDecimal required(BigDecimal value, String fieldName) {
+    private BigDecimal required(BigDecimal value, String fieldName, Stock stock, String baseTime) {
         if (value == null) {
             throw new StockIndicatorBatchException(
                     StockErrorCode.STOCK_INDICATOR_REQUIRED_METRIC_MISSING,
-                    "field=" + fieldName
+                    stockDetail(stock, baseTime) + ", field=" + fieldName
             );
         }
         return value;
     }
 
     // KIS 숫자 응답을 정수 컬럼에 저장하기 위한 변환입니다.
-    private Long requiredLong(BigDecimal value, String fieldName) {
-        return required(value, fieldName).setScale(0, RoundingMode.HALF_UP).longValue();
+    private Long requiredLong(BigDecimal value, String fieldName, Stock stock, String baseTime) {
+        return required(value, fieldName, stock, baseTime).setScale(0, RoundingMode.HALF_UP).longValue();
     }
 
     private Long optionalLong(BigDecimal value) {
@@ -282,6 +300,12 @@ public class StockIndicatorBatchService {
     // 52주 고가 대비율이 없으면 250일 고가 대비율을 fallback으로 사용합니다.
     private BigDecimal firstNonNull(BigDecimal first, BigDecimal second) {
         return first != null ? first : second;
+    }
+
+    private String stockDetail(Stock stock, String baseTime) {
+        return "stockCode=" + stock.getStockCode()
+                + ", stockName=" + stock.getName()
+                + ", baseTime=" + baseTime;
     }
 
     public record StockIndicatorBatchResult(

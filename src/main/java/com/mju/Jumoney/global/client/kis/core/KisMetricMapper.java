@@ -29,6 +29,7 @@ public class KisMetricMapper {
     public KisCurrentPriceMetrics toCurrentPriceMetrics(KisCurrentPriceOutput output) {
         return new KisCurrentPriceMetrics(
                 toBigDecimal(output.currentPrice()),
+                toBigDecimal(output.changeRate()),
                 toBigDecimal(output.marketCap()),
                 toBigDecimal(output.per()),
                 toBigDecimal(output.pbr()),

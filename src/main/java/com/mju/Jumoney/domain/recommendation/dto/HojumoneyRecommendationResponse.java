@@ -22,7 +22,9 @@ public record HojumoneyRecommendationResponse(
             List<HojumoneyRecommendationTag> tags,
             int matchedConditionCount,
             String sortMetricName,
-            BigDecimal sortMetricValue
+            BigDecimal sortMetricValue,
+            BigDecimal currentPrice,
+            BigDecimal changeRate
     ) {
     }
 }

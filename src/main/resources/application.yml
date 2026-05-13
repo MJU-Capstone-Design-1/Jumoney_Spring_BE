@@ -49,6 +49,10 @@ kis:
 stock:
   execution-strength:
     cache-ttl-seconds: 180
+    realtime-freshness-seconds: 180
+  current-price:
+    cache-ttl-seconds: 600
+    realtime-freshness-seconds: 180
 
 realtime:
   redis:

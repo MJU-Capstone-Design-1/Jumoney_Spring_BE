@@ -120,13 +120,13 @@ public class KisSmokeController {
     @Operation(
             summary = "종목 지표 배치 수동 실행",
             description = "local 프로필에서만 활성화됩니다. Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다. "
-                    + "수동 실행은 요청한 baseDate를 그대로 사용하며, 생략 시 오늘 날짜를 사용합니다. "
+                    + "수동 실행은 요청한 baseDate를 그대로 사용하며, 정기 스케줄처럼 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다. "
                     + "단, 오늘 기준 실행은 KIS 투자자매매동향 일별 API 제한 때문에 15:40 이후에만 가능합니다. "
                     + "정기 스케줄은 직전 평일 기준으로 실행됩니다."
     )
     @PostMapping("/batch/stock-indicators")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runStockIndicatorBatch(
-            @Parameter(description = "지표 기준일. 생략 시 오늘 날짜. 단, 오늘 기준 배치는 15:40 이후 가능", example = "2026-05-07")
+            @Parameter(description = "지표 기준일. 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다.", example = "2026-05-12")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
@@ -142,7 +142,7 @@ public class KisSmokeController {
     )
     @GetMapping("/batch/stock-indicators/status")
     public ResponseEntity<ApiResponse<StockIndicatorBatchStatusResponse>> getStockIndicatorBatchStatus(
-            @Parameter(description = "확인 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
+            @Parameter(description = "확인 기준일. 생략 시 오늘 날짜", example = "2026-05-12")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
