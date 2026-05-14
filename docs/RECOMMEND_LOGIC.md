@@ -71,7 +71,7 @@
 6. 선택지 1의 지표 조건(`StockIndicator`)과 선택지 2의 위험 성향 조건(`HtsStock`)을 각각 평가한다.
 7. 두 조건을 모두 만족하는 종목을 우선 추천하고, 둘 중 하나만 만족하는 종목은 그 다음 후보로 노출한다.
 8. 추천 응답에는 만족한 조건 태그를 함께 내려준다. 예: 지표 조건과 위험 성향 조건을 모두 만족하면 태그 2개, 하나만 만족하면 해당 태그 1개.
-9. 추천 종목의 섹터가 Redis `goodSectors`에 포함된 호재 섹터이면 `goodSectorTags`에 섹터명을 내려준다.
+9. 추천 종목의 섹터가 Redis `goodSectors`에 포함된 호재 섹터이면 `goodSectorTags`에 `SectorType` enum 코드명을 내려준다.
 10. 추천 결과를 로그인 사용자 기준으로 DB에 저장하고, 응답 최상단에 저장된 `recommendationId`를 내려준다.
 11. 화면 재진입 시에는 로그인 사용자의 가장 최근 오늘의 호주머니 추천 결과를 조회해서 동일한 응답 구조로 다시 내려준다.
 
@@ -88,7 +88,7 @@
 - 조건 태그는 다음 기준으로 붙인다.
     - 선택지 1 지표 조건 만족: `INDICATOR_MATCH`
     - 선택지 2 HTS 조건 만족: `RISK_PROFILE_MATCH`
-- 호재 섹터 태그는 추천 종목의 섹터가 Redis `news:analysis:today`의 `goodSectors`에 포함된 경우 `goodSectorTags`에 섹터명으로 내려준다.
+- 호재 섹터 태그는 추천 종목의 섹터가 Redis `news:analysis:today`의 `goodSectors`에 포함된 경우 `goodSectorTags`에 `SectorType` enum 코드명으로 내려준다. 예: `IT_SEMICONDUCTOR`
 - Redis 뉴스 분석 결과가 없거나 조회에 실패하면 호재 섹터 가산 없이 설문 기반 추천만 진행한다.
 - `badSectors`는 현재 오늘의 호주머니 추천 정렬과 제외 정책에 반영하지 않는다.
 - 선택지 2 HTS 조건검색 결과가 0건이어도 추천은 중단하지 않는다. 이 경우 선택지 1 지표 조건 만족 종목만 `INDICATOR_MATCH` 태그로 추천 후보가 된다.
@@ -117,7 +117,7 @@
     - `changeRate`
 - `RecommendationStockTag`는 추천 종목에 붙은 태그를 저장한다.
     - 설문 조건 만족 태그: `SURVEY_LOGIC`, `SurveyLogicCode.label` 값 저장
-    - 호재 섹터 태그: `GOOD_SECTOR`
+    - 호재 섹터 태그: `GOOD_SECTOR`, `SectorType` enum 코드명 저장
 - 추천 계산은 read-only 트랜잭션으로 수행하고, 저장은 별도 write 트랜잭션에서 수행한다.
 - 뉴스 분석 데이터는 현재 Redis에서 조회해 추천 정렬과 태그에만 반영한다. 별도 `NewsAnalysis` DB 엔티티가 구현되기 전까지 추천 결과에는 뉴스 분석 FK를 저장하지 않는다.
 

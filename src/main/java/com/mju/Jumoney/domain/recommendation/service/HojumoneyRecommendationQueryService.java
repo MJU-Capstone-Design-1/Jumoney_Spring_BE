@@ -13,6 +13,7 @@ import com.mju.Jumoney.domain.recommendation.repository.HojumoneyRecommendationR
 import com.mju.Jumoney.domain.recommendation.repository.RecommendationRepository;
 import com.mju.Jumoney.domain.recommendation.repository.RecommendationStockRepository;
 import com.mju.Jumoney.domain.recommendation.repository.RecommendationStockTagRepository;
+import com.mju.Jumoney.domain.sector.enums.SectorType;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -96,6 +97,7 @@ public class HojumoneyRecommendationQueryService {
         List<String> goodSectorTags = tags.stream()
                 .filter(tag -> tag.getTagType() == RecommendationStockTagType.GOOD_SECTOR)
                 .map(RecommendationStockTag::getTagName)
+                .map(this::toSectorTypeName)
                 .toList();
 
         return new HojumoneyRecommendationResponse.RecommendedStockResponse(
@@ -122,5 +124,13 @@ public class HojumoneyRecommendationQueryService {
                 .filter(code -> code.getLabel().equals(tagName))
                 .findFirst()
                 .orElseThrow(() -> new CustomException(RecommendationErrorCode.HOJUMONEY_RECOMMENDATION_NOT_FOUND));
+    }
+
+    private String toSectorTypeName(String tagName) {
+        try {
+            return SectorType.valueOf(tagName).name();
+        } catch (IllegalArgumentException ignored) {
+        }
+        return SectorType.fromDescription(tagName).name();
     }
 }

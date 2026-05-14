@@ -218,6 +218,7 @@
         - 태그명 / tagName / VARCHAR(100) / NOT NULL
     - 비고
         - `SURVEY_LOGIC` 태그는 enum 코드명이 아니라 사용자에게 표시 가능한 `SurveyLogicCode.label` 값을 저장한다.
+        - `GOOD_SECTOR` 태그는 프론트 표시 문자열이 아니라 `SectorType` enum 코드명을 저장한다. 예: `IT_SEMICONDUCTOR`
 
 ### **거장 (Master)**
 

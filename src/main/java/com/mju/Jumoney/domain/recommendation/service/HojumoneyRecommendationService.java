@@ -307,7 +307,7 @@ public class HojumoneyRecommendationService {
     }
 
     private List<String> goodSectorTags(Stock stock, Set<String> goodSectorNames) {
-        return hasGoodSectorMatch(stock, goodSectorNames) ? List.of(stock.getSector().getSectorName().getDescription()) : List.of();
+        return hasGoodSectorMatch(stock, goodSectorNames) ? List.of(stock.getSector().getSectorName().name()) : List.of();
     }
 
     private boolean hasGoodSectorMatch(Stock stock, Set<String> goodSectorNames) {
