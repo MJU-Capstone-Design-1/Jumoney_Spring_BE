@@ -56,6 +56,10 @@ public class RealtimeRedisReader {
         return hashGetRaw(key, field).flatMap(json -> parse(json, clazz, key + "#" + field));
     }
 
+    public <T> Optional<T> hashGet(String key, String field, TypeReference<T> typeReference) {
+        return hashGetRaw(key, field).flatMap(json -> parse(json, typeReference, key + "#" + field));
+    }
+
     public Set<String> zSetRangeRaw(String key, long start, long end) {
         Set<String> values = realtimeStringRedisTemplate.opsForZSet().range(key, start, end);
         return values == null ? Collections.emptySet() : values;

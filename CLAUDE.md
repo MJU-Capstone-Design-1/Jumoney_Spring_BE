@@ -47,9 +47,9 @@ The test: Every changed line should trace directly to the user's request.
 **Define success criteria. Loop until verified.**
 
 Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
+- Do not add new test code unless the user explicitly requests it.
+- Verify with existing checks only, such as compile, existing tests, manual inspection, or targeted runtime checks.
+- If a change would normally require new tests, mention the residual risk instead of creating test files.
 
 For multi-step tasks, state a brief plan:
 ```

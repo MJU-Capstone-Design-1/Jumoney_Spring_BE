@@ -1,9 +1,16 @@
-# Recommendation Label Mappings
+# Label Mappings
 
-추천 API 응답으로 내려주는 영어 enum/key의 프론트 표시용 한국어 매핑입니다.
+백엔드 API 응답으로 내려주는 enum/key의 프론트 표시용 한국어 매핑입니다.
+
+## 원칙
+
+- API 응답은 화면 표시 문자열 대신 안정적인 enum/key를 내려준다.
+- 프론트는 이 문서의 매핑으로 화면 표시 문자열을 만든다.
+- 추천 API의 `tags`, `goodSectorTags`, `sortMetricKey`, `investmentPurpose`, `riskProfile`, `investmentHorizon`은 모두 아래 key를 기준으로 표시한다.
+- `goodSectorTags`는 `IT_SEMICONDUCTOR` 같은 `SectorType` enum 코드명으로 내려온다. Redis 뉴스 데이터의 `sectorName`은 한국어 섹터명일 수 있지만, API 응답에서는 enum 코드명으로 변환한다.
 
 ```ts
-export const recommendationLabels = {
+export const labelMappings = {
   INVESTMENT_PURPOSE: "투자 목적",
   RISK_PROFILE: "위험 감수 성향",
   INVESTMENT_HORIZON: "투자 기간",
@@ -39,8 +46,7 @@ export const recommendationLabels = {
   CONSTRUCTION_UTILITY: "건설/유틸리티",
   ESSENTIAL_CONSUMER: "필수소비재",
 
-  KOSPI: "코스피",
-  KOSDAQ: "코스닥",
+  KOSPI: "코스피"
 } as const;
 
 export const recommendationTagLabels = {
@@ -55,3 +61,12 @@ export const recommendationTagLabels = {
   AGGRESSIVE: "위험도 매우 높음",
 } as const;
 ```
+
+## 오늘의 호주머니 추천 응답 key
+
+- `investmentPurpose`: `CAPITAL_PROTECTION`, `DIVIDEND_INCOME`, `STEADY_GROWTH`, `CAPITAL_GAIN`
+- `riskProfile`: `STABILITY`, `SAFE_PURSUIT`, `PROFIT_PURSUIT`, `AGGRESSIVE`
+- `investmentHorizon`: `ULTRA_SHORT`, `SHORT`, `MID`, `LONG`
+- `recommendations[].tags`: 투자 목적 또는 위험 감수 성향 key
+- `recommendations[].goodSectorTags`: `SectorType` key
+- `recommendations[].sortMetricKey`: `EXECUTION_STRENGTH`, `ACCUMULATED_TRADE_AMOUNT`, `EPS_GROWTH_RATE`, `ROE`

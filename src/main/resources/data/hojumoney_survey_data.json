@@ -9,7 +9,10 @@
         "content": "안정적인 자산 보호",
         "logicCode": "CAPITAL_PROTECTION",
         "displayOrder": 1,
-        "restrictedLogicCodes": [],
+        "restrictedLogicCodes": [
+          "AGGRESSIVE",
+          "ULTRA_SHORT"
+        ],
         "description": [
           {
             "indicatorName": "시가총액 상위 50위",
@@ -29,7 +32,10 @@
         "content": "배당 수익",
         "logicCode": "DIVIDEND_INCOME",
         "displayOrder": 2,
-        "restrictedLogicCodes": [],
+        "restrictedLogicCodes": [
+          "AGGRESSIVE",
+          "ULTRA_SHORT"
+        ],
         "description": [
           {
             "indicatorName": "시가배당률 4% ~ 8%",
@@ -45,7 +51,9 @@
         "content": "자산의 꾸준한 성장",
         "logicCode": "STEADY_GROWTH",
         "displayOrder": 3,
-        "restrictedLogicCodes": [],
+        "restrictedLogicCodes": [
+          "ULTRA_SHORT"
+        ],
         "description": [
           {
             "indicatorName": "ROE 8% 이상",
@@ -61,7 +69,9 @@
         "content": "시세 차익",
         "logicCode": "CAPITAL_GAIN",
         "displayOrder": 4,
-        "restrictedLogicCodes": [],
+        "restrictedLogicCodes": [
+          "STABILITY"
+        ],
         "description": [
           {
             "indicatorName": "PER 10배 이하",
@@ -89,7 +99,9 @@
         "content": "매우 낮음",
         "logicCode": "STABILITY",
         "displayOrder": 1,
-        "restrictedLogicCodes": [],
+        "restrictedLogicCodes": [
+          "CAPITAL_GAIN"
+        ],
         "description": [
           {
             "indicatorName": "베타 0.7 이하",
@@ -137,7 +149,10 @@
         "content": "매우 높음",
         "logicCode": "AGGRESSIVE",
         "displayOrder": 4,
-        "restrictedLogicCodes": [],
+        "restrictedLogicCodes": [
+          "CAPITAL_PROTECTION",
+          "DIVIDEND_INCOME"
+        ],
         "description": [
           {
             "indicatorName": "베타 1.1 이상",
@@ -161,7 +176,11 @@
         "content": "초단기(1일)",
         "logicCode": "ULTRA_SHORT",
         "displayOrder": 1,
-        "restrictedLogicCodes": [],
+        "restrictedLogicCodes": [
+          "CAPITAL_PROTECTION",
+          "DIVIDEND_INCOME",
+          "STEADY_GROWTH"
+        ],
         "description": [
           {
             "indicatorName": "체결강도 상위순",
