@@ -28,11 +28,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -113,24 +109,37 @@ public class DataInitializer implements ApplicationRunner {
 
         for (SurveyQuestionInitDto questionDto : questionDtos) {
             SurveyQuestion question = surveyQuestionRepository.findByQuestionType(questionDto.questionType())
+                    .map(existingQuestion -> {
+                        existingQuestion.updateContent(
+                                questionDto.content(),
+                                questionDto.description(),
+                                questionDto.displayOrder()
+                        );
+                        return existingQuestion;
+                    })
                     .orElseGet(() -> surveyQuestionRepository.save(SurveyQuestion.create(
                             questionDto.questionType(),
                             questionDto.content(),
                             questionDto.description(),
                             questionDto.displayOrder()
                     )));
-            question.updateContent(questionDto.content(), questionDto.description(), questionDto.displayOrder());
 
             for (SurveyOptionInitDto optionDto : questionDto.options()) {
-                SurveyOption option = surveyOptionRepository.findByLogicCode(optionDto.logicCode())
-                        .orElseGet(() -> surveyOptionRepository.save(SurveyOption.create(
-                                question,
-                                optionDto.content(),
-                                optionDto.logicCode(),
-                                optionDto.description(),
-                                optionDto.displayOrder()
-                        )));
-                option.updateContent(optionDto.content(), optionDto.description(), optionDto.displayOrder());
+                surveyOptionRepository.findByLogicCode(optionDto.logicCode())
+                        .ifPresentOrElse(
+                                existingOption -> existingOption.updateContent(
+                                        optionDto.content(),
+                                        optionDto.description(),
+                                        optionDto.displayOrder()
+                                ),
+                                () -> surveyOptionRepository.save(SurveyOption.create(
+                                        question,
+                                        optionDto.content(),
+                                        optionDto.logicCode(),
+                                        optionDto.description(),
+                                        optionDto.displayOrder()
+                                ))
+                        );
             }
         }
 
@@ -143,7 +152,6 @@ public class DataInitializer implements ApplicationRunner {
             }
         }
         surveyOptionRestrictionRepository.deleteBySourceOptionIdIn(hojumoneyOptionIds);
-        surveyOptionRestrictionRepository.flush();
 
         Set<String> savedRestrictionKeys = new HashSet<>();
         for (SurveyQuestionInitDto questionDto : questionDtos) {
@@ -185,20 +193,21 @@ public class DataInitializer implements ApplicationRunner {
         );
 
         for (HojumoneyPersonaInitDto dto : personaDtos) {
-            HojumoneyPersona persona = hojumoneyPersonaRepository
-                    .findByInvestmentPurposeAndRiskProfileAndInvestmentHorizon(
+            hojumoneyPersonaRepository.findByInvestmentPurposeAndRiskProfileAndInvestmentHorizon(
                             dto.investmentPurpose(),
                             dto.riskProfile(),
                             dto.investmentHorizon()
                     )
-                    .orElseGet(() -> hojumoneyPersonaRepository.save(HojumoneyPersona.create(
-                            dto.investmentPurpose(),
-                            dto.riskProfile(),
-                            dto.investmentHorizon(),
-                            dto.personaName(),
-                            dto.personaDescription()
-                    )));
-            persona.updateContent(dto.personaName(), dto.personaDescription());
+                    .ifPresentOrElse(
+                            existingPersona -> existingPersona.updateContent(dto.personaName(), dto.personaDescription()),
+                            () -> hojumoneyPersonaRepository.save(HojumoneyPersona.create(
+                                    dto.investmentPurpose(),
+                                    dto.riskProfile(),
+                                    dto.investmentHorizon(),
+                                    dto.personaName(),
+                                    dto.personaDescription()
+                            ))
+                    );
         }
 
         log.info(" 오늘의 호주머니 페르소나 {}개 초기화 완료", personaDtos.size());
