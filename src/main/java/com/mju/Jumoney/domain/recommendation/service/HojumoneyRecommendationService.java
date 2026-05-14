@@ -1,5 +1,6 @@
 package com.mju.Jumoney.domain.recommendation.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.mju.Jumoney.domain.recommendation.domain.HojumoneyPersona;
 import com.mju.Jumoney.domain.recommendation.dto.*;
 import com.mju.Jumoney.domain.recommendation.enums.HojumoneyRecommendationTag;
@@ -12,6 +13,7 @@ import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
+import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +29,8 @@ import java.util.*;
 public class HojumoneyRecommendationService {
 
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 10;
+    private static final String NEWS_ANALYSIS_TODAY_KEY = "news:analysis:today";
+    private static final String GOOD_SECTORS_FIELD = "goodSectors";
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final int RATIO_SCALE = 4;
 
@@ -35,6 +40,7 @@ public class HojumoneyRecommendationService {
     private final HojumoneyPersonaRepository hojumoneyPersonaRepository;
     private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
+    private final RealtimeRedisReader realtimeRedisReader;
 
     public HojumoneyRecommendationResponse recommend(HojumoneyRecommendationRequest request) {
         HojumoneySurveySelection selection = surveySelectionService.validateAndClassify(request.selectedOptionIds());
@@ -78,13 +84,15 @@ public class HojumoneyRecommendationService {
                         .map(candidate -> candidate.getStock().getStockCode())
                         .toList()
         );
+        Set<String> goodSectorNames = getGoodSectorNames();
         List<HojumoneyRecommendationResponse.RecommendedStockResponse> recommendations = topCandidates.stream()
                 .map(candidate -> toRecommendedStockResponse(
                         candidate,
                         selection.investmentPurpose(),
                         selection.riskProfile(),
                         sortMetricKey,
-                        currentPrices.get(candidate.getStock().getStockCode())
+                        currentPrices.get(candidate.getStock().getStockCode()),
+                        goodSectorNames
                 ))
                 .toList();
 
@@ -246,21 +254,49 @@ public class HojumoneyRecommendationService {
             SurveyLogicCode investmentPurpose,
             SurveyLogicCode riskProfile,
             String sortMetricKey,
-            StockCurrentPriceSnapshot currentPrice
+            StockCurrentPriceSnapshot currentPrice,
+            Set<String> goodSectorNames
     ) {
         Stock stock = candidate.getStock();
+        List<String> goodSectorTags = goodSectorTags(stock, goodSectorNames);
         return new HojumoneyRecommendationResponse.RecommendedStockResponse(
                 stock.getId(),
                 stock.getStockCode(),
                 stock.getName(),
                 0,
                 responseTags(candidate, investmentPurpose, riskProfile),
+                goodSectorTags,
                 candidate.matchedConditionCount(),
                 sortMetricKey,
                 candidate.getSortMetricValue(),
                 currentPrice == null ? null : currentPrice.currentPrice(),
                 currentPrice == null ? null : currentPrice.changeRate()
         );
+    }
+
+    private Set<String> getGoodSectorNames() {
+        return realtimeRedisReader
+                .hashGet(
+                        NEWS_ANALYSIS_TODAY_KEY,
+                        GOOD_SECTORS_FIELD,
+                        new TypeReference<List<NewsSector>>() {
+                        }
+                )
+                .stream()
+                .flatMap(Collection::stream)
+                .map(NewsSector::sectorName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(sectorName -> !sectorName.isBlank())
+                .collect(Collectors.toSet());
+    }
+
+    private List<String> goodSectorTags(Stock stock, Set<String> goodSectorNames) {
+        if (goodSectorNames.isEmpty()) {
+            return List.of();
+        }
+        String sectorName = stock.getSector().getSectorName().getDescription();
+        return goodSectorNames.contains(sectorName) ? List.of(sectorName) : List.of();
     }
 
     private List<SurveyLogicCode> responseTags(
@@ -290,6 +326,7 @@ public class HojumoneyRecommendationService {
                     item.stockName(),
                     i + 1,
                     item.tags(),
+                    item.goodSectorTags(),
                     item.matchedConditionCount(),
                     item.sortMetricKey(),
                     item.sortMetricValue(),
@@ -298,5 +335,11 @@ public class HojumoneyRecommendationService {
             ));
         }
         return ranked;
+    }
+
+    private record NewsSector(
+            String sectorName,
+            String reason
+    ) {
     }
 }

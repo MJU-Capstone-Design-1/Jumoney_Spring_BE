@@ -26,6 +26,7 @@ public record HojumoneyRecommendationResponse(
             String stockName,
             int rank,
             List<SurveyLogicCode> tags,
+            List<String> goodSectorTags,
             int matchedConditionCount,
             String sortMetricKey,
             BigDecimal sortMetricValue,

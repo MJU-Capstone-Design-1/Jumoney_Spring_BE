@@ -30,7 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -141,7 +143,9 @@ public class DataInitializer implements ApplicationRunner {
             }
         }
         surveyOptionRestrictionRepository.deleteBySourceOptionIdIn(hojumoneyOptionIds);
+        surveyOptionRestrictionRepository.flush();
 
+        Set<String> savedRestrictionKeys = new HashSet<>();
         for (SurveyQuestionInitDto questionDto : questionDtos) {
             for (SurveyOptionInitDto optionDto : questionDto.options()) {
                 if (optionDto.restrictedLogicCodes() == null || optionDto.restrictedLogicCodes().isEmpty()) {
@@ -154,6 +158,10 @@ public class DataInitializer implements ApplicationRunner {
                     SurveyOption restrictedOption = surveyOptionRepository.findByLogicCode(restrictedLogicCode)
                             .orElseThrow(() -> new IllegalStateException("제한 선택지 초기화 실패: logicCode=" + restrictedLogicCode));
 
+                    String restrictionKey = option.getId() + ":" + restrictedOption.getId();
+                    if (!savedRestrictionKeys.add(restrictionKey)) {
+                        continue;
+                    }
                     surveyOptionRestrictionRepository.save(SurveyOptionRestriction.create(option, restrictedOption));
                 }
             }
