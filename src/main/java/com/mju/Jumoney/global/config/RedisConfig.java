@@ -99,7 +99,7 @@ public class RedisConfig {
 
         return new ObjectMapper()
                 .registerModule(new JavaTimeModule())
-                // 날짜를 "2026-04-29T12:00:00" 같은 사람이 읽을 수 있는 ISO-8601 문자열 형태로 저장
+                // 날짜를 사람이 읽을 수 있는 ISO-8601 문자열 형태로 저장
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                 // JSON 저장 시 클래스 타입 정보를 함께 저장 (캐스팅 에러 없이 정확한 객체로 매핑되도록)
                 .activateDefaultTyping(typeValidator, ObjectMapper.DefaultTyping.NON_FINAL);

@@ -1,9 +1,11 @@
 package com.mju.Jumoney.domain.recommendation.service;
 
+import com.mju.Jumoney.domain.recommendation.domain.HojumoneyPersona;
 import com.mju.Jumoney.domain.recommendation.dto.*;
 import com.mju.Jumoney.domain.recommendation.enums.HojumoneyRecommendationTag;
 import com.mju.Jumoney.domain.recommendation.enums.SurveyLogicCode;
 import com.mju.Jumoney.domain.recommendation.exception.RecommendationErrorCode;
+import com.mju.Jumoney.domain.recommendation.repository.HojumoneyPersonaRepository;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.domain.StockIndicator;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
@@ -17,8 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,11 +32,13 @@ public class HojumoneyRecommendationService {
     private final HojumoneySurveySelectionService surveySelectionService;
     private final HojumoneyIndicatorFilterService indicatorFilterService;
     private final HojumoneyRiskFilterService riskFilterService;
+    private final HojumoneyPersonaRepository hojumoneyPersonaRepository;
     private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
 
     public HojumoneyRecommendationResponse recommend(HojumoneyRecommendationRequest request) {
         HojumoneySurveySelection selection = surveySelectionService.validateAndClassify(request.selectedOptionIds());
+        HojumoneyPersona persona = findPersona(selection);
 
         List<HojumoneyIndicatorCandidate> indicatorCandidates = indicatorFilterService.findCandidates(selection.investmentPurpose());
         List<HojumoneyRiskCandidate> riskCandidates = riskFilterService.findCandidates(selection.riskProfile());
@@ -90,8 +92,30 @@ public class HojumoneyRecommendationService {
                 selection.investmentPurpose(),
                 selection.riskProfile(),
                 selection.investmentHorizon(),
+                toPersonaResponse(persona),
                 eligibleCandidates.size(),
                 rank(recommendations)
+        );
+    }
+
+    private HojumoneyPersona findPersona(HojumoneySurveySelection selection) {
+        return hojumoneyPersonaRepository.findByInvestmentPurposeAndRiskProfileAndInvestmentHorizon(
+                        selection.investmentPurpose(),
+                        selection.riskProfile(),
+                        selection.investmentHorizon()
+                )
+                .orElseThrow(() -> new CustomException(
+                        RecommendationErrorCode.HOJUMONEY_PERSONA_NOT_FOUND,
+                        "investmentPurpose=" + selection.investmentPurpose()
+                                + ", riskProfile=" + selection.riskProfile()
+                                + ", investmentHorizon=" + selection.investmentHorizon()
+                ));
+    }
+
+    private HojumoneyRecommendationResponse.HojumoneyPersonaResponse toPersonaResponse(HojumoneyPersona persona) {
+        return new HojumoneyRecommendationResponse.HojumoneyPersonaResponse(
+                persona.getPersonaName(),
+                persona.getPersonaDescription()
         );
     }
 
@@ -112,7 +136,7 @@ public class HojumoneyRecommendationService {
                     if (candidate != null) {
                         candidate.setIndicator(indicator);
                     }
-        });
+                });
     }
 
     private void populateSortMetricValues(

@@ -9,9 +9,16 @@ public record HojumoneyRecommendationResponse(
         SurveyLogicCode investmentPurpose,
         SurveyLogicCode riskProfile,
         SurveyLogicCode investmentHorizon,
+        HojumoneyPersonaResponse persona,
         int totalCount,
         List<RecommendedStockResponse> recommendations
 ) {
+
+    public record HojumoneyPersonaResponse(
+            String personaName,
+            String personaDescription
+    ) {
+    }
 
     public record RecommendedStockResponse(
             Long stockId,

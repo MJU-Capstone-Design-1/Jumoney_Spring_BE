@@ -42,15 +42,15 @@ public class KisSmokeController {
             @Parameter(description = "종목 코드", example = "005930")
             @RequestParam(defaultValue = "005930") String stockCode,
 
-            @Parameter(description = "신용잔고/투자자매매동향 조회 기준일", example = "2026-05-04")
+            @Parameter(description = "신용잔고/투자자매매동향 조회 기준일. 예시는 문서 생성일 기준 전날로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate,
 
-            @Parameter(description = "배당일정 조회 시작일", example = "2025-01-01")
+            @Parameter(description = "배당일정 조회 시작일. 예시는 문서 생성일 기준 1년 전으로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dividendFrom,
 
-            @Parameter(description = "배당일정 조회 종료일", example = "2026-05-06")
+            @Parameter(description = "배당일정 조회 종료일. 예시는 문서 생성일 기준 오늘로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dividendTo
     ) {
@@ -108,7 +108,7 @@ public class KisSmokeController {
     )
     @PostMapping("/batch/hts-conditions")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runHtsConditionBatch(
-            @Parameter(description = "저장 기준일. 생략 시 오늘 날짜", example = "2026-05-07")
+            @Parameter(description = "저장 기준일. 생략 시 오늘 날짜. 예시는 문서 생성일 기준 전날로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
@@ -126,7 +126,7 @@ public class KisSmokeController {
     )
     @PostMapping("/batch/stock-indicators")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runStockIndicatorBatch(
-            @Parameter(description = "지표 기준일. 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다.", example = "2026-05-12")
+            @Parameter(description = "지표 기준일. 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다. 예시는 문서 생성일 기준 전날로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
@@ -142,7 +142,7 @@ public class KisSmokeController {
     )
     @GetMapping("/batch/stock-indicators/status")
     public ResponseEntity<ApiResponse<StockIndicatorBatchStatusResponse>> getStockIndicatorBatchStatus(
-            @Parameter(description = "확인 기준일. 생략 시 오늘 날짜", example = "2026-05-12")
+            @Parameter(description = "확인 기준일. 생략 시 오늘 날짜. 예시는 문서 생성일 기준 전날로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {

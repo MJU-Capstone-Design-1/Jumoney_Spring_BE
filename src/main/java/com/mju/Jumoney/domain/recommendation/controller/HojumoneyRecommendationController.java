@@ -10,7 +10,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Recommendation", description = "추천 API")
 @RestController
@@ -20,7 +23,7 @@ public class HojumoneyRecommendationController {
 
     private final HojumoneyRecommendationService hojumoneyRecommendationService;
 
-    @Operation(summary = "오늘의 호주머니 추천 종목 조회", description = "설문 선택지 ID 3개를 기반으로 오늘의 호주머니 추천 종목을 조회합니다.")
+    @Operation(summary = "오늘의 호주머니 추천", description = "설문 선택지 ID 3개를 기반으로 오늘의 호주머니 추천을 수행하여 추천 종목을 조회합니다.")
     @PostMapping("/hojumoney")
     public ResponseEntity<ApiResponse<HojumoneyRecommendationResponse>> recommend(
             @Valid @RequestBody HojumoneyRecommendationRequest request
