@@ -50,18 +50,9 @@ public class User extends BaseSoftDeleteEntity {
     @Column(nullable = false, length = 20)
     private Role role;
 
-    // TODO: Master 개발 후 @ManyToOne으로 변경
-    @Column(name = "master_id")
-    private Long masterId;
-
     // ========== 비즈니스 메서드 ==========
     public void updateServiceNickname(String serviceNickname) {
         this.serviceNickname = serviceNickname;
-    }
-
-    // 거장 선택
-    public void selectMaster(Long masterId) {
-        this.masterId = masterId;
     }
 
     // OAuth2 로그인용 정적 팩토리 메서드

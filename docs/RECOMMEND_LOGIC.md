@@ -88,7 +88,8 @@
 - 조건 태그는 다음 기준으로 붙인다.
     - 선택지 1 지표 조건 만족: `INDICATOR_MATCH`
     - 선택지 2 HTS 조건 만족: `RISK_PROFILE_MATCH`
-- 호재 섹터 태그는 추천 종목의 섹터가 Redis `news:analysis:today`의 `goodSectors`에 포함된 경우 `goodSectorTags`에 `SectorType` enum 코드명으로 내려준다. 예: `IT_SEMICONDUCTOR`
+- 호재 섹터 태그는 추천 종목의 섹터가 Redis `news:analysis:today`의 `goodSectors`에 포함된 경우 `goodSectorTags`에 `SectorType` enum 코드명으로
+  내려준다. 예: `IT_SEMICONDUCTOR`
 - Redis 뉴스 분석 결과가 없거나 조회에 실패하면 호재 섹터 가산 없이 설문 기반 추천만 진행한다.
 - `badSectors`는 현재 오늘의 호주머니 추천 정렬과 제외 정책에 반영하지 않는다.
 - 선택지 2 HTS 조건검색 결과가 0건이어도 추천은 중단하지 않는다. 이 경우 선택지 1 지표 조건 만족 종목만 `INDICATOR_MATCH` 태그로 추천 후보가 된다.
@@ -97,7 +98,7 @@
 
 - 오늘의 호주머니 추천 API는 로그인 사용자를 기준으로 추천 실행 결과를 저장한다.
 - 저장된 추천 ID는 응답의 `recommendationId`로 내려준다.
-- 저장된 결과는 `GET /api/recommendations/hojumoney/latest`에서 다시 조회할 수 있다.
+- 저장된 결과는 `GET /api/hojumoney/recommendations/latest`에서 다시 조회할 수 있다.
 - 저장 대상은 추천 결과를 나중에 다시 보여주기 위해 필요한 스냅샷 값으로 제한한다.
 - `Recommendation`은 추천 실행 1건의 루트이며 사용자와 추천 타입(`HOJUMONEY`)을 저장한다.
 - `HojumoneyRecommendation`은 해당 추천 실행 당시의 설문 선택과 페르소나를 저장한다.
