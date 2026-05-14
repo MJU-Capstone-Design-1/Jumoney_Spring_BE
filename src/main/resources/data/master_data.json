@@ -1,0 +1,26 @@
+[
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "masterName": "워런 버핏",
+    "recommendationDescription": "가치 투자의 거장 워런 버핏이 도서와 인터뷰 등을 통해 언급한 핵심 투자 지표예요. 원하시는 조건을 선택하시면, 워런 버핏이 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
+    "displayOrder": 1
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "masterName": "피터 린치",
+    "recommendationDescription": "성장주 투자의 거장 피터 린치가 도서와 인터뷰 등을 통해 언급한 핵심 투자 지표예요. 원하시는 조건을 선택하시면, 피터 린치가 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
+    "displayOrder": 2
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "masterName": "레이 달리오",
+    "recommendationDescription": "거시 투자의 거장 레이 달리오의 투자 원칙을 재해석하여 지표를 구성했어요. 원하시는 조건을 선택하시면, 레이 달리오가 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
+    "displayOrder": 3
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "masterName": "윌리엄 오닐",
+    "recommendationDescription": "모멘텀 투자의 거장 윌리엄 오닐의 ‘CAN SLIM’ 전략으로 투자 지표를 구성했어요. 원하시는 조건을 선택하시면, 윌리엄 오닐이 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
+    "displayOrder": 4
+  }
+]
