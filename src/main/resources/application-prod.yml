@@ -8,12 +8,20 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST}
-      port: 6379
+      port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD}
 
   jpa:
     hibernate:
       ddl-auto: none
+    show-sql: false
+
+  batch:
+    jdbc:
+      initialize-schema: never
+
+server:
+  forward-headers-strategy: framework
 
 realtime:
   redis:
@@ -30,5 +38,14 @@ kis:
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}
-  access-token-validity: 3600000 #1시간
-  refresh-token-validity: 1209600000 #14일
+  access-token-validity: ${JWT_ACCESS_TOKEN_VALIDITY:3600000}
+  refresh-token-validity: ${JWT_REFRESH_TOKEN_VALIDITY:1209600000}
+  cookie-secure: ${JWT_COOKIE_SECURE:true}
+  cookie-same-site: ${JWT_COOKIE_SAME_SITE:None}
+
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  client-secret: ${KAKAO_CLIENT_SECRET}
+  redirect-uri: ${KAKAO_REDIRECT_URI}
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me

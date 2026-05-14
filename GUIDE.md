@@ -72,9 +72,11 @@
 ## 5. 환경 변수 관리 (.env)
 보안을 위해 모든 민감 정보는 환경 변수로 관리하며, `docker-compose.yml`과 `application.yml`에서 참조합니다.
 
-* `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`: RDS 연결 정보
+* `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DB_URL`: PostgreSQL 연결 정보
 * `REDIS_PASSWORD`: Redis 보안 접속 비밀번호
 * `KIS_APP_KEY`, `KIS_APP_SECRET`: 한국투자증권 API 키
+* `JWT_SECRET_KEY`: JWT 서명 키
+* `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`: 카카오 로그인 설정
 
 ---
 
