@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 @Service
-@Profile("local")
+@Profile({"local", "prod"})
 public class KisSmokeService {
 
     private static final DateTimeFormatter BASE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
