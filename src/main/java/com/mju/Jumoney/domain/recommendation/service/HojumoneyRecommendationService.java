@@ -15,6 +15,7 @@ import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class HojumoneyRecommendationService {
 
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 10;
@@ -70,10 +72,11 @@ public class HojumoneyRecommendationService {
         populateSortMetricValues(candidatesByStockId.values(), selection.investmentHorizon());
 
         String sortMetricKey = sortMetricKey(selection.investmentHorizon());
+        Set<String> goodSectorNames = getGoodSectorNames();
         List<HojumoneyRecommendationCandidate> eligibleCandidates = candidatesByStockId.values().stream()
                 .filter(candidate -> candidate.getIndicator() != null)
                 .filter(candidate -> candidate.getSortMetricValue() != null)
-                .sorted(candidateComparator(selection.investmentHorizon()))
+                .sorted(candidateComparator(selection.investmentHorizon(), goodSectorNames))
                 .toList();
 
         List<HojumoneyRecommendationCandidate> topCandidates = eligibleCandidates.stream()
@@ -84,7 +87,6 @@ public class HojumoneyRecommendationService {
                         .map(candidate -> candidate.getStock().getStockCode())
                         .toList()
         );
-        Set<String> goodSectorNames = getGoodSectorNames();
         List<HojumoneyRecommendationResponse.RecommendedStockResponse> recommendations = topCandidates.stream()
                 .map(candidate -> toRecommendedStockResponse(
                         candidate,
@@ -156,10 +158,14 @@ public class HojumoneyRecommendationService {
                 .forEach(candidate -> candidate.setSortMetricValue(sortMetricValue(candidate, investmentHorizon)));
     }
 
-    private Comparator<HojumoneyRecommendationCandidate> candidateComparator(SurveyLogicCode investmentHorizon) {
+    private Comparator<HojumoneyRecommendationCandidate> candidateComparator(
+            SurveyLogicCode investmentHorizon,
+            Set<String> goodSectorNames
+    ) {
         Comparator<HojumoneyRecommendationCandidate> comparator = Comparator
                 .comparingInt(HojumoneyRecommendationCandidate::matchedConditionCount)
-                .reversed();
+                .reversed()
+                .thenComparing(candidate -> hasGoodSectorMatch(candidate.getStock(), goodSectorNames), Comparator.reverseOrder());
 
         Comparator<HojumoneyRecommendationCandidate> sortMetricComparator = Comparator.comparing(
                 HojumoneyRecommendationCandidate::getSortMetricValue,
@@ -275,28 +281,40 @@ public class HojumoneyRecommendationService {
     }
 
     private Set<String> getGoodSectorNames() {
-        return realtimeRedisReader
-                .hashGet(
-                        NEWS_ANALYSIS_TODAY_KEY,
-                        GOOD_SECTORS_FIELD,
-                        new TypeReference<List<NewsSector>>() {
-                        }
-                )
-                .stream()
-                .flatMap(Collection::stream)
-                .map(NewsSector::sectorName)
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(sectorName -> !sectorName.isBlank())
-                .collect(Collectors.toSet());
+        try {
+            Set<String> goodSectorNames = realtimeRedisReader
+                    .hashGet(
+                            NEWS_ANALYSIS_TODAY_KEY,
+                            GOOD_SECTORS_FIELD,
+                            new TypeReference<List<NewsSector>>() {
+                            }
+                    )
+                    .stream()
+                    .flatMap(Collection::stream)
+                    .map(NewsSector::sectorName)
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(sectorName -> !sectorName.isBlank())
+                    .collect(Collectors.toSet());
+            log.info("[HojumoneyRecommendation] Redis 호재 섹터 조회 완료: key={}, field={}, goodSectors={}",
+                    NEWS_ANALYSIS_TODAY_KEY, GOOD_SECTORS_FIELD, goodSectorNames);
+            return goodSectorNames;
+        } catch (RuntimeException e) {
+            log.warn("[HojumoneyRecommendation] 호재 섹터 조회 실패. 뉴스 섹터 태그 없이 추천을 진행합니다.", e);
+            return Set.of();
+        }
     }
 
     private List<String> goodSectorTags(Stock stock, Set<String> goodSectorNames) {
+        return hasGoodSectorMatch(stock, goodSectorNames) ? List.of(stock.getSector().getSectorName().getDescription()) : List.of();
+    }
+
+    private boolean hasGoodSectorMatch(Stock stock, Set<String> goodSectorNames) {
         if (goodSectorNames.isEmpty()) {
-            return List.of();
+            return false;
         }
         String sectorName = stock.getSector().getSectorName().getDescription();
-        return goodSectorNames.contains(sectorName) ? List.of(sectorName) : List.of();
+        return goodSectorNames.contains(sectorName);
     }
 
     private List<SurveyLogicCode> responseTags(
