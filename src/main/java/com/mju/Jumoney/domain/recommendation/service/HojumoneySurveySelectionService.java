@@ -82,16 +82,21 @@ public class HojumoneySurveySelectionService {
     }
 
     private void validateRestrictedOptions(List<SurveyOption> selectedOptions) {
-        Set<Long> selectedOptionIds = selectedOptions.stream()
-                .map(SurveyOption::getId)
-                .collect(Collectors.toCollection(HashSet::new));
+        Map<Long, SurveyOption> selectedOptionById = selectedOptions.stream()
+                .collect(Collectors.toMap(SurveyOption::getId, Function.identity()));
+        Set<Long> selectedOptionIds = selectedOptionById.keySet();
 
-        boolean hasRestrictedSelection = surveyOptionRestrictionRepository.findBySourceOptionIdIn(selectedOptionIds).stream()
-                .map(SurveyOptionRestriction::getRestrictedOption)
-                .map(SurveyOption::getId)
-                .anyMatch(selectedOptionIds::contains);
-        if (hasRestrictedSelection) {
-            throw new CustomException(RecommendationErrorCode.RESTRICTED_SURVEY_OPTION_SELECTION);
+        for (SurveyOptionRestriction restriction : surveyOptionRestrictionRepository.findBySourceOptionIdIn(selectedOptionIds)) {
+            SurveyOption restrictedOption = restriction.getRestrictedOption();
+            if (!selectedOptionIds.contains(restrictedOption.getId())) {
+                continue;
+            }
+
+            SurveyOption sourceOption = selectedOptionById.get(restriction.getSourceOption().getId());
+            throw new CustomException(
+                    RecommendationErrorCode.RESTRICTED_SURVEY_OPTION_SELECTION,
+                    sourceOption.getContent() + "와(과) " + restrictedOption.getContent() + "은(는) 함께 선택할 수 없습니다."
+            );
         }
     }
 
