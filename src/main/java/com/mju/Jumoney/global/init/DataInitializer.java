@@ -2,11 +2,14 @@ package com.mju.Jumoney.global.init;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mju.Jumoney.domain.recommendation.domain.HojumoneyPersona;
 import com.mju.Jumoney.domain.recommendation.domain.SurveyOption;
 import com.mju.Jumoney.domain.recommendation.domain.SurveyOptionRestriction;
 import com.mju.Jumoney.domain.recommendation.domain.SurveyQuestion;
+import com.mju.Jumoney.domain.recommendation.dto.HojumoneyPersonaInitDto;
 import com.mju.Jumoney.domain.recommendation.dto.SurveyOptionInitDto;
 import com.mju.Jumoney.domain.recommendation.dto.SurveyQuestionInitDto;
+import com.mju.Jumoney.domain.recommendation.repository.HojumoneyPersonaRepository;
 import com.mju.Jumoney.domain.recommendation.repository.SurveyOptionRepository;
 import com.mju.Jumoney.domain.recommendation.repository.SurveyOptionRestrictionRepository;
 import com.mju.Jumoney.domain.recommendation.repository.SurveyQuestionRepository;
@@ -39,6 +42,7 @@ public class DataInitializer implements ApplicationRunner {
     private final SurveyQuestionRepository surveyQuestionRepository;
     private final SurveyOptionRepository surveyOptionRepository;
     private final SurveyOptionRestrictionRepository surveyOptionRestrictionRepository;
+    private final HojumoneyPersonaRepository hojumoneyPersonaRepository;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -48,6 +52,7 @@ public class DataInitializer implements ApplicationRunner {
 
         initStockData();
         initHojumoneySurveyData();
+        initHojumoneyPersonaData();
 
         log.info("[DataInitializer] 애플리케이션 초기 데이터 세팅 완료");
     }
@@ -106,12 +111,12 @@ public class DataInitializer implements ApplicationRunner {
 
         for (SurveyQuestionInitDto questionDto : questionDtos) {
             SurveyQuestion question = surveyQuestionRepository.findByQuestionType(questionDto.questionType())
-                .orElseGet(() -> surveyQuestionRepository.save(SurveyQuestion.create(
-                        questionDto.questionType(),
-                        questionDto.content(),
-                        questionDto.description(),
-                        questionDto.displayOrder()
-                )));
+                    .orElseGet(() -> surveyQuestionRepository.save(SurveyQuestion.create(
+                            questionDto.questionType(),
+                            questionDto.content(),
+                            questionDto.description(),
+                            questionDto.displayOrder()
+                    )));
             question.updateContent(questionDto.content(), questionDto.description(), questionDto.displayOrder());
 
             for (SurveyOptionInitDto optionDto : questionDto.options()) {
@@ -159,5 +164,35 @@ public class DataInitializer implements ApplicationRunner {
                 .mapToInt(List::size)
                 .sum();
         log.info(" 오늘의 호주머니 설문 문항 {}개, 선택지 {}개 초기화 완료", questionDtos.size(), optionCount);
+    }
+
+    private void initHojumoneyPersonaData() throws Exception {
+        log.info(" 오늘의 호주머니 페르소나 데이터 초기화 진행 중");
+
+        ClassPathResource resource = new ClassPathResource("data/hojumoney_persona_data.json");
+        List<HojumoneyPersonaInitDto> personaDtos = objectMapper.readValue(
+                new java.io.InputStreamReader(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8),
+                new TypeReference<List<HojumoneyPersonaInitDto>>() {
+                }
+        );
+
+        for (HojumoneyPersonaInitDto dto : personaDtos) {
+            HojumoneyPersona persona = hojumoneyPersonaRepository
+                    .findByInvestmentPurposeAndRiskProfileAndInvestmentHorizon(
+                            dto.investmentPurpose(),
+                            dto.riskProfile(),
+                            dto.investmentHorizon()
+                    )
+                    .orElseGet(() -> hojumoneyPersonaRepository.save(HojumoneyPersona.create(
+                            dto.investmentPurpose(),
+                            dto.riskProfile(),
+                            dto.investmentHorizon(),
+                            dto.personaName(),
+                            dto.personaDescription()
+                    )));
+            persona.updateContent(dto.personaName(), dto.personaDescription());
+        }
+
+        log.info(" 오늘의 호주머니 페르소나 {}개 초기화 완료", personaDtos.size());
     }
 }
