@@ -36,6 +36,9 @@ public class RecommendationStockTag {
     @JoinColumn(name = "recommendation_stock_id", nullable = false)
     private RecommendationStock recommendationStock;
 
+    @Column(name = "recommendation_stock_id", insertable = false, updatable = false)
+    private Long recommendationStockId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tag_type", nullable = false, length = 30)
     private RecommendationStockTagType tagType;

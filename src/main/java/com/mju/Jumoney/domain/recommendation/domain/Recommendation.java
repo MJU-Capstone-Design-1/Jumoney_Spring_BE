@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "recommendations",
         indexes = {
-                @Index(name = "idx_recommendation_user_created_at", columnList = "user_id,created_at")
+                @Index(name = "idx_recommendation_user_type_created_at", columnList = "user_id,recommendation_type,created_at")
         }
 )
 @Getter

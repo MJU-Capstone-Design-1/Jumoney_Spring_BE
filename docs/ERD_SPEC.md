@@ -414,8 +414,11 @@
         - 추천 타입 / recommendationType / ENUM / NOT NULL
         - 생성일시 / createdAt / TIMESTAMP / NOT NULL
         - 수정일시 / updatedAt / TIMESTAMP / NOT NULL
+    - 인덱스
+        - `(userId, recommendationType, createdAt)`
     - 비고
         - 현재 오늘의 호주머니 추천은 Redis 뉴스 분석 결과를 정렬과 태그에만 반영하며, `NewsAnalysis` FK는 저장하지 않는다.
+        - 저장된 오늘의 호주머니 추천은 로그인 사용자의 최신 결과를 조회하는 API에서 다시 재조립한다.
 
 - **`RecommendationStock`: 추천 종목 테이블 (추천 결과-종목 매핑 테이블)**
     - 관계
