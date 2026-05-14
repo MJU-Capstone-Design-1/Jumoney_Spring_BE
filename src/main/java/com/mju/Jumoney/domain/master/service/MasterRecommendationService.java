@@ -1,6 +1,5 @@
 package com.mju.Jumoney.domain.master.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.mju.Jumoney.domain.master.domain.Master;
 import com.mju.Jumoney.domain.master.domain.MasterOption;
 import com.mju.Jumoney.domain.master.dto.MasterRecommendationCandidate;
@@ -11,13 +10,12 @@ import com.mju.Jumoney.domain.master.enums.MasterOptionLogicCode;
 import com.mju.Jumoney.domain.master.repository.MasterOptionRepository;
 import com.mju.Jumoney.domain.master.repository.MasterRepository;
 import com.mju.Jumoney.domain.recommendation.exception.RecommendationErrorCode;
+import com.mju.Jumoney.domain.sector.service.GoodSectorService;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
-import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,18 +26,15 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@Slf4j
 public class MasterRecommendationService {
 
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 10;
-    private static final String NEWS_ANALYSIS_TODAY_KEY = "news:analysis:today";
-    private static final String GOOD_SECTORS_FIELD = "goodSectors";
 
     private final MasterRepository masterRepository;
     private final MasterOptionRepository masterOptionRepository;
     private final MasterRecommendationFilterService filterService;
     private final StockCurrentPriceService stockCurrentPriceService;
-    private final RealtimeRedisReader realtimeRedisReader;
+    private final GoodSectorService goodSectorService;
 
     public MasterRecommendationResponse recommend(Long masterId, MasterRecommendationRequest request) {
         Master master = masterRepository.findById(masterId)
@@ -54,7 +49,7 @@ public class MasterRecommendationService {
                 .map(MasterOption::getId)
                 .toList();
 
-        Set<String> goodSectorNames = getGoodSectorNames();
+        Set<String> goodSectorNames = goodSectorService.getTodayGoodSectorNames();
         List<MasterRecommendationCandidate> eligibleCandidates = filterService.findCandidates(
                         master.getMasterCode(),
                         logicCodes,
@@ -84,7 +79,6 @@ public class MasterRecommendationService {
                 .toList();
 
         return new MasterRecommendationResponse(
-                null,
                 master.getId(),
                 master.getMasterCode(),
                 master.getMasterName(),
@@ -127,6 +121,9 @@ public class MasterRecommendationService {
         if (needsSectorSelection && (sectorTypes == null || sectorTypes.isEmpty())) {
             throw new CustomException(RecommendationErrorCode.MISSING_MASTER_SECTOR_SELECTION);
         }
+        if (!needsSectorSelection && sectorTypes != null && !sectorTypes.isEmpty()) {
+            throw new CustomException(RecommendationErrorCode.UNSUPPORTED_MASTER_SECTOR_SELECTION);
+        }
     }
 
     private boolean requiresSectorSelection(MasterOptionLogicCode logicCode) {
@@ -139,7 +136,7 @@ public class MasterRecommendationService {
             Set<String> goodSectorNames
     ) {
         Comparator<MasterRecommendationCandidate> comparator = Comparator
-                .comparing((MasterRecommendationCandidate candidate) -> hasGoodSectorMatch(candidate.getStock(), goodSectorNames), Comparator.reverseOrder());
+                .comparing((MasterRecommendationCandidate candidate) -> goodSectorService.hasGoodSectorMatch(candidate.getStock(), goodSectorNames), Comparator.reverseOrder());
 
         Comparator<MasterRecommendationCandidate> sortMetricComparator = Comparator.comparing(
                 MasterRecommendationCandidate::getSortMetricValue,
@@ -179,50 +176,13 @@ public class MasterRecommendationService {
                 stock.getName(),
                 0,
                 List.copyOf(candidate.getMatchedOptions()),
-                goodSectorTags(stock, goodSectorNames),
+                goodSectorService.goodSectorTags(stock, goodSectorNames),
                 candidate.matchedConditionCount(),
                 sortMetricKey,
                 candidate.getSortMetricValue(),
                 currentPrice == null ? null : currentPrice.currentPrice(),
                 currentPrice == null ? null : currentPrice.changeRate()
         );
-    }
-
-    private Set<String> getGoodSectorNames() {
-        try {
-            Set<String> goodSectorNames = realtimeRedisReader
-                    .hashGet(
-                            NEWS_ANALYSIS_TODAY_KEY,
-                            GOOD_SECTORS_FIELD,
-                            new TypeReference<List<NewsSector>>() {
-                            }
-                    )
-                    .stream()
-                    .flatMap(Collection::stream)
-                    .map(NewsSector::sectorName)
-                    .filter(Objects::nonNull)
-                    .map(String::trim)
-                    .filter(sectorName -> !sectorName.isBlank())
-                    .collect(Collectors.toSet());
-            log.info("[MasterRecommendation] Redis 호재 섹터 조회 완료: key={}, field={}, goodSectors={}",
-                    NEWS_ANALYSIS_TODAY_KEY, GOOD_SECTORS_FIELD, goodSectorNames);
-            return goodSectorNames;
-        } catch (RuntimeException e) {
-            log.warn("[MasterRecommendation] 호재 섹터 조회 실패. 뉴스 섹터 태그 없이 추천을 진행합니다.", e);
-            return Set.of();
-        }
-    }
-
-    private List<String> goodSectorTags(Stock stock, Set<String> goodSectorNames) {
-        return hasGoodSectorMatch(stock, goodSectorNames) ? List.of(stock.getSector().getSectorName().name()) : List.of();
-    }
-
-    private boolean hasGoodSectorMatch(Stock stock, Set<String> goodSectorNames) {
-        if (goodSectorNames.isEmpty()) {
-            return false;
-        }
-        String sectorName = stock.getSector().getSectorName().getDescription();
-        return goodSectorNames.contains(sectorName);
     }
 
     private List<MasterRecommendationResponse.RecommendedStockResponse> rank(
@@ -248,9 +208,4 @@ public class MasterRecommendationService {
         return ranked;
     }
 
-    private record NewsSector(
-            String sectorName,
-            String reason
-    ) {
-    }
 }

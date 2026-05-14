@@ -1,7 +1,6 @@
 package com.mju.Jumoney.domain.recommendation.service;
 
 import com.mju.Jumoney.domain.master.domain.Master;
-import com.mju.Jumoney.domain.master.dto.MasterRecommendationRequest;
 import com.mju.Jumoney.domain.master.dto.MasterRecommendationResponse;
 import com.mju.Jumoney.domain.master.repository.MasterRepository;
 import com.mju.Jumoney.domain.recommendation.domain.*;
@@ -89,7 +88,6 @@ public class RecommendationSaveService {
     public Long saveMasterRecommendation(
             Long userId,
             Long masterId,
-            MasterRecommendationRequest request,
             MasterRecommendationResponse response
     ) {
         User user = userRepository.getReferenceById(userId);

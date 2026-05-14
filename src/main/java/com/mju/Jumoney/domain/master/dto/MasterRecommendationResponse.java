@@ -7,7 +7,6 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record MasterRecommendationResponse(
-        Long recommendationId,
         Long masterId,
         MasterCode masterCode,
         String masterName,
@@ -15,18 +14,6 @@ public record MasterRecommendationResponse(
         int totalCount,
         List<RecommendedStockResponse> recommendations
 ) {
-
-    public MasterRecommendationResponse withRecommendationId(Long recommendationId) {
-        return new MasterRecommendationResponse(
-                recommendationId,
-                masterId,
-                masterCode,
-                masterName,
-                selectedOptionIds,
-                totalCount,
-                recommendations
-        );
-    }
 
     public record RecommendedStockResponse(
             Long stockId,

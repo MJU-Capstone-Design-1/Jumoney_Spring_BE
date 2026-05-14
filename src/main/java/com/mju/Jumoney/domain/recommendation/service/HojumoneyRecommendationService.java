@@ -1,38 +1,32 @@
 package com.mju.Jumoney.domain.recommendation.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.mju.Jumoney.domain.recommendation.domain.HojumoneyPersona;
 import com.mju.Jumoney.domain.recommendation.dto.*;
 import com.mju.Jumoney.domain.recommendation.enums.HojumoneyRecommendationTag;
 import com.mju.Jumoney.domain.recommendation.enums.SurveyLogicCode;
 import com.mju.Jumoney.domain.recommendation.exception.RecommendationErrorCode;
 import com.mju.Jumoney.domain.recommendation.repository.HojumoneyPersonaRepository;
+import com.mju.Jumoney.domain.sector.service.GoodSectorService;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.domain.StockIndicator;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
-import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@Slf4j
 public class HojumoneyRecommendationService {
 
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 10;
-    private static final String NEWS_ANALYSIS_TODAY_KEY = "news:analysis:today";
-    private static final String GOOD_SECTORS_FIELD = "goodSectors";
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final int RATIO_SCALE = 4;
 
@@ -42,7 +36,7 @@ public class HojumoneyRecommendationService {
     private final HojumoneyPersonaRepository hojumoneyPersonaRepository;
     private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
-    private final RealtimeRedisReader realtimeRedisReader;
+    private final GoodSectorService goodSectorService;
 
     public HojumoneyRecommendationResponse recommend(HojumoneyRecommendationRequest request) {
         HojumoneySurveySelection selection = surveySelectionService.validateAndClassify(request.selectedOptionIds());
@@ -72,7 +66,7 @@ public class HojumoneyRecommendationService {
         populateSortMetricValues(candidatesByStockId.values(), selection.investmentHorizon());
 
         String sortMetricKey = sortMetricKey(selection.investmentHorizon());
-        Set<String> goodSectorNames = getGoodSectorNames();
+        Set<String> goodSectorNames = goodSectorService.getTodayGoodSectorNames();
         List<HojumoneyRecommendationCandidate> eligibleCandidates = candidatesByStockId.values().stream()
                 .filter(candidate -> candidate.getIndicator() != null)
                 .filter(candidate -> candidate.getSortMetricValue() != null)
@@ -166,7 +160,7 @@ public class HojumoneyRecommendationService {
         Comparator<HojumoneyRecommendationCandidate> comparator = Comparator
                 .comparingInt(HojumoneyRecommendationCandidate::matchedConditionCount)
                 .reversed()
-                .thenComparing(candidate -> hasGoodSectorMatch(candidate.getStock(), goodSectorNames), Comparator.reverseOrder());
+                .thenComparing(candidate -> goodSectorService.hasGoodSectorMatch(candidate.getStock(), goodSectorNames), Comparator.reverseOrder());
 
         Comparator<HojumoneyRecommendationCandidate> sortMetricComparator = Comparator.comparing(
                 HojumoneyRecommendationCandidate::getSortMetricValue,
@@ -265,7 +259,7 @@ public class HojumoneyRecommendationService {
             Set<String> goodSectorNames
     ) {
         Stock stock = candidate.getStock();
-        List<String> goodSectorTags = goodSectorTags(stock, goodSectorNames);
+        List<String> goodSectorTags = goodSectorService.goodSectorTags(stock, goodSectorNames);
         return new HojumoneyRecommendationResponse.RecommendedStockResponse(
                 stock.getId(),
                 stock.getStockCode(),
@@ -279,43 +273,6 @@ public class HojumoneyRecommendationService {
                 currentPrice == null ? null : currentPrice.currentPrice(),
                 currentPrice == null ? null : currentPrice.changeRate()
         );
-    }
-
-    private Set<String> getGoodSectorNames() {
-        try {
-            Set<String> goodSectorNames = realtimeRedisReader
-                    .hashGet(
-                            NEWS_ANALYSIS_TODAY_KEY,
-                            GOOD_SECTORS_FIELD,
-                            new TypeReference<List<NewsSector>>() {
-                            }
-                    )
-                    .stream()
-                    .flatMap(Collection::stream)
-                    .map(NewsSector::sectorName)
-                    .filter(Objects::nonNull)
-                    .map(String::trim)
-                    .filter(sectorName -> !sectorName.isBlank())
-                    .collect(Collectors.toSet());
-            log.info("[HojumoneyRecommendation] Redis 호재 섹터 조회 완료: key={}, field={}, goodSectors={}",
-                    NEWS_ANALYSIS_TODAY_KEY, GOOD_SECTORS_FIELD, goodSectorNames);
-            return goodSectorNames;
-        } catch (RuntimeException e) {
-            log.warn("[HojumoneyRecommendation] 호재 섹터 조회 실패. 뉴스 섹터 태그 없이 추천을 진행합니다.", e);
-            return Set.of();
-        }
-    }
-
-    private List<String> goodSectorTags(Stock stock, Set<String> goodSectorNames) {
-        return hasGoodSectorMatch(stock, goodSectorNames) ? List.of(stock.getSector().getSectorName().name()) : List.of();
-    }
-
-    private boolean hasGoodSectorMatch(Stock stock, Set<String> goodSectorNames) {
-        if (goodSectorNames.isEmpty()) {
-            return false;
-        }
-        String sectorName = stock.getSector().getSectorName().getDescription();
-        return goodSectorNames.contains(sectorName);
     }
 
     private List<SurveyLogicCode> responseTags(
@@ -356,9 +313,4 @@ public class HojumoneyRecommendationService {
         return ranked;
     }
 
-    private record NewsSector(
-            String sectorName,
-            String reason
-    ) {
-    }
 }

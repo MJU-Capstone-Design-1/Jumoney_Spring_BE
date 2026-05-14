@@ -5,20 +5,15 @@ import com.mju.Jumoney.domain.master.dto.MasterRecommendationResponse;
 import com.mju.Jumoney.domain.master.dto.MasterResponse;
 import com.mju.Jumoney.domain.master.service.MasterQueryService;
 import com.mju.Jumoney.domain.master.service.MasterRecommendationService;
-import com.mju.Jumoney.domain.recommendation.exception.RecommendationErrorCode;
-import com.mju.Jumoney.domain.recommendation.service.RecommendationSaveService;
-import com.mju.Jumoney.global.exception.CustomException;
-import com.mju.Jumoney.global.jwt.UserPrincipal;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "거장의 선택", description = "거장의 선택 API")
@@ -29,7 +24,6 @@ public class MasterController {
 
     private final MasterQueryService masterQueryService;
     private final MasterRecommendationService masterRecommendationService;
-    private final RecommendationSaveService recommendationSaveService;
 
     @Operation(summary = "거장 정보 및 추천 조건 조회", description = "선택한 거장의 설명과 추천 조건 버튼 목록을 조회합니다.")
     @GetMapping("/masters/{masterId}")
@@ -84,14 +78,10 @@ public class MasterController {
     @PostMapping("/masters/{masterId}/recommendations")
     public ResponseEntity<ApiResponse<MasterRecommendationResponse>> recommendMaster(
             @PathVariable Long masterId,
-            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody MasterRecommendationRequest request
     ) {
-        if (userPrincipal == null) {
-            throw new CustomException(RecommendationErrorCode.RECOMMENDATION_AUTHENTICATION_REQUIRED);
-        }
         MasterRecommendationResponse response = masterRecommendationService.recommend(masterId, request);
-        Long recommendationId = recommendationSaveService.saveMasterRecommendation(userPrincipal.userId(), masterId, request, response);
-        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response.withRecommendationId(recommendationId)));
+        // TODO: 거장의 선택 결과 히스토리/최신 조회 기능이 필요해지면 saveMasterRecommendation 호출을 다시 연결한다.
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
 }
