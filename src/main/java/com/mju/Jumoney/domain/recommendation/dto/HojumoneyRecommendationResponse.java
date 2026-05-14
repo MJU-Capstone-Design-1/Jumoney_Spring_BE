@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record HojumoneyRecommendationResponse(
+        Long recommendationId,
         SurveyLogicCode investmentPurpose,
         SurveyLogicCode riskProfile,
         SurveyLogicCode investmentHorizon,
@@ -13,6 +14,18 @@ public record HojumoneyRecommendationResponse(
         int totalCount,
         List<RecommendedStockResponse> recommendations
 ) {
+
+    public HojumoneyRecommendationResponse withRecommendationId(Long recommendationId) {
+        return new HojumoneyRecommendationResponse(
+                recommendationId,
+                investmentPurpose,
+                riskProfile,
+                investmentHorizon,
+                persona,
+                totalCount,
+                recommendations
+        );
+    }
 
     public record HojumoneyPersonaResponse(
             String personaName,

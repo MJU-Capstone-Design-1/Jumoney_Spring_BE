@@ -210,12 +210,14 @@
 
 - **`RecommendationStockTag`: 추천 종목-태그 매핑 테이블**
     - 관계
-        - **`Tag`**(N:1)
         - **`RecommendationStock`**(N:1)
     - 필드
         - **추천 종목 태그 ID / recommendationStockTagId / BIGINT / NOT NULL (PK)**
-        - **태그 ID / tagId / BIGINT / NOT NULL (FK)**
         - **추천 종목 ID / recommendationStockId / BIGINT / NOT NULL (FK)**
+        - 태그 타입 / tagType / ENUM / NOT NULL / 예: SURVEY_LOGIC, GOOD_SECTOR
+        - 태그명 / tagName / VARCHAR(100) / NOT NULL
+    - 비고
+        - `SURVEY_LOGIC` 태그는 enum 코드명이 아니라 사용자에게 표시 가능한 `SurveyLogicCode.label` 값을 저장한다.
 
 ### **거장 (Master)**
 
@@ -393,22 +395,27 @@
     - 필드
         - **호주머니 추천 ID / hojumoneyRecommendationId / BIGINT / NOT NULL (PK)**
         - **추천 ID / recommendationId / BIGINT / NOT NULL (FK)**
-        - 성향 타입 / tendencyType / ENUM / NOT NULL
+        - 투자 목적 / investmentPurpose / ENUM / NOT NULL
+        - 위험 성향 / riskProfile / ENUM / NOT NULL
+        - 투자 호흡 / investmentHorizon / ENUM / NOT NULL
         - 선택된 옵션 리스트 / selectedOptionIds / JSONB / NOT NULL / 예: [1, 3, 4]
+        - 페르소나명 / personaName / VARCHAR(100) / NOT NULL
+        - 페르소나 설명 / personaDescription / TEXT / NOT NULL
 
 - **`Recommendation`: 추천 결과 테이블**
     - 관계
         - **`User`**(N : 1)
         - **`HojumoneyRecommendation`**(1 : 1)
         - **`MasterRecommendation`**(1 : 1)
-        - **`NewsAnalysis`**(N : 1)
         - **`RecommendationStock`**(1 : N)
     - 필드
         - **추천 ID / recommendationId / BIGINT / NOT NULL (PK)**
         - **사용자 ID / userId / BIGINT / NOT NULL (FK)**
-        - **뉴스 분석 ID / newsAnalysisId / BIGINT / NULL (FK)**
         - 추천 타입 / recommendationType / ENUM / NOT NULL
         - 생성일시 / createdAt / TIMESTAMP / NOT NULL
+        - 수정일시 / updatedAt / TIMESTAMP / NOT NULL
+    - 비고
+        - 현재 오늘의 호주머니 추천은 Redis 뉴스 분석 결과를 정렬과 태그에만 반영하며, `NewsAnalysis` FK는 저장하지 않는다.
 
 - **`RecommendationStock`: 추천 종목 테이블 (추천 결과-종목 매핑 테이블)**
     - 관계
@@ -420,3 +427,8 @@
         - **추천 ID / recommendationId / BIGINT / NOT NULL (FK)**
         - **종목 ID / stockId / BIGINT  / NOT NULL (FK)**
         - 추천 순위 / rank / INTEGER / NOT NULL
+        - 만족 조건 수 / matchedConditionCount / INTEGER / NOT NULL
+        - 정렬 지표 키 / sortMetricKey / VARCHAR(50) / NOT NULL
+        - 정렬 지표 값 / sortMetricValue / DECIMAL / NULL
+        - 현재가 / currentPrice / DECIMAL / NULL
+        - 등락률 / changeRate / DECIMAL / NULL

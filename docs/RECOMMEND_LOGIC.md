@@ -64,6 +64,7 @@
 7. 두 조건을 모두 만족하는 종목을 우선 추천하고, 둘 중 하나만 만족하는 종목은 그 다음 후보로 노출한다.
 8. 추천 응답에는 만족한 조건 태그를 함께 내려준다. 예: 지표 조건과 위험 성향 조건을 모두 만족하면 태그 2개, 하나만 만족하면 해당 태그 1개.
 9. 추천 종목의 섹터가 Redis `goodSectors`에 포함된 호재 섹터이면 `goodSectorTags`에 섹터명을 내려준다.
+10. 추천 결과를 로그인 사용자 기준으로 DB에 저장하고, 응답 최상단에 저장된 `recommendationId`를 내려준다.
 
 ### 1.2.1. 추천 후보 결합 정책
 
@@ -83,7 +84,34 @@
 - `badSectors`는 현재 오늘의 호주머니 추천 정렬과 제외 정책에 반영하지 않는다.
 - 선택지 2 HTS 조건검색 결과가 0건이어도 추천은 중단하지 않는다. 이 경우 선택지 1 지표 조건 만족 종목만 `INDICATOR_MATCH` 태그로 추천 후보가 된다.
 
-### 1.2.2. 신규 상장주 및 전년 지표 결측 처리
+### 1.2.2. 추천 결과 저장 정책
+
+- 오늘의 호주머니 추천 API는 로그인 사용자를 기준으로 추천 실행 결과를 저장한다.
+- 저장된 추천 ID는 응답의 `recommendationId`로 내려준다.
+- 저장 대상은 추천 결과를 나중에 다시 보여주기 위해 필요한 스냅샷 값으로 제한한다.
+- `Recommendation`은 추천 실행 1건의 루트이며 사용자와 추천 타입(`HOJUMONEY`)을 저장한다.
+- `HojumoneyRecommendation`은 해당 추천 실행 당시의 설문 선택과 페르소나를 저장한다.
+    - `investmentPurpose`
+    - `riskProfile`
+    - `investmentHorizon`
+    - `selectedOptionIds`
+    - `personaName`
+    - `personaDescription`
+- `RecommendationStock`은 추천 종목별 결과 스냅샷을 저장한다.
+    - `stockId`
+    - `rank`
+    - `matchedConditionCount`
+    - `sortMetricKey`
+    - `sortMetricValue`
+    - `currentPrice`
+    - `changeRate`
+- `RecommendationStockTag`는 추천 종목에 붙은 태그를 저장한다.
+    - 설문 조건 만족 태그: `SURVEY_LOGIC`, `SurveyLogicCode.label` 값 저장
+    - 호재 섹터 태그: `GOOD_SECTOR`
+- 추천 계산은 read-only 트랜잭션으로 수행하고, 저장은 별도 write 트랜잭션에서 수행한다.
+- 뉴스 분석 데이터는 현재 Redis에서 조회해 추천 정렬과 태그에만 반영한다. 별도 `NewsAnalysis` DB 엔티티가 구현되기 전까지 추천 결과에는 뉴스 분석 FK를 저장하지 않는다.
+
+### 1.2.3. 신규 상장주 및 전년 지표 결측 처리
 
 - 신규 상장주처럼 전년도 재무 데이터가 없는 종목도 `StockIndicator` 배치 적재 대상에 포함한다.
 - `lastYearEps`, `lastYearSales`는 전년도 데이터가 없을 수 있으므로 `NULL`을 허용한다.

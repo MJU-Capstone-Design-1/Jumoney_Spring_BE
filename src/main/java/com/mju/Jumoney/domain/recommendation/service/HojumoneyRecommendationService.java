@@ -99,6 +99,7 @@ public class HojumoneyRecommendationService {
                 .toList();
 
         return new HojumoneyRecommendationResponse(
+                null,
                 selection.investmentPurpose(),
                 selection.riskProfile(),
                 selection.investmentHorizon(),
