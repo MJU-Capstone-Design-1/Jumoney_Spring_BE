@@ -33,12 +33,11 @@
 4.  **사용자 전송**: 프론트엔드로의 실시간 시세 푸시는 `Node.js`가 전담하며, `Spring Boot`는 REST API 응답에 집중합니다.
 
 ### 🌐 인프라 구성
-* **Nginx (Gateway)**: 포트 80/443 요청을 받아 `/api`는 Spring(8080)으로, 기타 경로는 Node(3000)로 분기합니다.
-* **Swap Memory**: EC2 1GB RAM 부족을 해결하기 위해 **2GB Swap 파일**을 활성화했습니다.
-* **Internal DB**: AWS RDS 비용 절감을 위해 **EC2 내부 Docker 컨테이너로 PostgreSQL과 Redis를 직접 구축**하여 운영합니다.
-* **Local Realtime Feed Access**: 로컬 Spring 개발 환경은 SSH 터널로 EC2 내부 Redis를 `localhost:16379` 등에 포워딩해 Node 서버가 적재한 실시간 데이터를 읽을 수 있습니다. 앱 내부 캐시 Redis와 실시간 피드 Redis는 설정과 코드에서 역할을 분리합니다.
-  - 예시 터널: `ssh -i <pem-path> -L 16379:127.0.0.1:6379 <user>@<ec2-host>`
-  - 로컬 환경 변수 예시: `REALTIME_REDIS_HOST=localhost`, `REALTIME_REDIS_PORT=16379`, `REALTIME_REDIS_PASSWORD=<redis-password>`
+* **Nginx (Gateway)**: 요청 경로에 따라 Spring Boot API 서버와 Node.js 실시간 서버로 분기합니다.
+* **Swap Memory**: EC2 1GB RAM 부족을 완화하기 위해 Swap 파일(2GB)을 활성화했습니다.
+* **Internal DB**: AWS RDS 비용 절감을 위해 EC2 내부 Docker 컨테이너로 PostgreSQL과 Redis를 직접 구축하여 운영합니다.
+* **Local Realtime Feed Access**: 로컬 Spring 개발 환경은 보안 터널을 통해 EC2 내부 Redis의 실시간 데이터를 읽을 수 있습니다. 앱 내부 캐시 Redis와 실시간 피드 Redis는 설정과 코드에서 역할을 분리합니다.
+  - 로컬 환경 변수 예시: `REALTIME_REDIS_HOST=<local-forward-host>`, `REALTIME_REDIS_PORT=<local-forward-port>`, `REALTIME_REDIS_PASSWORD=<redis-password>`
   - 로컬 검증 API: `/api/local/realtime-redis/value`, `/api/local/realtime-redis/hash`, `/api/local/realtime-redis/zset`
 
 ---
@@ -72,9 +71,20 @@
 ## 5. 환경 변수 관리 (.env)
 보안을 위해 모든 민감 정보는 환경 변수로 관리하며, `docker-compose.yml`과 `application.yml`에서 참조합니다.
 
-* `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`: RDS 연결 정보
-* `REDIS_PASSWORD`: Redis 보안 접속 비밀번호
+* `SPRING_PROFILES_ACTIVE`: 실행 프로필 (`local` 또는 `prod`)
+* `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DB_URL`: PostgreSQL 연결 정보
+* `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis 접속 정보
+* `REALTIME_REDIS_HOST`, `REALTIME_REDIS_PORT`, `REALTIME_REDIS_PASSWORD`: Node 서버가 적재한 실시간 Redis 데이터 조회용 접속 정보
 * `KIS_APP_KEY`, `KIS_APP_SECRET`: 한국투자증권 API 키
+* `JWT_SECRET_KEY`: JWT 서명 키
+* `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`: 카카오 로그인 설정
+* `SPRING_JPA_HIBERNATE_DDL_AUTO`: 초기 연동 단계에서는 `update`, 데이터 보존 단계에서는 Flyway 도입 후 `validate` 권장
+
+### 프로필과 배포
+- `local`: 로컬 개발용 프로필입니다. JPA `ddl-auto=update`, SQL 로그 출력, 로컬 PostgreSQL/Redis를 기본으로 사용합니다.
+- `prod`: EC2 운영용 프로필입니다. 환경 변수 기반 DB/Redis/KIS/Kakao 설정을 사용하며, 운영 쿠키는 기본적으로 `Secure`와 `SameSite=None`을 사용합니다.
+- EC2 프리티어에서는 Gradle/Docker 빌드가 메모리 부족을 유발할 수 있으므로 Spring 이미지는 로컬 PC 또는 CI에서 빌드해 Container Registry에 push하고, EC2에서는 pull만 수행합니다.
+- 운영 DB 스키마는 현재 초기 연동 단계에서 `ddl-auto=update`를 허용하지만, 보존해야 하는 데이터가 생기면 Flyway 마이그레이션으로 전환합니다.
 
 ---
 
