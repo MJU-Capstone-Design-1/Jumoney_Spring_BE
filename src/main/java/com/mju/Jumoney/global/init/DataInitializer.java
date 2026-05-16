@@ -2,6 +2,12 @@ package com.mju.Jumoney.global.init;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mju.Jumoney.domain.master.domain.Master;
+import com.mju.Jumoney.domain.master.domain.MasterOption;
+import com.mju.Jumoney.domain.master.dto.MasterInitDto;
+import com.mju.Jumoney.domain.master.dto.MasterOptionInitDto;
+import com.mju.Jumoney.domain.master.repository.MasterOptionRepository;
+import com.mju.Jumoney.domain.master.repository.MasterRepository;
 import com.mju.Jumoney.domain.recommendation.domain.HojumoneyPersona;
 import com.mju.Jumoney.domain.recommendation.domain.SurveyOption;
 import com.mju.Jumoney.domain.recommendation.domain.SurveyOptionRestriction;
@@ -41,6 +47,8 @@ public class DataInitializer implements ApplicationRunner {
     private final SurveyOptionRepository surveyOptionRepository;
     private final SurveyOptionRestrictionRepository surveyOptionRestrictionRepository;
     private final HojumoneyPersonaRepository hojumoneyPersonaRepository;
+    private final MasterRepository masterRepository;
+    private final MasterOptionRepository masterOptionRepository;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -51,6 +59,8 @@ public class DataInitializer implements ApplicationRunner {
         initStockData();
         initHojumoneySurveyData();
         initHojumoneyPersonaData();
+        initMasterData();
+        initMasterOptionData();
 
         log.info("[DataInitializer] 애플리케이션 초기 데이터 세팅 완료");
     }
@@ -211,5 +221,69 @@ public class DataInitializer implements ApplicationRunner {
         }
 
         log.info(" 오늘의 호주머니 페르소나 {}개 초기화 완료", personaDtos.size());
+    }
+
+    private void initMasterData() throws Exception {
+        log.info(" 거장의 선택 거장 데이터 초기화 진행 중");
+
+        ClassPathResource resource = new ClassPathResource("data/master_data.json");
+        List<MasterInitDto> masterDtos = objectMapper.readValue(
+                new java.io.InputStreamReader(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8),
+                new TypeReference<List<MasterInitDto>>() {
+                }
+        );
+
+        for (MasterInitDto dto : masterDtos) {
+            masterRepository.findByMasterName(dto.masterName())
+                    .ifPresentOrElse(
+                            existingMaster -> existingMaster.updateContent(
+                                    dto.masterName(),
+                                    dto.recommendationDescription(),
+                                    dto.displayOrder()
+                            ),
+                            () -> masterRepository.save(Master.create(
+                                    dto.masterName(),
+                                    dto.recommendationDescription(),
+                                    dto.displayOrder()
+                            ))
+                    );
+        }
+
+        log.info(" 거장의 선택 거장 {}명 초기화 완료", masterDtos.size());
+    }
+
+    private void initMasterOptionData() throws Exception {
+        log.info(" 거장의 선택 옵션 데이터 초기화 진행 중");
+
+        ClassPathResource resource = new ClassPathResource("data/master_option_data.json");
+        List<MasterOptionInitDto> optionDtos = objectMapper.readValue(
+                new java.io.InputStreamReader(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8),
+                new TypeReference<List<MasterOptionInitDto>>() {
+                }
+        );
+
+        for (MasterOptionInitDto dto : optionDtos) {
+            Master master = masterRepository.findByMasterName(dto.masterName())
+                    .orElseThrow(() -> new IllegalStateException("거장 선택지 초기화 실패: masterName=" + dto.masterName()));
+
+            masterOptionRepository.findByLogicCode(dto.logicCode())
+                    .ifPresentOrElse(
+                            existingOption -> existingOption.updateContent(
+                                    master,
+                                    dto.content(),
+                                    dto.description(),
+                                    dto.displayOrder()
+                            ),
+                            () -> masterOptionRepository.save(MasterOption.create(
+                                    master,
+                                    dto.content(),
+                                    dto.description(),
+                                    dto.logicCode(),
+                                    dto.displayOrder()
+                            ))
+                    );
+        }
+
+        log.info(" 거장의 선택 옵션 {}개 초기화 완료", optionDtos.size());
     }
 }

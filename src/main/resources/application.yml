@@ -12,6 +12,8 @@ kis:
   url: "https://openapi.koreainvestment.com:9443"
   appkey: ${KIS_APP_KEY}
   appsecret: ${KIS_APP_SECRET}
+  smoke:
+    admin-key: ${KIS_SMOKE_ADMIN_KEY:}
   rate-limit:
     min-interval-millis: 250
   retry:

@@ -1,0 +1,142 @@
+[
+  {
+    "masterName": "워런 버핏",
+    "content": "ROE 15% 이상",
+    "description": "워런 버핏이 가장 중시하는 투자 지표예요. 버핏은 연 15% 이상의 자기자본이익률(ROE)를 꾸준히 유지하며 자본을 효율적으로 굴리는 기업에 투자해 왔어요.",
+    "logicCode": "BUFFETT_ROE",
+    "displayOrder": 1
+  },
+  {
+    "masterName": "워런 버핏",
+    "content": "PER 0배 초과 15배 이하",
+    "description": "워런 버핏은 일반적으로 주가수익비율(PER)이 낮은 저평가된 우량주를 선호해요. 기업이 벌어들이는 순이익 대비 주가가 낮은 가치주를 찾을 수 있어요.",
+    "logicCode": "BUFFETT_PER",
+    "displayOrder": 2
+  },
+  {
+    "masterName": "워런 버핏",
+    "content": "EPS 성장률 10% 이상",
+    "description": "워런 버핏은 기업의 장기적인 가치는 EPS 증가 추세로 짐작할 수 있다고 언급했어요. 주당순이익(EPS) 자체보다는 EPS 증가율을 중요하게 생각하여, 지속적인 실적 증가가 나타나는 기업을 선호해요.",
+    "logicCode": "BUFFETT_EPS_GROWTH",
+    "displayOrder": 3
+  },
+  {
+    "masterName": "워런 버핏",
+    "content": "부채비율 100% 이하",
+    "description": "워런 버핏은 위기 상황에서도 흔들리지 않는 재무적 안정성을 중시하여 부채비율이 낮은 탄탄한 기업을 선호해요.",
+    "logicCode": "BUFFETT_DEBT_RATIO",
+    "displayOrder": 4
+  },
+  {
+    "masterName": "워런 버핏",
+    "content": "영업이익률 20% 이상",
+    "description": "워런 버핏은 높은 영업이익률을 기록하는 기업을 경제적 해자를 가진 우량주로 평가해요.",
+    "logicCode": "BUFFETT_OPERATING_MARGIN",
+    "displayOrder": 5
+  },
+  {
+    "masterName": "피터 린치",
+    "content": "PEG 1.0 이하",
+    "description": "피터 린치가 대중화시킨 지표로, 성장주 투자의 핵심 지표예요. 주가수익비율(PER)이 이익 성장률보다 낮아, 회사가 성장하는 속도에 비해 주가가 낮은 저평가된 성장주를 찾을 수 있어요.",
+    "logicCode": "LYNCH_PEG",
+    "displayOrder": 1
+  },
+  {
+    "masterName": "피터 린치",
+    "content": "EPS 성장률 20% ~ 50%",
+    "description": "피터 린치는 매년 수익이 20% 이상 성장하는 고성장주를 선호해요. 다만, 50% 이상의 지나친 고성장은 과열로 간주하여 주의를 당부했어요.",
+    "logicCode": "LYNCH_EPS_GROWTH",
+    "displayOrder": 2
+  },
+  {
+    "masterName": "피터 린치",
+    "content": "부채비율 100% 이하",
+    "description": "피터 린치는 재무 건전성도 중시하여 성장이 가파르더라도 높은 부채를 가진 기업은 위험하다고 판단했어요. 내실 있는 성장을 이어갈 수 있는 탄탄한 재무 구조를 가진 기업을 선호해요.",
+    "logicCode": "LYNCH_DEBT_RATIO",
+    "displayOrder": 3
+  },
+  {
+    "masterName": "피터 린치",
+    "content": "매출액 증가율 10% 이상",
+    "description": "피터 린치는 재고가 쌓이는 것보다 실제로 물건이 잘 팔려 매출이 많이 발생하는 것을 중요하게 여겼어요. 단순히 비용을 줄여서 만든 일시적인 이익이 아니라, 매출이 꾸준히 늘어나는 기업을 선호해요.",
+    "logicCode": "LYNCH_SALES_GROWTH",
+    "displayOrder": 4
+  },
+  {
+    "masterName": "피터 린치",
+    "content": "섹터 선택",
+    "description": "\"아는 것에 투자하라.\"는 피터 린치의 핵심적인 투자 철학이에요. 내가 평소에 자주 소비하고 잘 아는 친숙한 산업군에서 성장 기업을 찾아보세요.",
+    "logicCode": "LYNCH_SECTOR",
+    "displayOrder": 5
+  },
+  {
+    "masterName": "레이 달리오",
+    "content": "올웨더 포트폴리오 (섹터 분산)",
+    "description": "레이 달리오의 핵심 철학 ‘올웨더 포트폴리오’는 상관관계가 낮은 자산에 분산 투자하는 방식이에요. 서로 다르게 움직이는 4가지 섹터에 고르게 분산 투자하여 계좌를 안전하게 지킬 수 있어요.",
+    "logicCode": "DALIO_ALL_WEATHER",
+    "displayOrder": 1
+  },
+  {
+    "masterName": "레이 달리오",
+    "content": "PER 20배 이하",
+    "description": "레이 달리오는 주가가 지나치게 높은지 판단하기 위해 거품 지표를 사용해요. 이익 대비 주가가 과도하게 비싸지 않은 거품 없는 종목을 선별해요.",
+    "logicCode": "DALIO_PER",
+    "displayOrder": 2
+  },
+  {
+    "masterName": "레이 달리오",
+    "content": "신용잔고율 5% 이하",
+    "description": "레이 달리오는 투자자들이 빚을 내서 매입하고 있는 종목을 거품이라고 판단하고 경계해요.",
+    "logicCode": "DALIO_MARGIN_DEBT",
+    "displayOrder": 3
+  },
+  {
+    "masterName": "레이 달리오",
+    "content": "부채비율 50% 이하",
+    "description": "레이 달리오는 장기적인 부채 사이클의 안정성을 매우 중시해요. 빚이 자본의 절반 이하인 탄탄한 기업을 선별하여 경제 불황에서도 안전한지 확인해요.",
+    "logicCode": "DALIO_DEBT_RATIO",
+    "displayOrder": 4
+  },
+  {
+    "masterName": "레이 달리오",
+    "content": "이익수익률 3.38(현 국고채 3년물) 이상",
+    "description": "레이 달리오는 \"현금은 쓰레기다\"라는 말을 하며 인플레이션을 경계했어요. 안전한 국고채 3년물 금리보다 기업의 이익수익률이 높은 종목을 찾아볼게요.",
+    "logicCode": "DALIO_EARNINGS_YIELD",
+    "displayOrder": 5
+  },
+  {
+    "masterName": "윌리엄 오닐",
+    "content": "EPS 성장률 25% 이상",
+    "description": "CAN SLIM의 C(최근 분기 이익)와 A(연간 이익)에 해당하는 투자 지표예요. 오닐은 주당순이익(EPS)이 전년 대비 25% 이상 꾸준히 증가하며 확실한 성장성을 보여주는 우량주를 선별해요.",
+    "logicCode": "ONEIL_EPS_GROWTH",
+    "displayOrder": 1
+  },
+  {
+    "masterName": "윌리엄 오닐",
+    "content": "ROE 17% 이상",
+    "description": "CAN SLIM의 A(연간 이익)를 뒷받침하는 투자 지표예요. 오닐은 시장을 주도하는 종목이 평균적으로 17% 이상의 자기자본이익률(ROE)을 기록했다고 분석했어요.",
+    "logicCode": "ONEIL_ROE",
+    "displayOrder": 2
+  },
+  {
+    "masterName": "윌리엄 오닐",
+    "content": "52주 신고가 갱신 또는 10% 근접",
+    "description": "CAN SLIM의 N(신고가)에 해당하는 투자 지표예요. 52주 최고가를 넘어서거나 근접하여 상승 추세를 타기 시작한 종목을 선별해요.",
+    "logicCode": "ONEIL_HIGH_52_WEEK",
+    "displayOrder": 3
+  },
+  {
+    "masterName": "윌리엄 오닐",
+    "content": "대장주 여부",
+    "description": "CAN SLIM의 L(주도주)에 해당하는 투자 지표예요. 섹터 내에서 시장의 트랜드를 이끄는 대장주에 투자해요.",
+    "logicCode": "ONEIL_MARKET_LEADER",
+    "displayOrder": 4
+  },
+  {
+    "masterName": "윌리엄 오닐",
+    "content": "최근 20거래일 기관 순매수 합계 0 이상",
+    "description": "CAN SLIM의 I(기관의 수급)에 해당하는 투자 지표예요. 주가가 크게 상승하기 위해서는 펀드나 연기금과 같은 기관의 자금 유입이 필요해요. 최근 20거래일 동안 기관 투자자들이 매도보다 매수를 더 많이 한 종목을 선별해요.",
+    "logicCode": "ONEIL_INST_NET_BUY",
+    "displayOrder": 5
+  }
+]

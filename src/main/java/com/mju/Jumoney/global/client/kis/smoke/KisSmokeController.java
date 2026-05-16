@@ -13,32 +13,43 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
 
-@Tag(name = "Local KIS Smoke", description = "local 프로필 전용 KIS API 호출 검증")
+@Tag(name = "KIS Smoke", description = "KIS API 호출 검증 및 배치 수동 실행")
 @RestController
-@Profile("local")
+@Profile({"local", "prod"})
 @RequiredArgsConstructor
 @RequestMapping("/api/local/kis")
 public class KisSmokeController {
 
     private final KisSmokeService kisSmokeService;
+    private final Environment environment;
 
     @Value("${kis.hts.user-id:}")
     private String configuredHtsUserId;
 
+    @Value("${kis.smoke.admin-key:}")
+    private String configuredAdminKey;
+
     @Operation(
             summary = "KIS API 호출 검증",
-            description = "local 프로필에서만 활성화됩니다. 입력 종목 코드로 현재까지 연동된 KIS REST API를 순차 호출하고 각 API의 성공 여부와 샘플 응답을 반환합니다."
+            description = "입력 종목 코드로 현재까지 연동된 KIS REST API를 순차 호출하고 각 API의 성공 여부와 샘플 응답을 반환합니다. prod 프로필에서는 adminKey가 필요합니다."
     )
     @GetMapping("/smoke")
     public ResponseEntity<ApiResponse<KisSmokeResponse>> smoke(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "종목 코드", example = "005930")
             @RequestParam(defaultValue = "005930") String stockCode,
 
@@ -54,6 +65,8 @@ public class KisSmokeController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dividendTo
     ) {
+        validateAdminKey(adminKey);
+
         LocalDate resolvedBaseDate = baseDate == null ? LocalDate.now().minusDays(1) : baseDate;
         LocalDate resolvedDividendTo = dividendTo == null ? LocalDate.now() : dividendTo;
         LocalDate resolvedDividendFrom = dividendFrom == null ? resolvedDividendTo.minusYears(1) : dividendFrom;
@@ -70,13 +83,17 @@ public class KisSmokeController {
 
     @Operation(
             summary = "HTS 조건검색 목록조회 검증",
-            description = "local 프로필에서만 활성화됩니다. HTS에 서버저장된 조건명과 seq 목록을 조회합니다."
+            description = "HTS에 서버저장된 조건명과 seq 목록을 조회합니다. prod 프로필에서는 adminKey가 필요합니다."
     )
     @GetMapping("/hts/titles")
     public ResponseEntity<ApiResponse<List<KisHtsConditionTitleOutput>>> htsConditionTitles(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "HTS ID. 생략 시 kis.hts.user-id 설정값 사용")
             @RequestParam(required = false) String userId
     ) {
+        validateAdminKey(adminKey);
         String resolvedUserId = resolveHtsUserId(userId);
         List<KisHtsConditionTitleOutput> response = kisSmokeService.getHtsConditionTitles(resolvedUserId);
 
@@ -85,16 +102,20 @@ public class KisSmokeController {
 
     @Operation(
             summary = "HTS 조건검색 결과조회 검증",
-            description = "local 프로필에서만 활성화됩니다. HTS 조건 seq로 종목검색 결과를 조회합니다. DB에는 저장하지 않습니다."
+            description = "HTS 조건 seq로 종목검색 결과를 조회합니다. DB에는 저장하지 않습니다. prod 프로필에서는 adminKey가 필요합니다."
     )
     @GetMapping("/hts/results")
     public ResponseEntity<ApiResponse<List<KisHtsConditionResultOutput>>> htsConditionResults(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "조건 seq", example = "0")
             @RequestParam String seq,
 
             @Parameter(description = "HTS ID. 생략 시 kis.hts.user-id 설정값 사용")
             @RequestParam(required = false) String userId
     ) {
+        validateAdminKey(adminKey);
         String resolvedUserId = resolveHtsUserId(userId);
         List<KisHtsConditionResultOutput> response = kisSmokeService.getHtsConditionResults(resolvedUserId, seq);
 
@@ -103,15 +124,19 @@ public class KisSmokeController {
 
     @Operation(
             summary = "HTS 조건검색 배치 수동 실행",
-            description = "local 프로필에서만 활성화됩니다. 설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다. "
+            description = "설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다. prod 프로필에서는 adminKey가 필요합니다. "
                     + "수동 실행은 요청한 baseDate를 그대로 사용하며, 생략 시 오늘 날짜를 사용합니다. 정기 스케줄은 직전 평일 기준으로 실행됩니다."
     )
     @PostMapping("/batch/hts-conditions")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runHtsConditionBatch(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "저장 기준일. 생략 시 오늘 날짜. 예시는 문서 생성일 기준 전날로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
+        validateAdminKey(adminKey);
         BatchJobRunResponse response = kisSmokeService.runHtsConditionBatch(resolveBaseDate(baseDate));
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
@@ -119,17 +144,21 @@ public class KisSmokeController {
 
     @Operation(
             summary = "종목 지표 배치 수동 실행",
-            description = "local 프로필에서만 활성화됩니다. Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다. "
+            description = "Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다. prod 프로필에서는 adminKey가 필요합니다. "
                     + "수동 실행은 요청한 baseDate를 그대로 사용하며, 정기 스케줄처럼 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다. "
                     + "단, 오늘 기준 실행은 KIS 투자자매매동향 일별 API 제한 때문에 15:40 이후에만 가능합니다. "
                     + "정기 스케줄은 직전 평일 기준으로 실행됩니다."
     )
     @PostMapping("/batch/stock-indicators")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runStockIndicatorBatch(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "지표 기준일. 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다. 예시는 문서 생성일 기준 전날로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
+        validateAdminKey(adminKey);
         BatchJobRunResponse response = kisSmokeService.runStockIndicatorBatch(resolveBaseDate(baseDate));
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
@@ -137,15 +166,19 @@ public class KisSmokeController {
 
     @Operation(
             summary = "종목 지표 배치 적재 상태 확인",
-            description = "local 프로필에서만 활성화됩니다. 기준일이 속한 기준월(baseTime=yyyyMM)의 stock_indicators 적재 건수, "
-                    + "누락 종목, 필수 컬럼 null 건수를 조회합니다. baseDate 생략 시 오늘 날짜 기준월을 사용합니다."
+            description = "기준일이 속한 기준월(baseTime=yyyyMM)의 stock_indicators 적재 건수, "
+                    + "누락 종목, 필수 컬럼 null 건수를 조회합니다. baseDate 생략 시 오늘 날짜 기준월을 사용합니다. prod 프로필에서는 adminKey가 필요합니다."
     )
     @GetMapping("/batch/stock-indicators/status")
     public ResponseEntity<ApiResponse<StockIndicatorBatchStatusResponse>> getStockIndicatorBatchStatus(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "확인 기준일. 생략 시 오늘 날짜. 예시는 문서 생성일 기준 전날로 표시됩니다.")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate baseDate
     ) {
+        validateAdminKey(adminKey);
         StockIndicatorBatchStatusResponse response = kisSmokeService.getStockIndicatorBatchStatus(resolveBaseDate(baseDate));
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
@@ -163,6 +196,18 @@ public class KisSmokeController {
 
     private LocalDate resolveBaseDate(LocalDate baseDate) {
         return baseDate == null ? LocalDate.now() : baseDate;
+    }
+
+    private void validateAdminKey(String adminKey) {
+        if (!environment.acceptsProfiles(Profiles.of("prod"))) {
+            return;
+        }
+        if (!StringUtils.hasText(configuredAdminKey)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "KIS smoke admin key is not configured.");
+        }
+        if (!configuredAdminKey.equals(adminKey)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid KIS smoke admin key.");
+        }
     }
 
 }

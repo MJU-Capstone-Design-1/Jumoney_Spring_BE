@@ -18,10 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Recommendation", description = "추천 API")
+@Tag(name = "오늘의 호주머니", description = "오늘의 호주머니 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/recommendations")
+@RequestMapping("/api/hojumoney")
 public class HojumoneyRecommendationController {
 
     private final HojumoneyRecommendationService hojumoneyRecommendationService;
@@ -29,7 +29,7 @@ public class HojumoneyRecommendationController {
     private final RecommendationSaveService recommendationSaveService;
 
     @Operation(summary = "오늘의 호주머니 추천", description = "설문 선택지 ID 3개를 기반으로 오늘의 호주머니 추천을 수행하여 추천 종목을 조회합니다.")
-    @PostMapping("/hojumoney")
+    @PostMapping("/recommendations")
     public ResponseEntity<ApiResponse<HojumoneyRecommendationResponse>> recommend(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody HojumoneyRecommendationRequest request
@@ -43,7 +43,7 @@ public class HojumoneyRecommendationController {
     }
 
     @Operation(summary = "오늘의 호주머니 추천 결과 조회", description = "로그인 사용자의 가장 최근 오늘의 호주머니 추천 결과를 조회합니다.")
-    @GetMapping("/hojumoney/latest")
+    @GetMapping("/recommendations/latest")
     public ResponseEntity<ApiResponse<HojumoneyRecommendationResponse>> getLatest(
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {

@@ -38,6 +38,15 @@ public interface StockIndicatorRepository extends JpaRepository<StockIndicator, 
     Optional<String> findLatestBaseTime();
 
     @Query("""
+            select si
+            from StockIndicator si
+            join fetch si.stock s
+            join fetch s.sector
+            where si.baseTime = :baseTime
+            """)
+    List<StockIndicator> findByBaseTimeWithStockAndSector(@Param("baseTime") String baseTime);
+
+    @Query("""
             select si.stock.id
             from StockIndicator si
             where si.baseTime = :baseTime

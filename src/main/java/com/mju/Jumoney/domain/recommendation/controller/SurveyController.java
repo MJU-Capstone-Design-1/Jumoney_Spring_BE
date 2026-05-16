@@ -12,16 +12,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Survey", description = "설문 API")
+@Tag(name = "오늘의 호주머니", description = "오늘의 호주머니 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/surveys")
+@RequestMapping("/api/hojumoney")
 public class SurveyController {
 
     private final SurveyService surveyService;
 
     @Operation(summary = "오늘의 호주머니 설문 조회", description = "오늘의 호주머니 추천에 필요한 설문 문항과 선택지를 표시 순서대로 조회합니다.")
-    @GetMapping("/hojumoney")
+    @GetMapping("/survey")
     public ResponseEntity<ApiResponse<HojumoneySurveyResponse>> getHojumoneySurvey() {
         HojumoneySurveyResponse response = surveyService.getHojumoneySurvey();
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
