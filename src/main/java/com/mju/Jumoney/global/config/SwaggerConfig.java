@@ -23,8 +23,6 @@ public class SwaggerConfig {
                 .type(SecurityScheme.Type.HTTP)
                 .scheme("bearer")
                 .bearerFormat("JWT")
-                .in(SecurityScheme.In.HEADER)
-                .name("Authorization")
                 .description("발급받은 Access Token을 입력해주세요.");
 
         // 전역 보안 요구사항 설정
