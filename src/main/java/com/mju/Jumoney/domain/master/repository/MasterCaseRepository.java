@@ -7,8 +7,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface MasterCaseRepository extends JpaRepository<MasterCase, Long> {
+
+    Optional<MasterCase> findFirstByMasterIdOrderByIdAsc(Long masterId);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""

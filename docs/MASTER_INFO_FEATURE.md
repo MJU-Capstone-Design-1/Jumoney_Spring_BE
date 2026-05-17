@@ -131,7 +131,7 @@
 
 - **목적**: 포트폴리오 탭의 분야별 차트와 투자 기업 비율 차트를 조회한다.
 - **Endpoint**: `GET /api/master/masters/{masterId}/portfolio/chart`
-- **상태**: 신규 구현 필요
+- **상태**: 구현 완료
 - **사용 테이블**: `Master`, `MasterPortfolioStock`
 
 ### Response Data
@@ -170,7 +170,7 @@
 
 - **목적**: 포트폴리오 설명 영역의 대표 투자 사례와 주식 리스트를 조회한다.
 - **Endpoint**: `GET /api/master/masters/{masterId}/portfolio/description`
-- **상태**: 신규 구현 필요
+- **상태**: 구현 완료
 - **사용 테이블**: `MasterCase`, `MasterPortfolioStock`
 
 ### Response Data
@@ -210,13 +210,13 @@
 
 1. `GET /api/master/masters` - 구현 완료
 2. `GET /api/master/masters/{masterId}/detail` - 구현 완료
-3. `POST /api/master/masters/{masterId}/selection`
-4. `GET /api/master/masters/{masterId}/portfolio/chart`
-5. `GET /api/master/masters/{masterId}/portfolio/description`
+3. `POST /api/master/masters/{masterId}/selection` - 구현 완료
+4. `GET /api/master/masters/{masterId}/portfolio/chart` - 구현 완료
+5. `GET /api/master/masters/{masterId}/portfolio/description` - 구현 완료
 
 ## 현재 코드와의 차이
 
 - 현재 구현된 `GET /api/master-choice/masters/{masterId}`는 거장의 추천 조건 조회 API에 가깝다.
 - 현재 구현된 `POST /api/master-choice/masters/{masterId}/recommendations`는 거장의 선택 추천 API이며, 사용자의 팀 선택 API와 별도 기능이다.
 - 목록 조회와 상세정보 조회는 `/api/master`에 구현되어 있다.
-- 팀 선택, 포트폴리오 차트 조회, 포트폴리오 설명 조회는 아직 컨트롤러/서비스/DTO 구현이 필요하다.
+- 팀 선택, 포트폴리오 차트 조회, 포트폴리오 설명 조회는 `/api/master`에 구현되어 있다.
