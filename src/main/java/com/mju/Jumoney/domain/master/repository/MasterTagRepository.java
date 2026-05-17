@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface MasterTagRepository extends JpaRepository<MasterTag, Long> {
 
@@ -16,4 +17,13 @@ public interface MasterTagRepository extends JpaRepository<MasterTag, Long> {
             where masterTag.master.id in :masterIds
             """)
     void deleteByMasterIdIn(@Param("masterIds") Collection<Long> masterIds);
+
+    @Query("""
+            select masterTag
+            from MasterTag masterTag
+            join fetch masterTag.tag
+            where masterTag.master.id in :masterIds
+            order by masterTag.id asc
+            """)
+    List<MasterTag> findByMasterIdInWithTag(@Param("masterIds") Collection<Long> masterIds);
 }

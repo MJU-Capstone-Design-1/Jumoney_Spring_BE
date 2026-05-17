@@ -1,5 +1,6 @@
 package com.mju.Jumoney.domain.user.domain;
 
+import com.mju.Jumoney.domain.master.domain.Master;
 import com.mju.Jumoney.domain.user.enums.AuthProvider;
 import com.mju.Jumoney.domain.user.enums.Role;
 import com.mju.Jumoney.global.common.BaseSoftDeleteEntity;
@@ -50,9 +51,17 @@ public class User extends BaseSoftDeleteEntity {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "selected_master_id")
+    private Master selectedMaster;
+
     // ========== 비즈니스 메서드 ==========
     public void updateServiceNickname(String serviceNickname) {
         this.serviceNickname = serviceNickname;
+    }
+
+    public void updateSelectedMaster(Master selectedMaster) {
+        this.selectedMaster = selectedMaster;
     }
 
     // OAuth2 로그인용 정적 팩토리 메서드

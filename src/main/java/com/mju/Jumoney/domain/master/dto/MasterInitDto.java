@@ -7,7 +7,6 @@ public record MasterInitDto(
         String masterName,
         String quote,
         String imageFileName,
-        String returnRate,
         String portfolioBasePeriod,
         String philosophyTitle,
         String philosophyDescription,

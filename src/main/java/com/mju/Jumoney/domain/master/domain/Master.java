@@ -36,9 +36,6 @@ public class Master {
     @Column(name = "image_file_name", length = 200)
     private String imageFileName;
 
-    @Column(name = "return_rate", length = 100)
-    private String returnRate;
-
     @Column(name = "portfolio_base_period", nullable = false, length = 50)
     private String portfolioBasePeriod;
 
@@ -63,7 +60,6 @@ public class Master {
             String masterName,
             String quote,
             String imageFileName,
-            String returnRate,
             String portfolioBasePeriod,
             String philosophyTitle,
             String philosophyDescription,
@@ -75,7 +71,6 @@ public class Master {
                 .masterName(masterName)
                 .quote(quote)
                 .imageFileName(imageFileName)
-                .returnRate(returnRate)
                 .portfolioBasePeriod(portfolioBasePeriod)
                 .philosophyTitle(philosophyTitle)
                 .philosophyDescription(philosophyDescription)
@@ -89,7 +84,6 @@ public class Master {
             String masterName,
             String quote,
             String imageFileName,
-            String returnRate,
             String portfolioBasePeriod,
             String philosophyTitle,
             String philosophyDescription,
@@ -100,7 +94,6 @@ public class Master {
         this.masterName = masterName;
         this.quote = quote;
         this.imageFileName = imageFileName;
-        this.returnRate = returnRate;
         this.portfolioBasePeriod = portfolioBasePeriod;
         this.philosophyTitle = philosophyTitle;
         this.philosophyDescription = philosophyDescription;

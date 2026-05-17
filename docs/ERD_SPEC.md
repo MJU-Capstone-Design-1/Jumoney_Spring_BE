@@ -236,7 +236,6 @@
         - 거장 이름 / masterName / VARCHAR(50) / NOT NULL
         - 명언 / quote / VARCHAR(200) /  NULL
         - 이미지 파일 명 / imageFileName / VARCHAR(200) / NULL
-        - 수익률 표시 문구 / returnRate / VARCHAR(100) / NULL
         - 포트폴리오 기준일 / portfolioBasePeriod / VARCHAR(50) / NOT NULL
         - 철학 제목 / philosophyTitle / VARCHAR(100) / NOT NULL
         - 철학 설명 / philosophyDescription / TEXT / NOT NULL

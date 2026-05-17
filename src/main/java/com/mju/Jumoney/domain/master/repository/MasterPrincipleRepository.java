@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface MasterPrincipleRepository extends JpaRepository<MasterPrinciple, Long> {
 
@@ -16,4 +17,6 @@ public interface MasterPrincipleRepository extends JpaRepository<MasterPrinciple
             where masterPrinciple.master.id in :masterIds
             """)
     void deleteByMasterIdIn(@Param("masterIds") Collection<Long> masterIds);
+
+    List<MasterPrinciple> findByMasterIdOrderByIdAsc(Long masterId);
 }

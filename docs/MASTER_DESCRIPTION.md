@@ -11,33 +11,28 @@
 | `masterCode` | String | Y | 거장 식별 코드 |
 | `masterName` | String | Y | 거장 이름 |
 | `tags` | Array<String> | Y | 거장 성향 태그 |
-| `returnRate` | String | N | 과거 또는 연평균 수익률 표시 문구 |
 
 ```json
 [
   {
     "masterCode": "WARREN_BUFFETT",
     "masterName": "워런 버핏",
-    "tags": ["가치 투자", "경제적 해자"],
-    "returnRate": "연평균 약 20%"
+    "tags": ["가치 투자", "경제적 해자"]
   },
   {
     "masterCode": "PETER_LYNCH",
     "masterName": "피터 린치",
-    "tags": ["성장주 투자", "생활 속 발견"],
-    "returnRate": "마젤란 펀드 연평균 약 29%"
+    "tags": ["성장주 투자", "생활 속 발견"]
   },
   {
     "masterCode": "RAY_DALIO",
     "masterName": "레이 달리오",
-    "tags": ["거시 투자", "올웨더 포트폴리오"],
-    "returnRate": "연평균 약 7-9%"
+    "tags": ["거시 투자", "올웨더 포트폴리오"]
   },
   {
     "masterCode": "WILLIAM_ONEIL",
     "masterName": "윌리엄 오닐",
-    "tags": ["모멘텀 투자", "CAN SLIM 전략"],
-    "returnRate": "과거 25년간 약 40배 수익"
+    "tags": ["모멘텀 투자", "CAN SLIM 전략"]
   }
 ]
 ```
@@ -66,7 +61,7 @@
     "tags": ["가치 투자", "경제적 해자"],
     "quote": "규칙 1: 절대 돈을 잃지 마라. 규칙 2: 규칙 1을 잊지 마라.",
     "philosophy": {
-      "title": "우량 기업을 장기 보유",
+      "title": "우량 기업 장기 보유",
       "description": "단순히 숫자만 보고 사고팔지 말고, 장기적으로 함께할 수 있는 훌륭한 기업에 투자해요."
     },
     "principles": [
@@ -191,7 +186,6 @@
 | --- | --- | --- | --- |
 | `masterCode` | String | Y | 거장 식별 코드 |
 | `masterName` | String | Y | 거장 이름 |
-| `returnRate` | String | N | 과거 또는 연평균 수익률 |
 | `basePeriod` | String | Y | 포트폴리오 기준 기간 |
 | `sectorChart` | Array | Y | 섹터별 자산 배분 비중 |
 | `sectorChart[].sector` | String | Y | 산업 섹터 명칭 |
@@ -205,7 +199,6 @@
   {
     "masterCode": "WARREN_BUFFETT",
     "masterName": "워런 버핏",
-    "returnRate": "연평균 약 20%",
     "basePeriod": "2025년 4분기 기준",
     "sectorChart": [
       { "sector": "정보기술", "weight": 22.6 },
@@ -226,7 +219,6 @@
   {
     "masterCode": "PETER_LYNCH",
     "masterName": "피터 린치",
-    "returnRate": "마젤란 펀드 연평균 약 29%",
     "basePeriod": "1988년 4분기 기준",
     "sectorChart": [
       { "sector": "필수소비재", "weight": 8.0 },
@@ -246,7 +238,6 @@
   {
     "masterCode": "RAY_DALIO",
     "masterName": "레이 달리오",
-    "returnRate": "연평균 약 7-9%",
     "basePeriod": "2025년 4분기 기준",
     "sectorChart": [
       { "sector": "ETF/지수", "weight": 27.2 },
@@ -267,7 +258,6 @@
   {
     "masterCode": "WILLIAM_ONEIL",
     "masterName": "윌리엄 오닐",
-    "returnRate": "과거 25년간 약 40배 수익",
     "basePeriod": "2025년 4분기 기준",
     "sectorChart": [
       { "sector": "자유소비재", "weight": 15.7 },
