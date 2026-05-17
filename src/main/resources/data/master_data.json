@@ -2,25 +2,49 @@
   {
     "masterCode": "WARREN_BUFFETT",
     "masterName": "워런 버핏",
+    "quote": "규칙 1: 절대 돈을 잃지 마라. 규칙 2: 규칙 1을 잊지 마라.",
+    "imageFileName": null,
+    "returnRate": "연평균 약 20%",
+    "portfolioBasePeriod": "2025년 4분기 기준",
+    "philosophyTitle": "우량 기업을 장기 보유",
+    "philosophyDescription": "단순히 숫자만 보고 사고팔지 말고, 장기적으로 함께할 수 있는 훌륭한 기업에 투자해요.",
     "recommendationDescription": "가치 투자의 거장 워런 버핏이 도서와 인터뷰 등을 통해 언급한 핵심 투자 지표예요. 원하시는 조건을 선택하시면, 워런 버핏이 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
     "displayOrder": 1
   },
   {
     "masterCode": "PETER_LYNCH",
     "masterName": "피터 린치",
+    "quote": "약간의 신경만 쓴다면 직장이나 동네 쇼핑몰에서 월스트리트 전문가들보다 훨씬 앞서 굉장한 종목을 가질 수 있다.",
+    "imageFileName": null,
+    "returnRate": "마젤란 펀드 연평균 약 29%",
+    "portfolioBasePeriod": "1988년 4분기 기준",
+    "philosophyTitle": "아는 것에 투자하라",
+    "philosophyDescription": "내가 평소에 자주 소비하고 좋다고 느끼는 제품을 만드는 회사에 투자해요.",
     "recommendationDescription": "성장주 투자의 거장 피터 린치가 도서와 인터뷰 등을 통해 언급한 핵심 투자 지표예요. 원하시는 조건을 선택하시면, 피터 린치가 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
     "displayOrder": 2
   },
   {
     "masterCode": "RAY_DALIO",
     "masterName": "레이 달리오",
+    "quote": "분산투자는 투자에서 가장 중요한 원칙이다.",
+    "imageFileName": null,
+    "returnRate": "연평균 약 7-9%",
+    "portfolioBasePeriod": "2025년 4분기 기준",
+    "philosophyTitle": "올웨더(All-Weather) 포트폴리오",
+    "philosophyDescription": "앞으로 경제가 좋아질지 나빠질지 맞추려 하지 말고, 어떤 상황이든 내 자산을 안전하게 지킬 수 있는 시스템을 만들어요.",
     "recommendationDescription": "거시 투자의 거장 레이 달리오의 투자 원칙을 재해석하여 지표를 구성했어요. 원하시는 조건을 선택하시면, 레이 달리오가 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
     "displayOrder": 3
   },
   {
     "masterCode": "WILLIAM_ONEIL",
     "masterName": "윌리엄 오닐",
-    "recommendationDescription": "모멘텀 투자의 거장 윌리엄 오닐의 ‘CAN SLIM’ 전략으로 투자 지표를 구성했어요. 원하시는 조건을 선택하시면, 윌리엄 오닐이 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
+    "quote": "가장 큰 실수는 이미 하락한 주식을 더 싸게 사려고 하는 것이다. 비싸게 사서 더 비싸게 팔아라.",
+    "imageFileName": null,
+    "returnRate": "과거 25년간 약 40배 수익",
+    "portfolioBasePeriod": "2025년 4분기 기준",
+    "philosophyTitle": "CAN SLIM 전략",
+    "philosophyDescription": "과거 100년간 큰 수익을 낸 주도주들을 분석하여 탄생한 전략으로, 최고의 주식을 최적의 타이밍에 매수해요.",
+    "recommendationDescription": "모멘텀 투자의 거장 윌리엄 오닐의 'CAN SLIM' 전략으로 투자 지표를 구성했어요. 원하시는 조건을 선택하시면, 윌리엄 오닐이 현재 한국 시장에서 어떤 종목에 투자할지 찾아 드릴게요.",
     "displayOrder": 4
   }
 ]
