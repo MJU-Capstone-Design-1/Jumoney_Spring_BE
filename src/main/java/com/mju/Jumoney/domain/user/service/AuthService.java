@@ -99,8 +99,7 @@ public class AuthService {
         }
 
         // 유저 존재 여부 검증
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+        User user = findUserById(userId);
 
         // 새로운 Access, Refresh Token 생성 (RTR)
         String role = user.getRole().name();
@@ -142,5 +141,11 @@ public class AuthService {
                 "userId", user.getId(),
                 "nickname", user.getNickname()
         );
+    }
+
+    // ========== 조회 메서드 ==========
+    private User findUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
     }
 }

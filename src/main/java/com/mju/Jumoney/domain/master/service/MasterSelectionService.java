@@ -22,10 +22,8 @@ public class MasterSelectionService {
 
     @Transactional
     public MasterSelectionResponse selectMaster(Long userId, Long masterId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
-        Master master = masterRepository.findById(masterId)
-                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
+        User user = findUserById(userId);
+        Master master = findMasterById(masterId);
 
         user.updateSelectedMaster(master);
 
@@ -34,5 +32,16 @@ public class MasterSelectionService {
                 master.getMasterCode(),
                 master.getMasterName()
         );
+    }
+
+    // ========== 조회 메서드 ==========
+    private User findUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    }
+
+    private Master findMasterById(Long masterId) {
+        return masterRepository.findById(masterId)
+                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
     }
 }

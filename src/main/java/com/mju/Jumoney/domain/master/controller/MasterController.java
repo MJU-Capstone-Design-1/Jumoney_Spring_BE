@@ -48,13 +48,17 @@ public class MasterController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long masterId
     ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                masterSelectionService.selectMaster(getAuthenticatedUserId(userPrincipal), masterId)
+        ));
+    }
+
+    // ========== 인증 메서드 ==========
+    private Long getAuthenticatedUserId(UserPrincipal userPrincipal) {
         if (userPrincipal == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
-
-        return ResponseEntity.ok(ApiResponse.success(
-                SuccessCode.OK,
-                masterSelectionService.selectMaster(userPrincipal.userId(), masterId)
-        ));
+        return userPrincipal.userId();
     }
 }

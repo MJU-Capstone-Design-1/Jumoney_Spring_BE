@@ -37,8 +37,7 @@ public class MasterRecommendationService {
     private final GoodSectorService goodSectorService;
 
     public MasterRecommendationResponse recommend(Long masterId, MasterRecommendationRequest request) {
-        Master master = masterRepository.findById(masterId)
-                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
+        Master master = findMasterById(masterId);
         List<MasterOption> selectedOptions = resolveSelectedOptions(master, request.selectedOptionIds());
         validateSectorSelection(selectedOptions, request.sectorTypes());
 
@@ -208,4 +207,9 @@ public class MasterRecommendationService {
         return ranked;
     }
 
+    // ========== 조회 메서드 ==========
+    private Master findMasterById(Long masterId) {
+        return masterRepository.findById(masterId)
+                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
+    }
 }

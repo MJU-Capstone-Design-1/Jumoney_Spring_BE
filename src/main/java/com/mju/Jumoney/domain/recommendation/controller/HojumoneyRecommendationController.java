@@ -34,11 +34,12 @@ public class HojumoneyRecommendationController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody HojumoneyRecommendationRequest request
     ) {
-        if (userPrincipal == null) {
-            throw new CustomException(RecommendationErrorCode.RECOMMENDATION_AUTHENTICATION_REQUIRED);
-        }
         HojumoneyRecommendationResponse response = hojumoneyRecommendationService.recommend(request);
-        Long recommendationId = recommendationSaveService.saveHojumoneyRecommendation(userPrincipal.userId(), request, response);
+        Long recommendationId = recommendationSaveService.saveHojumoneyRecommendation(
+                getAuthenticatedUserId(userPrincipal),
+                request,
+                response
+        );
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response.withRecommendationId(recommendationId)));
     }
 
@@ -47,10 +48,17 @@ public class HojumoneyRecommendationController {
     public ResponseEntity<ApiResponse<HojumoneyRecommendationResponse>> getLatest(
             @AuthenticationPrincipal UserPrincipal userPrincipal
     ) {
+        HojumoneyRecommendationResponse response = hojumoneyRecommendationQueryService.getLatestRecommendation(
+                getAuthenticatedUserId(userPrincipal)
+        );
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    // ========== 인증 메서드 ==========
+    private Long getAuthenticatedUserId(UserPrincipal userPrincipal) {
         if (userPrincipal == null) {
             throw new CustomException(RecommendationErrorCode.RECOMMENDATION_AUTHENTICATION_REQUIRED);
         }
-        HojumoneyRecommendationResponse response = hojumoneyRecommendationQueryService.getLatestRecommendation(userPrincipal.userId());
-        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+        return userPrincipal.userId();
     }
 }

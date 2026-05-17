@@ -55,8 +55,7 @@ public class MasterQueryService {
     }
 
     public MasterDetailResponse getMasterDetail(Long masterId) {
-        Master master = masterRepository.findById(masterId)
-                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
+        Master master = findMasterById(masterId);
 
         List<String> tags = masterTagRepository.findByMasterIdInWithTag(List.of(masterId)).stream()
                 .map(masterTag -> masterTag.getTag().getTagName())
@@ -80,8 +79,7 @@ public class MasterQueryService {
     }
 
     public MasterResponse getMaster(Long masterId) {
-        Master master = masterRepository.findById(masterId)
-                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
+        Master master = findMasterById(masterId);
 
         return MasterResponse.of(
                 master,
@@ -95,5 +93,11 @@ public class MasterQueryService {
                 principle.getDescription(),
                 principle.getDetails() == null ? List.of() : List.copyOf(principle.getDetails())
         );
+    }
+
+    // ========== 조회 메서드 ==========
+    private Master findMasterById(Long masterId) {
+        return masterRepository.findById(masterId)
+                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
     }
 }
