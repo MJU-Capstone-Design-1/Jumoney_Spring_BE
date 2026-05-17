@@ -45,8 +45,6 @@ export const labelMappings = {
   STEEL_MATERIALS: "철강/소재",
   CONSTRUCTION_UTILITY: "건설/유틸리티",
   ESSENTIAL_CONSUMER: "필수소비재",
-
-  KOSPI: "코스피"
 } as const;
 
 export const recommendationTagLabels = {
@@ -60,6 +58,46 @@ export const recommendationTagLabels = {
   PROFIT_PURSUIT: "위험도 높음",
   AGGRESSIVE: "위험도 매우 높음",
 } as const;
+
+export const masterCodeLabels = {
+  WARREN_BUFFETT: "워런 버핏",
+  PETER_LYNCH: "피터 린치",
+  RAY_DALIO: "레이 달리오",
+  WILLIAM_ONEIL: "윌리엄 오닐",
+} as const;
+
+export const masterOptionLabels = {
+  BUFFETT_ROE: "ROE 15% 이상",
+  BUFFETT_PER: "PER 0배 초과 15배 이하",
+  BUFFETT_EPS_GROWTH: "EPS 성장률 10% 이상",
+  BUFFETT_DEBT_RATIO: "부채비율 100% 이하",
+  BUFFETT_OPERATING_MARGIN: "영업이익률 20% 이상",
+
+  LYNCH_PEG: "PEG 1.0 이하",
+  LYNCH_EPS_GROWTH: "EPS 성장률 20% 이상 50% 이하",
+  LYNCH_DEBT_RATIO: "부채비율 100% 이하",
+  LYNCH_SALES_GROWTH: "매출액 증가율 10% 이상",
+  LYNCH_SECTOR: "섹터 선택",
+
+  DALIO_ALL_WEATHER: "올웨더 포트폴리오",
+  DALIO_PER: "PER 20배 이하",
+  DALIO_MARGIN_DEBT: "신용잔고율 5% 이하",
+  DALIO_DEBT_RATIO: "부채비율 50% 이하",
+  DALIO_EARNINGS_YIELD: "이익수익률 3.38% 이상",
+
+  ONEIL_EPS_GROWTH: "EPS 성장률 25% 이상",
+  ONEIL_ROE: "ROE 17% 이상",
+  ONEIL_HIGH_52_WEEK: "52주 신고가 갱신 또는 10% 근접",
+  ONEIL_MARKET_LEADER: "대장주 여부",
+  ONEIL_INST_NET_BUY: "최근 20거래일 기관 순매수 합계 0 이상",
+} as const;
+
+export const masterSortMetricLabels = {
+  ROE: "ROE",
+  PEG: "PEG",
+  MARKET_CAP: "시가총액",
+  HIGH_52_WEEK_RATE: "52주 신고가 대비 현재가 비율",
+} as const;
 ```
 
 ## 오늘의 호주머니 추천 응답 key
@@ -70,3 +108,7 @@ export const recommendationTagLabels = {
 - `recommendations[].tags`: 투자 목적 또는 위험 감수 성향 key
 - `recommendations[].goodSectorTags`: `SectorType` key
 - `recommendations[].sortMetricKey`: `EXECUTION_STRENGTH`, `ACCUMULATED_TRADE_AMOUNT`, `EPS_GROWTH_RATE`, `ROE`
+- `masterCode`: `WARREN_BUFFETT`, `PETER_LYNCH`, `RAY_DALIO`, `WILLIAM_ONEIL`
+- `MasterRecommendationResponse.recommendations[].tags`: `MasterOptionLogicCode` key
+- `MasterRecommendationResponse.recommendations[].sortMetricKey`: `ROE`, `PEG`, `MARKET_CAP`, `HIGH_52_WEEK_RATE`
+- `MasterResponse.sectorOptions[].sectorType`, `MasterRecommendationResponse.recommendations[].goodSectorTags`: `SectorType` key

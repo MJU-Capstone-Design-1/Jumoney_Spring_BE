@@ -236,6 +236,7 @@
         - 거장 이름 / masterName / VARCHAR(50) / NOT NULL
         - 명언 / quote / VARCHAR(200) /  NULL
         - 이미지 파일 명 / imageFileName / VARCHAR(200) / NULL
+        - 수익률 표시 문구 / returnRate / VARCHAR(100) / NULL
         - 포트폴리오 기준일 / portfolioBasePeriod / VARCHAR(50) / NOT NULL
         - 철학 제목 / philosophyTitle / VARCHAR(100) / NOT NULL
         - 철학 설명 / philosophyDescription / TEXT / NOT NULL
@@ -243,12 +244,13 @@
 
 - **`MasterPrinciple`: 거장 원칙 테이블**
     - 관계
-        - **`MasterPhilosophy`**(N:1)
+        - **`Master`**(N:1)
     - 필드
         - **거장 원칙 ID / masterPrincipleId / BIGINT / NOT NULL (PK)**
         - **거장 ID / masterId / BIGINT / NOT NULL (FK)**
         - 원칙 제목 / title / VARCHAR(100) / NOT NULL
         - 원칙 설명 / description / TEXT / NOT NULL
+        - 원칙 보조 설명 목록 / details / JSONB / NULL
 
 - **`MasterCase`: 거장 투자 사례 테이블**
     - 관계
@@ -265,10 +267,10 @@
 
 - **`MasterPortfolioStock`: 거장 포트폴리오 종목 테이블**
     - 관계
-        - **`MasterPortfolio`**(N:1)
+        - **`Master`**(N:1)
     - 필드
         - **거장 포트폴리오 종목 ID / masterPortfolioStockId / BIGINT / NOT NULL (PK)**
-        - **포트폴리오 ID / masterPortfolioId / BIGINT / NOT NULL (FK)**
+        - **거장 ID / masterId / BIGINT / NOT NULL (FK)**
         - 종목명 / stockName / VARCHAR(50) / NOT NULL
         - 섹터 / sector / VARCHAR(50) / NOT NULL
         - 투자 비중 / weight / DECIMAL / NOT NULL
