@@ -2,11 +2,6 @@
 
 본 문서는 홈(Main) 화면에 노출되는 4가지 핵심 기능의 비즈니스 로직과 API/DB 연동 명세를 정의합니다.
 
-## AI Assistant Context
-- 시스템의 복잡도를 낮추기 위해 과도한 캐싱(Redis)을 지양하고 **DB 중심의 아키텍처**를 구성한다.
-- 랭킹 시스템은 실시간이 아닌 **1시간 단위 Spring Scheduler 배치**를 통해 `UserRanking` DB 테이블을 갱신하는 방식을 사용한다.
-- 실시간 웹소켓 데이터(Node.js 담당)는 Spring Boot 연동 명세에서 제외하며, Spring Boot는 철저히 DB(`StockPrice`)에 적재된 데이터를 가공하여 응답한다.
-
 ---
 
 ## 1. 실시간 뉴스 (Real-time News)

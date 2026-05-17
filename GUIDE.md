@@ -48,14 +48,14 @@
 
 ### ✅ 비즈니스 로직
 - `docs/` 폴더 내 도메인별 기능 명세서(.md) 참고
-  - `HOME_FEATURE.md` (홈/랭킹)
-  - `STOCK_TERM_FEATURE.md` (주식 용어)
-  - `MASTER_INFO_FEATURE.md` (투자 거장 소개)
-  - `MOCK_INVESTMENT_FEATURE.md` (모의투자/주문)
-  - `STOCK_DETAIL_FEATURE.md` (기업 상세/차트)
+  - `docs/features/home/HOME_FEATURE.md` (홈/랭킹)
+  - `docs/features/stock/STOCK_TERM_FEATURE.md` (주식 용어)
+  - `docs/features/master/MASTER_INFO_FEATURE.md` (투자 거장 소개)
+  - `docs/features/mock-investment/MOCK_INVESTMENT_FEATURE.md` (모의투자/주문)
+  - `docs/features/stock/STOCK_DETAIL_FEATURE.md` (기업 상세/차트)
 
 ### ✅ 종목 추천 알고리즘
-- `docs/RECOMMEND_LOGIC.md` 참고
+- `docs/features/recommendation/RECOMMEND_LOGIC.md` 참고
 - 오늘의 호주머니: 뉴스 분석(llm) + 설문 기반 지표 필터링
 - 거장의 선택: 뉴스 분석(llm) + 거장별 투자 지표 필터링
 

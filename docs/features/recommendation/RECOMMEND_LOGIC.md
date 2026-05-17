@@ -2,14 +2,6 @@
 
 본 문서는 '오늘의 호주머니'와 '거장의 선택' 추천 알고리즘 및 KIS API 연동 필드 매핑을 정의합니다.
 
-## AI Assistant Context
-
-- AI는 본 문서를 바탕으로 QueryDSL 동적 쿼리 및 Batch 스케줄링 로직을 구현해야 한다.
-- 각 지표별로 매핑된 KIS API의 `tr_id`와 응답 데이터 필드명을 정확히 인지하고 DB 엔티티 및 DTO에 반영하라.
-- 초단기 데이터인 `체결강도`는 종목 지표 배치가 `FHKST01010300`의 `tday_rltv`를 읽어 `StockIndicator.executionStrength`에 직전 확정값으로 저장한다.
-- 추천 API는 체결강도 정렬 시 DB 확정값을 사용하며, 사용자 요청 중 `FHKST01010300` REST fallback을 호출하지 않는다.
-- 무거운 HTS 조건검색 및 재무지표 필터링은 Batch Job을 통해 사전에 DB(`StockIndicator`)에 적재된 데이터를 조회하는 방식으로 성능을 최적화한다.
-
 ---
 
 ## 1. 오늘의 호주머니

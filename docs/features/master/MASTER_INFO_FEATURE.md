@@ -4,21 +4,6 @@
 
 현재 구현된 거장의 선택 추천 API와 별개로, 피그마 화면 기준으로 필요한 거장 도메인 API를 최신화한다.
 
-## AI Assistant Context
-
-1. **화면 단위 API 분리**
-    - 거장 목록, 상세 정보, 선택 결과, 포트폴리오 차트, 포트폴리오 설명을 각각 분리한다.
-    - 화면에서 동시에 필요하지 않은 큰 컬렉션을 한 응답에 몰아넣지 않는다.
-2. **N+1 쿼리 방지**
-    - `Master`, `MasterTag`, `MasterPrinciple`, `MasterCase`, `MasterPortfolioStock`을 한 번에 다중 fetch join하지 않는다.
-    - 컬렉션은 API 목적별로 분리 조회하거나 batch fetch를 활용한다.
-3. **포트폴리오 차트 가공**
-    - 분야별 차트는 `MasterPortfolioStock` 목록을 조회한 뒤 애플리케이션 레벨에서 `sector` 기준으로 그룹화하고 `weight`를 합산한다.
-    - DB `GROUP BY`는 필수는 아니며, 포트폴리오 종목 수가 작다는 전제에서는 Java Stream 가공을 우선한다.
-4. **응답 래핑**
-    - 모든 응답은 공통 `ApiResponse<T>` 형태를 따른다.
-    - 예: `{ "success": true, "code": "...", "message": "...", "data": ... }`
-
 ---
 
 ## 1. 거장 목록 조회 API

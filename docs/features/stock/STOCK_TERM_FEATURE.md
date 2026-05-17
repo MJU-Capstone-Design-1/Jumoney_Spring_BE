@@ -2,11 +2,6 @@
 
 본 문서는 주식 용어 사전의 핵심 기능(조회, 스크랩, 학습 기록)에 대한 비즈니스 로직을 정의합니다.
 
-## AI Assistant Context (개발 원칙)
-1. **개인화 데이터 분리**: `StockTerm`은 정적인 마스터 데이터이다. 유저별 '스크랩'과 '읽음(학습)' 상태는 반드시 별도의 매핑 테이블(`StockTermScrap`, `StockTermLearning`)을 참조하여 처리하라.
-2. **신규 테이블 생성**: 유저의 용어 학습 여부를 기록하기 위해 아래 구조의 테이블을 엔티티로 추가하라.
-    - **`StockTermLearning`**: (PK) learningId, (FK) userId, (FK) termId, (DateTime) createdAt
-
 ---
 
 ## 1. 카테고리별 용어 리스트 조회

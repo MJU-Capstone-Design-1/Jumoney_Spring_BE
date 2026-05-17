@@ -1,12 +1,6 @@
 # Mock Investment Feature Specification
 
 본 문서는 모의투자 기능의 비즈니스 로직을 정의합니다.
-
-## AI Assistant Context (개발 원칙)
-1. **시드머니 지급**: 모든 자산의 흐름(초기 지급, 매수, 매도)은 `Order` 테이블에 기록되어야 한다. 이를 위해 `Order` 테이블의 `stockId` 필드는 Nullable로 설정한다.
-2. **실시간 시세 캐싱 (Cache-Aside 패턴)**: Spring Boot는 KIS 웹소켓 API(`H0STCNT0`)를 직접 호출하지 않는다(Node.js 전담). 종목 시세가 필요할 때 먼저 Redis를 조회하고, 데이터가 없을 경우에만 DB 조회하여 Redis에 적재 및 응답한다.
-3. **시장가 체결 원칙**: 모든 매매 주문은 호출 시점의 실시간 현재가를 체결가(`executionPrice`)로 간주하여 즉시 처리한다. (별도의 미체결/지정가 로직 없음)
-4. **트랜잭션 원자성**: 주문 생성, 포트폴리오 업데이트, 계좌 잔액 변경은 반드시 하나의 `@Transactional` 블록 내에서 처리되어야 한다.
 ---
 
 ## 1. 시드머니 지급
