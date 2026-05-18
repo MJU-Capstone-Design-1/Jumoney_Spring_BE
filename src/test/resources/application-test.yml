@@ -1,0 +1,42 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+
+realtime:
+  redis:
+    password: ""
+
+kis:
+  appkey: test-app-key
+  appsecret: test-app-secret
+  smoke:
+    admin-key: test-admin-key
+  hts:
+    user-id: test-user
+  batch:
+    stock-indicator:
+      enabled: false
+    hts-condition:
+      enabled: false
+
+jwt:
+  secret-key: dGVzdC1zZWNyZXQta2V5LXRlc3Qtc2VjcmV0LWtleS10ZXN0LXNlY3JldC1rZXk=
+  access-token-validity: 3600000
+  refresh-token-validity: 1209600000
+  cookie-secure: false
+  cookie-same-site: Lax
+
+kakao:
+  client-id: test-client-id
+  client-secret: test-client-secret
+  redirect-uri: http://localhost/test/callback
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me
