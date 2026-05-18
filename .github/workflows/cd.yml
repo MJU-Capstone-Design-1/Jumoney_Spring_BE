@@ -48,14 +48,14 @@ jobs:
             ${{ steps.meta.outputs.image_name }}:latest
             ${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.image_tag }}
 
-      - name: Upload app compose file
+      - name: Upload compose file
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT }}
-          source: docker-compose.app.yml
+          source: docker-compose.yml
           target: ${{ env.DEPLOY_DIR }}
 
       - name: Deploy to EC2
@@ -87,8 +87,6 @@ jobs:
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           JWT_COOKIE_SECURE: ${{ secrets.JWT_COOKIE_SECURE }}
           JWT_COOKIE_SAME_SITE: ${{ secrets.JWT_COOKIE_SAME_SITE }}
-          JWT_ACCESS_TOKEN_VALIDITY: ${{ secrets.JWT_ACCESS_TOKEN_VALIDITY }}
-          JWT_REFRESH_TOKEN_VALIDITY: ${{ secrets.JWT_REFRESH_TOKEN_VALIDITY }}
           KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
           KAKAO_REDIRECT_URI: ${{ secrets.KAKAO_REDIRECT_URI }}
@@ -99,7 +97,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: ${{ secrets.EC2_PORT }}
-          envs: IMAGE_NAME,IMAGE_TAG,APP_NAME,DEPLOY_DIR,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,SPRING_PROFILES_ACTIVE,SPRING_JPA_HIBERNATE_DDL_AUTO,SPRING_BATCH_JDBC_INITIALIZE_SCHEMA,DB_URL,POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,REDIS_HOST,REDIS_PORT,REDIS_PASSWORD,REALTIME_REDIS_HOST,REALTIME_REDIS_PORT,REALTIME_REDIS_PASSWORD,KIS_APP_KEY,KIS_APP_SECRET,KIS_SMOKE_ADMIN_KEY,KIS_HTS_USER_ID,JWT_SECRET_KEY,JWT_COOKIE_SECURE,JWT_COOKIE_SAME_SITE,JWT_ACCESS_TOKEN_VALIDITY,JWT_REFRESH_TOKEN_VALIDITY,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,KAKAO_REDIRECT_URI,KIS_STOCK_INDICATOR_SCHEDULER_ENABLED,KIS_HTS_CONDITION_SCHEDULER_ENABLED
+          envs: IMAGE_NAME,IMAGE_TAG,APP_NAME,DEPLOY_DIR,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,SPRING_PROFILES_ACTIVE,SPRING_JPA_HIBERNATE_DDL_AUTO,SPRING_BATCH_JDBC_INITIALIZE_SCHEMA,DB_URL,POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,REDIS_HOST,REDIS_PORT,REDIS_PASSWORD,REALTIME_REDIS_HOST,REALTIME_REDIS_PORT,REALTIME_REDIS_PASSWORD,KIS_APP_KEY,KIS_APP_SECRET,KIS_SMOKE_ADMIN_KEY,KIS_HTS_USER_ID,JWT_SECRET_KEY,JWT_COOKIE_SECURE,JWT_COOKIE_SAME_SITE,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,KAKAO_REDIRECT_URI,KIS_STOCK_INDICATOR_SCHEDULER_ENABLED,KIS_HTS_CONDITION_SCHEDULER_ENABLED
           script: |
             set -eu
 
@@ -129,8 +127,6 @@ jobs:
             JWT_SECRET_KEY=${JWT_SECRET_KEY}
             JWT_COOKIE_SECURE=${JWT_COOKIE_SECURE}
             JWT_COOKIE_SAME_SITE=${JWT_COOKIE_SAME_SITE}
-            JWT_ACCESS_TOKEN_VALIDITY=${JWT_ACCESS_TOKEN_VALIDITY}
-            JWT_REFRESH_TOKEN_VALIDITY=${JWT_REFRESH_TOKEN_VALIDITY}
             KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
             KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
             KAKAO_REDIRECT_URI=${KAKAO_REDIRECT_URI}
@@ -141,6 +137,6 @@ jobs:
             echo "${DOCKERHUB_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
 
             cd "${DEPLOY_DIR}"
-            docker compose -f docker-compose.app.yml pull
-            docker compose -f docker-compose.app.yml up -d
+            docker compose -f docker-compose.yml pull app
+            docker compose -f docker-compose.yml up -d --force-recreate app
             docker image prune -f
