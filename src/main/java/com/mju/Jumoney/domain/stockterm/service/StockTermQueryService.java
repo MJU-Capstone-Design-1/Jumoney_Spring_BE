@@ -2,6 +2,8 @@ package com.mju.Jumoney.domain.stockterm.service;
 
 import com.mju.Jumoney.domain.stockterm.domain.StockTerm;
 import com.mju.Jumoney.domain.stockterm.domain.StockTermLearning;
+import com.mju.Jumoney.domain.stockterm.domain.StockTermScrap;
+import com.mju.Jumoney.domain.stockterm.dto.ScrappedStockTermResponse;
 import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryResponse;
 import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryTermsResponse;
 import com.mju.Jumoney.domain.stockterm.dto.StockTermDetailResponse;
@@ -57,6 +59,22 @@ public class StockTermQueryService {
         return toCategoryTermsResponse(category, stockTerms, scrappedTermIds, learnedTermIds);
     }
 
+    public List<ScrappedStockTermResponse> getScrappedTerms(Long userId) {
+        List<StockTermScrap> scraps = findScrapsByUserId(userId);
+        if (scraps.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> termIds = scraps.stream()
+                .map(scrap -> scrap.getStockTerm().getId())
+                .toList();
+        Set<Long> learnedTermIds = findLearnedTermIds(userId, termIds);
+
+        return scraps.stream()
+                .map(scrap -> toScrappedStockTermResponse(scrap, learnedTermIds))
+                .toList();
+    }
+
     @Transactional
     public StockTermDetailResponse getTermDetail(Long userId, Long termId) {
         StockTerm stockTerm = findStockTermById(termId);
@@ -99,6 +117,10 @@ public class StockTermQueryService {
         return stockTermLearningRepository.findByUserIdAndStockTermIdIn(userId, termIds).stream()
                 .map(learning -> learning.getStockTerm().getId())
                 .collect(Collectors.toSet());
+    }
+
+    private List<StockTermScrap> findScrapsByUserId(Long userId) {
+        return stockTermScrapRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
     // ========== 비즈니스 메서드 ==========
@@ -146,6 +168,16 @@ public class StockTermQueryService {
                 stockTerm.getDescription(),
                 isScrapped,
                 true
+        );
+    }
+
+    private ScrappedStockTermResponse toScrappedStockTermResponse(StockTermScrap scrap, Set<Long> learnedTermIds) {
+        StockTerm term = scrap.getStockTerm();
+        return new ScrappedStockTermResponse(
+                term.getId(),
+                term.getCategory().getLabel(),
+                term.getTermName(),
+                learnedTermIds.contains(term.getId())
         );
     }
 }

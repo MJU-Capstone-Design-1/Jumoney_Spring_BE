@@ -1,8 +1,11 @@
 package com.mju.Jumoney.domain.stockterm.controller;
 
+import com.mju.Jumoney.domain.stockterm.dto.ScrappedStockTermResponse;
 import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryResponse;
 import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryTermsResponse;
 import com.mju.Jumoney.domain.stockterm.dto.StockTermDetailResponse;
+import com.mju.Jumoney.domain.stockterm.dto.StockTermScrapToggleResponse;
+import com.mju.Jumoney.domain.stockterm.service.StockTermCommandService;
 import com.mju.Jumoney.domain.stockterm.service.StockTermQueryService;
 import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.jwt.UserPrincipal;
@@ -16,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -28,6 +32,7 @@ import java.util.List;
 public class StockTermController {
 
     private final StockTermQueryService stockTermQueryService;
+    private final StockTermCommandService stockTermCommandService;
 
     @Operation(summary = "주식 용어 카테고리 목록 조회", description = "주식 용어 카테고리 ID와 이름 목록을 조회합니다.")
     @GetMapping("/categories")
@@ -56,6 +61,29 @@ public class StockTermController {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 stockTermQueryService.getTermDetail(getAuthenticatedUserId(userPrincipal), termId)
+        ));
+    }
+
+    @Operation(summary = "주식 용어 스크랩", description = "용어 스크랩 상태를 변경합니다. (토글 방식)")
+    @PostMapping("/terms/{termId}/scrap")
+    public ResponseEntity<ApiResponse<StockTermScrapToggleResponse>> toggleScrap(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long termId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                stockTermCommandService.toggleScrap(getAuthenticatedUserId(userPrincipal), termId)
+        ));
+    }
+
+    @Operation(summary = "스크랩한 주식 용어 목록 조회", description = "로그인 사용자의 스크랩한 용어 목록을 최신순으로 조회합니다.")
+    @GetMapping("/scraps")
+    public ResponseEntity<ApiResponse<List<ScrappedStockTermResponse>>> getScraps(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                stockTermQueryService.getScrappedTerms(getAuthenticatedUserId(userPrincipal))
         ));
     }
 

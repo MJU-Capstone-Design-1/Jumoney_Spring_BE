@@ -1,33 +1,60 @@
 # Stock Term Feature Specification
 
-본 문서는 주식 용어 사전의 핵심 기능(조회, 스크랩, 학습 기록)에 대한 비즈니스 로직을 정의합니다.
+본 문서는 주식 용어 사전의 구현 완료 API와 비즈니스 로직을 정의합니다.
 
 ---
 
-## 1. 카테고리별 용어 리스트 조회
+## 1. 카테고리 목록 조회
 
-- **기능**: 특정 카테고리에 속한 전체 용어 목록과 유저의 개인화 상태(스크랩/학습)를 반환.
-- **로직**:
-    1. `StockTerm` 테이블에서 선택된 `category`로 필터링.
-    2. `StockTermScrap`, `StockTermLearning` 테이블을 **LEFT JOIN** 하여 유저별 상태값 매핑.
-    3. 별도의 페이징 없이 전체 리스트 반환.
+- **API**: `GET /api/stock-terms/categories`
+- **기능**: 주식 용어 카테고리 목록을 조회.
+- **응답 필드**: `categoryId`, `categoryName`
 
 ---
 
-## 2. 스크랩한 용어 리스트 조회
+## 2. 카테고리별 용어 리스트 조회
 
-- **기능**: 유저가 즐겨찾기(스크랩)한 용어들만 모아서 조회.
+- **API**: `GET /api/stock-terms/categories/{categoryId}/terms`
+- **기능**: 특정 카테고리의 용어 목록과 개인화 상태(스크랩/학습)를 조회.
+- **응답 구조**:
+    - 상단: `categoryId`, `categoryName`
+    - 목록 항목: `termId`, `termName`, `isScrapped`, `isLearned`
 - **로직**:
-    1. `StockTermScrap` 테이블에서 현재 유저(`userId`)의 데이터를 기준점으로 삼음.
-    2. `StockTerm`과 **INNER JOIN** 하여 용어 정보를 가져오고, `StockTermLearning`과 **LEFT JOIN** 하여 학습 여부 확인.
-    3. 유저가 스크랩한 순서(최신순)로 정렬하여 반환.
+    1. `StockTerm`에서 `category` 기준 조회.
+    2. `StockTermScrap`, `StockTermLearning`을 사용자 기준으로 조회해 상태값 매핑.
+    3. 용어 목록은 `termId` 오름차순으로 반환.
 
 ---
 
-## 3. 용어 상세 조회 및 학습 기록
+## 3. 용어 상세 조회 및 학습 처리
 
-- **기능**: 용어의 상세 설명을 조회하고, 진입과 동시에 '학습 완료' 상태로 갱신.
+- **API**: `GET /api/stock-terms/terms/{termId}`
+- **기능**: 용어 상세를 조회하고, 조회 시 해당 용어를 학습한 것으로 기록.
+- **응답 필드**: `termId`, `categoryId`, `categoryName`, `termName`, `description`, `isScrapped`, `isLearned`
 - **로직**:
-    1. **상세 정보**: `termId`로 용어명, 상세 설명, 스크랩 여부 조회.
-    2. **학습 처리 (Core)**: 상세 페이지 진입 시 `StockTermLearning` 테이블에 `userId`와 `termId`를 **UPSERT**. (중복 기록 방지)
-    3. **내비게이션**: 동일 카테고리 내에서 현재 `termId` 기준 이전/다음 용어의 ID를 함께 반환.
+    1. `termId`로 `StockTerm` 조회.
+    2. `StockTermScrap`에서 스크랩 여부 확인.
+    3. `StockTermLearning`에 `(userId, termId)` 기준으로 학습 이력 존재 여부 확인 후 미존재 시 생성.
+    4. 동시 요청으로 인한 중복 생성은 유니크 제약 기반으로 무시.
+
+---
+
+## 4. 용어 스크랩 토글
+
+- **API**: `POST /api/stock-terms/terms/{termId}/scrap`
+- **기능**: 용어 스크랩 상태를 토글.
+- **응답 필드**: `termId`, `isScrapped`
+- **로직**:
+    1. `(userId, termId)` 스크랩 존재 시 삭제(해제).
+    2. 미존재 시 생성(스크랩).
+
+---
+
+## 5. 스크랩한 용어 리스트 조회
+
+- **API**: `GET /api/stock-terms/scraps`
+- **기능**: 로그인 사용자의 스크랩 용어 목록을 최신순으로 조회.
+- **응답 필드**: `termId`, `categoryName`, `termName`, `isLearned`
+- **로직**:
+    1. `StockTermScrap`을 사용자 기준 `createdAt DESC`로 조회.
+    2. `StockTermLearning`과 매핑하여 학습 여부를 함께 반환.
