@@ -1,15 +1,19 @@
 # Database Specification (ERD)
 
-본 문서는 '주머니' 프로젝트의 데이터베이스 상세 명세를 다룹니다. 총 31개의 테이블로 구성되어 있습니다.
+본 문서는 '주머니' 프로젝트의 데이터베이스 상세 명세를 다룹니다. 총 32개의 테이블로 구성되어 있습니다.
 코드를 작성할 때 참고하나, 더 좋은 설계가 있을 경우 설명과 함께 변경해도 됩니다.
 
 ## 설계 원칙
 
 다음 원칙을 기준으로 데이터 모델과 JPA 매핑을 설계한다.
+
 1. **Database Dialect**: PostgreSQL을 사용한다.
-2. **Logical N:M (역정규화)**: `selectedOptionIds` 등 명세에 `JSON`으로 표기된 id 필드는 물리적인 매핑 테이블(FK)을 생성하지 마라. PostgreSQL의 `JSONB` 타입으로 생성하고, JPA에서는 `List<Long>` 타입 등으로 매핑하여 어플리케이션 레벨에서 관리한다.
-3. **Super-type/Sub-type**: `Recommendation`은 슈퍼타입이며, `HojumoneyRecommendation`과 `MasterChoiceRecommendation`은 서브타입이다. JPA 생성 시 `@Inheritance(strategy = InheritanceType.JOINED)`를 사용하라.
-4. **결측치 허용**: `StockPrice`의 시세 및 거래량 데이터는 시장 상황(거래정지 등)에 따라 Null이 허용되므로 Primitive type(long, double) 대신 Wrapper class(Long, BigDecimal)를 사용하라.
+2. **Logical N:M (역정규화)**: `selectedOptionIds` 등 명세에 `JSON`으로 표기된 id 필드는 물리적인 매핑 테이블(FK)을 생성하지 마라. PostgreSQL의 `JSONB`
+   타입으로 생성하고, JPA에서는 `List<Long>` 타입 등으로 매핑하여 어플리케이션 레벨에서 관리한다.
+3. **Super-type/Sub-type**: `Recommendation`은 슈퍼타입이며, `HojumoneyRecommendation`과 `MasterChoiceRecommendation`은 서브타입이다.
+   JPA 생성 시 `@Inheritance(strategy = InheritanceType.JOINED)`를 사용하라.
+4. **결측치 허용**: `StockPrice`의 시세 및 거래량 데이터는 시장 상황(거래정지 등)에 따라 Null이 허용되므로 Primitive type(long, double) 대신 Wrapper class(
+   Long, BigDecimal)를 사용하라.
 5. **PK / FK Mapping**: `(PK)`가 명시된 필드는 `@Id`로 설정하고, `(FK)`가 명시된 필드는 연관관계의 주인으로서 `@JoinColumn`을 명시하라.
 
 ---
@@ -22,7 +26,8 @@
         - **`Master`**(N:1)
         - **`Account`**(1:1)
         - **`Recommendation`**(1:N)
-        - **`StockTermBookmark`**(1:N)
+        - **`StockTermScrap`**(1:N)
+        - **`StockTermLearning`**(1:N)
     - 필드
         - **사용자 ID / userId / BIGINT / NOT NULL (PK)**
         - 소셜 플랫폼 / provider / VARCHAR(20) / NOT NULL
@@ -50,11 +55,13 @@
 
 - **`StockTerm`: 주식 용어 테이블**
     - 관계
-        - **`StockTermBookmark`** (1:N)
+        - **`StockTermScrap`** (1:N)
+        - **`StockTermLearning`** (1:N)
     - 필드
         - **주식용어 ID / termId / BIGINT / NOT NULL (PK)**
         - 카테고리명 / category / ENUM / NOT NULL
         - 용어 이름 / termName / VARCHAR(50) / NOT NULL
+        - 한 줄 설명 / subtitle / VARCHAR(100) / NOT NULL
         - 용어 설명 / description / TEXT / NOT NULL
         - 이미지 파일 명 / imageFileName / VARCHAR(100) / NOT NULL
 
@@ -64,9 +71,23 @@
         - **`StockTerm`** (N:1)
     - 필드
         - **스크랩 ID / scrapId / BIGINT / NOT NULL (PK)**
-        - **주식 용어 ID / termId / BIGINT / NULL (FK)**
+        - **주식 용어 ID / termId / BIGINT / NOT NULL (FK)**
         - **유저 ID / userId / BIGINT / NOT NULL (FK)**
         - 생성일시 / createdAt / TIMESTAMP / NOT NULL
+    - 제약
+        - 유니크 키 / (userId, termId)
+
+- **`StockTermLearning`: 용어 학습 기록 테이블 (주식 용어 - 사용자 매핑 테이블)**
+    - 관계
+        - **`User`** (N:1)
+        - **`StockTerm`** (N:1)
+    - 필드
+        - **학습 ID / learningId / BIGINT / NOT NULL (PK)**
+        - **주식 용어 ID / termId / BIGINT / NOT NULL (FK)**
+        - **유저 ID / userId / BIGINT / NOT NULL (FK)**
+        - 생성일시 / createdAt / TIMESTAMP / NOT NULL
+    - 제약
+        - 유니크 키 / (userId, termId)
 
 ### **주식 종목 (Stock Items)**
 
@@ -85,7 +106,7 @@
         - 종목명 / name / VARCHAR(50) / NOT NULL / 예: 삼성전자
         - 시장 구분 / marketType / ENUM / NOT NULL / 예: KOSPI
         - 종목 설명 / description / JSONB / NULL
-        - 대장주 여부 / isMarketLeader / BOOLEAN  / NOT NULL
+        - 대장주 여부 / isMarketLeader / BOOLEAN / NOT NULL
 
 - **`StockIndicator`: 종목 지표 테이블**
     - 관계
@@ -118,7 +139,7 @@
     - 필드
         - **시세 ID / stockPriceId / BIGINT / NOT NULL (PK)**
         - **종목 ID / stockId / BIGINT / NOT NULL (FK)**
-        - 캔들 타입 / intervalType  / ENUM / NOT NULL (MIN, DAY, WEEK, MONTH, YEAR)
+        - 캔들 타입 / intervalType / ENUM / NOT NULL (MIN, DAY, WEEK, MONTH, YEAR)
         - 기준 시간 / baseTime / TIMESTAMP / NOT NULL
         - 시가 / openPrice / DECIMAL / NULL
         - 고가 / highPrice / DECIMAL / NULL
@@ -160,7 +181,7 @@
         - 초기 자본금 / seedMoney / DECIMAL / NOT NULL
         - 예수금 / cashBalance / DECIMAL / NOT NULL
         - 총 매수 금액 / totalPurchaseAmount / DECIMAL / NOT NULL
-        - 총 자산 /  totalAsset / DECIMAL / NOT NULL
+        - 총 자산 / totalAsset / DECIMAL / NOT NULL
         - 총 수익률 / totalProfitRate / DECIMAL / NULL
         - 계좌 개설 일시 / createdAt / TIMESTAMP / NOT NULL
 
@@ -175,7 +196,7 @@
         - 보유 수량 / quantity / INT / NOT NULL
         - 매수 평단가 / averagePurchasePrice / DECIMAL / NOT NULL
         - 총 매수 금액 / totalPurchaseAmount / DECIMAL / NOT NULL
-        - 마지막 매매 일시 / updatedAt / TIMESTAMP /  NOT NULL
+        - 마지막 매매 일시 / updatedAt / TIMESTAMP / NOT NULL
 
 - **`Order`: 주문 이력 테이블**
     - 관계
@@ -205,7 +226,7 @@
         - **`Tag`** (N:1)
         - **`Master`** (N:1)
     - 필드
-        - **거장태그 ID / masterTagId /  BIGINT / NOT NULL (PK)**
+        - **거장태그 ID / masterTagId / BIGINT / NOT NULL (PK)**
         - **태그 ID / tagId / BIGINT / NOT NULL (FK)**
         - **거장 ID / masterId / BIGINT / NOT NULL (FK)**
 
@@ -235,12 +256,12 @@
     - 필드
         - **거장 ID / masterId / BIGINT / NOT NULL (PK)**
         - 거장 이름 / masterName / VARCHAR(50) / NOT NULL
-        - 명언 / quote / VARCHAR(200) /  NULL
+        - 명언 / quote / VARCHAR(200) / NULL
         - 이미지 파일 명 / imageFileName / VARCHAR(200) / NULL
         - 포트폴리오 기준일 / portfolioBasePeriod / VARCHAR(50) / NOT NULL
         - 철학 제목 / philosophyTitle / VARCHAR(100) / NOT NULL
         - 철학 설명 / philosophyDescription / TEXT / NOT NULL
-        - 거장의 선택 설명 / recommendationDescription /  TEXT / NOT NULL
+        - 거장의 선택 설명 / recommendationDescription / TEXT / NOT NULL
 
 - **`MasterPrinciple`: 거장 원칙 테이블**
     - 관계
@@ -431,7 +452,7 @@
     - 필드
         - **추천 종목 ID / recommendationStockId / BIGINT / NOT NULL (PK)**
         - **추천 ID / recommendationId / BIGINT / NOT NULL (FK)**
-        - **종목 ID / stockId / BIGINT  / NOT NULL (FK)**
+        - **종목 ID / stockId / BIGINT / NOT NULL (FK)**
         - 추천 순위 / rank / INTEGER / NOT NULL
         - 만족 조건 수 / matchedConditionCount / INTEGER / NOT NULL
         - 정렬 지표 키 / sortMetricKey / VARCHAR(50) / NOT NULL

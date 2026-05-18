@@ -2,10 +2,6 @@ package com.mju.Jumoney.global.init;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mju.Jumoney.domain.master.domain.*;
-import com.mju.Jumoney.domain.master.dto.*;
-import com.mju.Jumoney.domain.master.enums.MasterCode;
-import com.mju.Jumoney.domain.master.repository.*;
 import com.mju.Jumoney.domain.hojumoney.domain.HojumoneyPersona;
 import com.mju.Jumoney.domain.hojumoney.domain.SurveyOption;
 import com.mju.Jumoney.domain.hojumoney.domain.SurveyOptionRestriction;
@@ -17,6 +13,10 @@ import com.mju.Jumoney.domain.hojumoney.repository.HojumoneyPersonaRepository;
 import com.mju.Jumoney.domain.hojumoney.repository.SurveyOptionRepository;
 import com.mju.Jumoney.domain.hojumoney.repository.SurveyOptionRestrictionRepository;
 import com.mju.Jumoney.domain.hojumoney.repository.SurveyQuestionRepository;
+import com.mju.Jumoney.domain.master.domain.*;
+import com.mju.Jumoney.domain.master.dto.*;
+import com.mju.Jumoney.domain.master.enums.MasterCode;
+import com.mju.Jumoney.domain.master.repository.*;
 import com.mju.Jumoney.domain.sector.domain.Sector;
 import com.mju.Jumoney.domain.sector.enums.SectorType;
 import com.mju.Jumoney.domain.sector.repository.SectorRepository;
@@ -24,6 +24,9 @@ import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.dto.StockInitDto;
 import com.mju.Jumoney.domain.stock.enums.MarketType;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
+import com.mju.Jumoney.domain.stockterm.domain.StockTerm;
+import com.mju.Jumoney.domain.stockterm.dto.StockTermInitDto;
+import com.mju.Jumoney.domain.stockterm.repository.StockTermRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -52,6 +55,7 @@ public class DataInitializer implements ApplicationRunner {
     private final MasterPrincipleRepository masterPrincipleRepository;
     private final MasterCaseRepository masterCaseRepository;
     private final MasterPortfolioStockRepository masterPortfolioStockRepository;
+    private final StockTermRepository stockTermRepository;
     private final ObjectMapper objectMapper;
     private Map<MasterCode, Master> masterCache = Map.of();
 
@@ -61,6 +65,7 @@ public class DataInitializer implements ApplicationRunner {
         log.info("[DataInitializer] 애플리케이션 초기 데이터 세팅 시작");
 
         initStockData();
+        initStockTermData();
         initHojumoneySurveyData();
         initHojumoneyPersonaData();
         initMasterData();
@@ -113,6 +118,37 @@ public class DataInitializer implements ApplicationRunner {
         }
 
         log.info(" 총 {}개 종목 및 섹터 데이터 초기화 완료", stockDtos.size());
+    }
+
+    private void initStockTermData() throws Exception {
+        log.info(" 주식 용어 데이터 초기화 진행 중");
+
+        ClassPathResource resource = new ClassPathResource("data/stock_term_data.json");
+        List<StockTermInitDto> termDtos = objectMapper.readValue(
+                new java.io.InputStreamReader(resource.getInputStream(), java.nio.charset.StandardCharsets.UTF_8)
+                , new TypeReference<List<StockTermInitDto>>() {
+                }
+        );
+
+        for (StockTermInitDto dto : termDtos) {
+            stockTermRepository.findByCategoryAndTermName(dto.category(), dto.termName())
+                    .ifPresentOrElse(
+                            existing -> existing.updateContent(
+                                    dto.subtitle(),
+                                    dto.description(),
+                                    dto.imageFileName()
+                            ),
+                            () -> stockTermRepository.save(StockTerm.create(
+                                    dto.category(),
+                                    dto.termName(),
+                                    dto.subtitle(),
+                                    dto.description(),
+                                    dto.imageFileName()
+                            ))
+                    );
+        }
+
+        log.info(" 주식 용어 {}개 초기화 완료", termDtos.size());
     }
 
     private void initHojumoneySurveyData() throws Exception {
@@ -449,4 +485,5 @@ public class DataInitializer implements ApplicationRunner {
         masterCache = masterRepository.findAll().stream()
                 .collect(java.util.stream.Collectors.toUnmodifiableMap(Master::getMasterCode, master -> master));
     }
+
 }
