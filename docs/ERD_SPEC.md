@@ -3,11 +3,12 @@
 본 문서는 '주머니' 프로젝트의 데이터베이스 상세 명세를 다룹니다. 총 31개의 테이블로 구성되어 있습니다.
 코드를 작성할 때 참고하나, 더 좋은 설계가 있을 경우 설명과 함께 변경해도 됩니다.
 
-## AI Assistant Context & Rules
-이 문서를 읽는 AI는 다음의 백엔드 설계 원칙을 참고하여 JPA Entity 및 DB 쿼리를 생성하라:
+## 설계 원칙
+
+다음 원칙을 기준으로 데이터 모델과 JPA 매핑을 설계한다.
 1. **Database Dialect**: PostgreSQL을 사용한다.
 2. **Logical N:M (역정규화)**: `selectedOptionIds` 등 명세에 `JSON`으로 표기된 id 필드는 물리적인 매핑 테이블(FK)을 생성하지 마라. PostgreSQL의 `JSONB` 타입으로 생성하고, JPA에서는 `List<Long>` 타입 등으로 매핑하여 어플리케이션 레벨에서 관리한다.
-3. **Super-type/Sub-type**: `Recommendation`은 슈퍼타입이며, `HojumoneyRecommendation`과 `MasterRecommendation`은 서브타입이다. JPA 생성 시 `@Inheritance(strategy = InheritanceType.JOINED)`를 사용하라.
+3. **Super-type/Sub-type**: `Recommendation`은 슈퍼타입이며, `HojumoneyRecommendation`과 `MasterChoiceRecommendation`은 서브타입이다. JPA 생성 시 `@Inheritance(strategy = InheritanceType.JOINED)`를 사용하라.
 4. **결측치 허용**: `StockPrice`의 시세 및 거래량 데이터는 시장 상황(거래정지 등)에 따라 Null이 허용되므로 Primitive type(long, double) 대신 Wrapper class(Long, BigDecimal)를 사용하라.
 5. **PK / FK Mapping**: `(PK)`가 명시된 필드는 `@Id`로 설정하고, `(FK)`가 명시된 필드는 연관관계의 주인으로서 `@JoinColumn`을 명시하라.
 
@@ -225,7 +226,7 @@
 - **`Master`: 거장 테이블**
     - 관계
         - **`User`**(1:N)
-        - **`MasterRecommendation`**(1:N)
+        - **`MasterChoiceRecommendation`**(1:N)
         - **`MasterOption`**(1:N)
         - **`MasterTag`**(1:N)
         - **`MasterCase`**(1:N)
@@ -243,12 +244,13 @@
 
 - **`MasterPrinciple`: 거장 원칙 테이블**
     - 관계
-        - **`MasterPhilosophy`**(N:1)
+        - **`Master`**(N:1)
     - 필드
         - **거장 원칙 ID / masterPrincipleId / BIGINT / NOT NULL (PK)**
         - **거장 ID / masterId / BIGINT / NOT NULL (FK)**
         - 원칙 제목 / title / VARCHAR(100) / NOT NULL
         - 원칙 설명 / description / TEXT / NOT NULL
+        - 원칙 보조 설명 목록 / details / JSONB / NULL
 
 - **`MasterCase`: 거장 투자 사례 테이블**
     - 관계
@@ -265,10 +267,10 @@
 
 - **`MasterPortfolioStock`: 거장 포트폴리오 종목 테이블**
     - 관계
-        - **`MasterPortfolio`**(N:1)
+        - **`Master`**(N:1)
     - 필드
         - **거장 포트폴리오 종목 ID / masterPortfolioStockId / BIGINT / NOT NULL (PK)**
-        - **포트폴리오 ID / masterPortfolioId / BIGINT / NOT NULL (FK)**
+        - **거장 ID / masterId / BIGINT / NOT NULL (FK)**
         - 종목명 / stockName / VARCHAR(50) / NOT NULL
         - 섹터 / sector / VARCHAR(50) / NOT NULL
         - 투자 비중 / weight / DECIMAL / NOT NULL
@@ -323,7 +325,7 @@
 - **`MasterOption`: 거장 선택지 테이블**
     - 관계
         - **`Master`**(N:1)
-        - **`MasterRecommendation`**(Logical N:M)
+        - **`MasterChoiceRecommendation`**(Logical N:M)
     - 필드
         - **거장 선택지 ID / masterOptionId / BIGINT / NOT NULL (PK)**
         - **거장 ID / masterId / BIGINT / NOT NULL (FK)**
@@ -331,7 +333,7 @@
         - 선택지 설명 / description / TEXT / NOT NULL
         - 로직 코드 / logicCode / ENUM / NOT NULL
 
-- **`MasterRecommendation`: 거장의 선택 추천 결과 테이블**
+- **`MasterChoiceRecommendation`: 거장의 선택 추천 결과 테이블**
     - 관계
         - **`Recommendation`**(1:1)
         - **`Master`**(N:1)
@@ -407,7 +409,7 @@
     - 관계
         - **`User`**(N : 1)
         - **`HojumoneyRecommendation`**(1 : 1)
-        - **`MasterRecommendation`**(1 : 1)
+        - **`MasterChoiceRecommendation`**(1 : 1)
         - **`RecommendationStock`**(1 : N)
     - 필드
         - **추천 ID / recommendationId / BIGINT / NOT NULL (PK)**

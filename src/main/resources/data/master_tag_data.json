@@ -1,0 +1,30 @@
+[
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "tags": [
+      "가치 투자",
+      "경제적 해자"
+    ]
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "tags": [
+      "성장주 투자",
+      "생활 속 발견"
+    ]
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "tags": [
+      "거시 투자",
+      "올웨더 포트폴리오"
+    ]
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "tags": [
+      "모멘텀 투자",
+      "CAN SLIM 전략"
+    ]
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "코카콜라",
+    "sector": "식음료 및 일상소비재",
+    "investmentPeriod": "1988년",
+    "investmentResult": "약 10년간 10배 이상 상승",
+    "title": "가치 투자 및 장기 보유의 정석",
+    "description": "1987년 블랙 먼데이 대폭락 이후 시장에 공포가 가득했던 시기였으나 버핏은 강력한 브랜드 파워와 변하지 않는 소비 패턴에 주목하여 과감하게 집중 투자를 단행했어요."
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "던킨 도너츠",
+    "sector": "생활 프랜차이즈",
+    "investmentPeriod": "1980년대 초",
+    "investmentResult": "약 10배 이상 수익",
+    "title": "생활 밀착형 종목 발굴",
+    "description": "인플레이션과 경기 침체가 반복되던 시기였으나 피터 린치는 매일 아침 사람들이 던킨 매장에 줄을 서서 커피와 도너츠를 사는 일상적인 모습에서 폭발적인 확장 가능성을 발견했어요."
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "퓨어 알파 펀드",
+    "sector": "매크로 헤지펀드",
+    "investmentPeriod": "2008년",
+    "investmentResult": "시장 폭락 속에서 약 9.4퍼센트 플러스 수익",
+    "title": "경제 사이클 기반의 리스크 분산 투자",
+    "description": "서브프라임 모기지 사태로 전 세계 금융 시스템이 붕괴되고 주식 시장이 폭락하던 시기였으나 부채 위기 사이클을 미리 예측하고 시스템적인 분산 투자로 대응했어요."
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "시스코 시스템즈",
+    "sector": "첨단 IT 통신 장비",
+    "investmentPeriod": "1990년",
+    "investmentResult": "수년간 수백 퍼센트 이상 상승",
+    "title": "신고가 돌파 및 주도주 매수",
+    "description": "IT 혁명의 초기 단계로 네트워크 장비 수요가 급증하던 시기였으며 실적 성장과 차트상의 컵 앤 핸들 패턴이 완벽하게 결합된 주도주가 등장하던 상황이에요."
+  }
+]

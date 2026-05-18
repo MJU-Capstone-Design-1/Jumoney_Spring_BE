@@ -1,0 +1,242 @@
+[
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "애플",
+    "sector": "정보기술",
+    "weight": 22.6
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "아메리칸 익스프레스",
+    "sector": "금융",
+    "weight": 20.4
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "뱅크오브아메리카",
+    "sector": "금융",
+    "weight": 10.4
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "코카콜라",
+    "sector": "필수소비재",
+    "weight": 10.2
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "쉐브론",
+    "sector": "에너지/화학",
+    "weight": 7.2
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "무디스",
+    "sector": "금융",
+    "weight": 4.6
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "옥시덴탈 페트롤리움",
+    "sector": "에너지/화학",
+    "weight": 4.0
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "처브",
+    "sector": "금융",
+    "weight": 3.9
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "크래프트 하인즈",
+    "sector": "필수소비재",
+    "weight": 2.9
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "stockName": "알파벳",
+    "sector": "커뮤니케이션 서비스",
+    "weight": 2.0
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "월마트",
+    "sector": "필수소비재",
+    "weight": 8.0
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "페니메이",
+    "sector": "금융",
+    "weight": 6.5
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "맥도날드",
+    "sector": "자유소비재",
+    "weight": 4.5
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "K마트",
+    "sector": "자유소비재",
+    "weight": 3.0
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "시어스",
+    "sector": "자유소비재",
+    "weight": 3.0
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "질레트",
+    "sector": "필수소비재",
+    "weight": 2.25
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "에머슨 일렉트릭",
+    "sector": "산업재",
+    "weight": 2.0
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "레블론",
+    "sector": "필수소비재",
+    "weight": 1.75
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "크라이슬러",
+    "sector": "자유소비재",
+    "weight": 1.5
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "stockName": "기타",
+    "sector": "기타",
+    "weight": 67.5
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "IVV (S&P 500 ETF)",
+    "sector": "ETF/지수",
+    "weight": 11.1
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "SPY (S&P 500 ETF)",
+    "sector": "ETF/지수",
+    "weight": 10.6
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "IEMG (신흥국 ETF)",
+    "sector": "ETF/지수",
+    "weight": 5.5
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "엔비디아",
+    "sector": "정보기술",
+    "weight": 3.2
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "프록터 앤 갬블",
+    "sector": "필수소비재",
+    "weight": 2.8
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "존슨앤존슨",
+    "sector": "헬스케어",
+    "weight": 2.1
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "마이크로소프트",
+    "sector": "정보기술",
+    "weight": 1.7
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "아마존",
+    "sector": "자유소비재",
+    "weight": 1.6
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "메타 플랫폼스",
+    "sector": "커뮤니케이션 서비스",
+    "weight": 1.5
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "stockName": "코스트코",
+    "sector": "자유소비재",
+    "weight": 1.2
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "테슬라",
+    "sector": "자유소비재",
+    "weight": 15.7
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "일라이 릴리",
+    "sector": "헬스케어",
+    "weight": 14.9
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "레딧",
+    "sector": "커뮤니케이션 서비스",
+    "weight": 11.1
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "알파벳",
+    "sector": "커뮤니케이션 서비스",
+    "weight": 11.0
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "엔비디아",
+    "sector": "정보기술",
+    "weight": 6.7
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "로켓 랩",
+    "sector": "산업재",
+    "weight": 4.8
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "제타 글로벌",
+    "sector": "정보기술",
+    "weight": 4.3
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "트윌리오",
+    "sector": "정보기술",
+    "weight": 4.2
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "TSMC",
+    "sector": "정보기술",
+    "weight": 2.6
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "stockName": "퍼스트 솔라",
+    "sector": "에너지/화학",
+    "weight": 2.3
+  }
+]

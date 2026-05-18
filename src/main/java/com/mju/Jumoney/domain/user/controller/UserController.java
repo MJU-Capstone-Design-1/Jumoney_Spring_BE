@@ -2,8 +2,10 @@ package com.mju.Jumoney.domain.user.controller;
 
 import com.mju.Jumoney.domain.user.dto.UserUpdateDTO;
 import com.mju.Jumoney.domain.user.service.UserService;
+import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.jwt.UserPrincipal;
 import com.mju.Jumoney.global.response.ApiResponse;
+import com.mju.Jumoney.global.response.ErrorCode;
 import com.mju.Jumoney.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -28,7 +30,15 @@ public class UserController {
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @Valid @RequestBody UserUpdateDTO.Request request) {
 
-        UserUpdateDTO.Response response = userService.updateServiceNickname(userPrincipal.userId(), request);
+        UserUpdateDTO.Response response = userService.updateServiceNickname(getAuthenticatedUserId(userPrincipal), request);
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    // ========== 인증 메서드 ==========
+    private Long getAuthenticatedUserId(UserPrincipal userPrincipal) {
+        if (userPrincipal == null) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED);
+        }
+        return userPrincipal.userId();
     }
 }
