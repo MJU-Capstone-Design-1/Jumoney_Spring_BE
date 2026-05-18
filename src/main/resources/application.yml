@@ -3,3 +3,58 @@ spring:
     name: Jumoney
   profiles:
     active: local
+  batch:
+    job:
+      enabled: false
+
+# KIS 한국투자증권 API 설정
+kis:
+  url: "https://openapi.koreainvestment.com:9443"
+  appkey: ${KIS_APP_KEY}
+  appsecret: ${KIS_APP_SECRET}
+  smoke:
+    admin-key: ${KIS_SMOKE_ADMIN_KEY:}
+  rate-limit:
+    min-interval-millis: 250
+  retry:
+    max-attempts: 3
+    initial-delay-millis: 700
+    multiplier: 2.0
+    max-delay-millis: 3000
+  hts:
+    user-id: ${KIS_HTS_USER_ID}
+    conditions:
+      stability-seq: "3"
+      safe-pursuit-seq: "2"
+      profit-pursuit-seq: "1"
+      aggressive-seq: "0"
+  batch:
+    zone-id: Asia/Seoul
+    opening-day-lookback-days: 14
+    stock-indicator:
+      enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}
+      today-available-after: "15:40"
+      cron: "0 0 6 * * TUE-SAT"
+    hts-condition:
+      enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:false}
+      cron: "0 30 6 * * TUE-SAT"
+  client:
+    connect-timeout-millis: 5000  # 5초
+    read-timeout-seconds: 10      # 10초
+    write-timeout-seconds: 10     # 10초
+    response-timeout-seconds: 10  # 10초
+    max-in-memory-size: 2097152   # 2MB (2 * 1024 * 1024)
+    pool:
+      max-connections: 100
+      max-idle-seconds: 20
+
+stock:
+  current-price:
+    cache-ttl-seconds: 600
+    realtime-freshness-seconds: 180
+
+realtime:
+  redis:
+    host: ${REALTIME_REDIS_HOST:localhost}
+    port: ${REALTIME_REDIS_PORT:6379}
+    password: ${REALTIME_REDIS_PASSWORD:}

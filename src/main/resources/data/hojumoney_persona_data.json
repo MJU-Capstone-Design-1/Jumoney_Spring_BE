@@ -1,0 +1,296 @@
+[
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "SHORT",
+    "personaName": "무결점 방어형 저축가",
+    "personaDescription": "손실 확률 0%에 도전해요. 아주 짧은 기간이라도 원금이 완벽히 보호되는 곳을 선호합니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "MID",
+    "personaName": "단단한 현금 보관자",
+    "personaDescription": "당장 쓸 돈은 아니지만 리스크는 싫어요. 안전한 울타리 안에서 차분하게 자산을 예치합니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "LONG",
+    "personaName": "철벽 수비형 자산가",
+    "personaDescription": "시간이 흘러도 내 자산은 그대로! 변치 않는 가치를 지닌 안전 자산에 묻어두고 마음 편히 지내요."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "안전 지대 단기 체류자",
+    "personaDescription": "잃지 않는 것이 최고의 수익! 짧은 호흡으로 시장 상황을 보며 가장 안전한 곳만 골라 다녀요."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "신중한 징검다리",
+    "personaDescription": "적당한 기간 동안 원금을 지키는 게 중요해요. 큰 욕심 없이 안전한 투자처를 거쳐 가는 실속파입니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "느긋한 우량주 수집가",
+    "personaDescription": "시간은 내 편! 튼튼한 우량주에 묻어두고 긴 호흡으로 여유롭게 자산을 지켜나갑니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "호기심 많은 방어수",
+    "personaDescription": "기본은 안전하게! 하지만 확실한 단기 수익 기회가 보이면 놓치지 않고 챙기는 타입이에요."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "전략적 수비 조율사",
+    "personaDescription": "안정적인 베이스 위에 약간의 변동성을 가미해요. 리스크를 관리하며 중기적인 성과를 조율합니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_PROTECTION",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "신중한 성장 탐험가",
+    "personaDescription": "기본기는 탄탄하게 다지고, 미래 성장성이 보이는 산업에는 긴 호흡으로 과감하게 투자해요."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "SHORT",
+    "personaName": "안전 배당 대기조",
+    "personaDescription": "짧은 기간이라도 배당의 안정성은 포기 못 해요! 원금 손실 걱정 없는 확실한 배당처에 잠시 머무릅니다."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "MID",
+    "personaName": "안심 연금 설계자",
+    "personaDescription": "흔들림 없는 배당이 최우선입니다. 안정적인 현금이 정기적으로 들어오는 구조를 중기적으로 유지해요."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "LONG",
+    "personaName": "황금알 거위 관리자",
+    "personaDescription": "배당은 복리로 쌓일 때 강력하죠. 아주 낮은 위험도의 자산에서 나오는 배당을 장기간 재투자합니다."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "스마트 인컴 추구자",
+    "personaDescription": "단기 자금도 그냥 놀릴 순 없죠. 적절한 리스크를 관리하며 쏠쏠한 배당 수익을 챙기는 실속파입니다."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "실속파 배당 수확자",
+    "personaDescription": "적절한 배당 수익률에 만족해요. 너무 큰 욕심 없이 꼬박꼬박 수익을 챙기는 것을 즐깁니다."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "느긋한 배당 농부",
+    "personaDescription": "씨앗을 심고 열매를 기다려요. 탄탄한 배당주를 꾸준히 모아 장기적으로 풍성한 결실을 봅니다."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "단기 고배당 공략가",
+    "personaDescription": "배당락 전후의 기회를 빠르게 포착해요! 리스크는 감수하더라도 단기간에 높은 배당률을 노리는 승부사입니다."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "기회 포착형 배당가",
+    "personaDescription": "배당 성장이 기대된다면 약간의 변동성은 감수해요. 중기적인 관점에서 고배당의 기회를 노립니다."
+  },
+  {
+    "investmentPurpose": "DIVIDEND_INCOME",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "공격적 배당 사냥꾼",
+    "personaDescription": "높은 수익에는 대가가 따르는 법! 변동성을 견디며 시장보다 높은 배당을 줄 자산을 찾아 장기전투를 치러요."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "SHORT",
+    "personaName": "안전 성장 징검다리",
+    "personaDescription": "본격적인 성장을 준비하는 단계예요. 아주 짧은 기간이라도 손실 없이 자산을 지키며 다음 기회를 기다립니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "MID",
+    "personaName": "안전 성장 지향자",
+    "personaDescription": "크게 벌기보다 안 잃는 게 성장의 시작이죠. 낮은 변동성 속에서 차근차근 자산을 키워나갑니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "STABILITY",
+    "investmentHorizon": "LONG",
+    "personaName": "우직한 거북이 저축가",
+    "personaDescription": "느려도 결국은 이깁니다. 가장 안전한 길을 선택해 아주 긴 시간 동안 눈덩이를 굴리는 타입이에요."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "스마트 스텝 업",
+    "personaDescription": "조금씩이라도 확실하게 키워나가요. 큰 위험 없이 단기적인 수익을 쌓아 자산의 기초 체력을 기르는 중입니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "스마트 가드너",
+    "personaDescription": "나무가 자라듯 자산을 관리해요. 적당한 위험을 관리하며 중기적으로 우상향하는 그래프를 그립니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "복리의 마법사",
+    "personaDescription": "장기 투자의 힘을 믿어요. 낮은 리스크의 자산을 꾸준히 보유하여 복리 효과를 극대화합니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "에너지 응축형 투자자",
+    "personaDescription": "빠른 성장의 발판이 필요해요! 단기적인 변동성을 감수하더라도 자산이 점프할 수 있는 확실한 기회를 노립니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "적극적 성장 엔진",
+    "personaDescription": "성장을 위해서라면 어느 정도의 속도감은 필요하죠. 중기적인 트렌드에 올라타 자산을 공격적으로 키웁니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "야심 찬 빌더",
+    "personaDescription": "미래의 큰 가치를 위해 오늘의 변동성을 견뎌요. 높은 성장성이 기대되는 곳에 장기적으로 투자합니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "AGGRESSIVE",
+    "investmentHorizon": "SHORT",
+    "personaName": "퀀텀 점프 지향자",
+    "personaDescription": "단기간의 가파른 우상향을 목표로 해요. 큰 변동성을 감수하더라도 자산이 한 단계 도약하는 것을 즐기는 타입입니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "AGGRESSIVE",
+    "investmentHorizon": "MID",
+    "personaName": "공격적 복리 설계자",
+    "personaDescription": "위험이 큰 만큼 리턴도 확실해야죠. 중기적인 관점에서 공격적으로 자산을 굴려 눈덩이를 가장 빠르게 불려 나갑니다."
+  },
+  {
+    "investmentPurpose": "STEADY_GROWTH",
+    "riskProfile": "AGGRESSIVE",
+    "investmentHorizon": "LONG",
+    "personaName": "위대한 자산 개척자",
+    "personaDescription": "미래의 거대한 부를 위해 오늘의 고통은 견뎌요. 압도적인 성장이 기대되는 곳에 장기적으로 배팅하여 자산의 지도를 바꿉니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "ULTRA_SHORT",
+    "personaName": "안전 지대 스나이퍼",
+    "personaDescription": "확실한 구간에서만 짧게! 위험은 최소화하면서 찰나의 수익 기회를 포착하는 타입이에요."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "실속파 스윙 투자자",
+    "personaDescription": "며칠간의 흐름을 타고 안정적으로 수익을 챙겨요. 너무 큰 욕심보다는 확실한 익절을 선호합니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "가치 회복 기다림이",
+    "personaDescription": "저평가된 자산이 제 자리를 찾을 때까지 느긋하게 기다려요. 안전한 차익을 노리는 실속파입니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "SAFE_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "느긋한 우량주 수집가",
+    "personaDescription": "좋은 자산을 싼 가격에 사서 오래 기다립니다. 낮은 리스크로 긴 호흡의 수익을 만들어내요."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "ULTRA_SHORT",
+    "personaName": "민첩한 데이 트레이더",
+    "personaDescription": "시장의 파도를 즐깁니다. 높은 위험을 무릅쓰고 당일의 가격 움직임에 기민하게 대응해요."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "SHORT",
+    "personaName": "트렌드 서핑 선수",
+    "personaDescription": "지금 가장 뜨거운 테마에 올라타요! 단기적인 변동성을 즐기며 빠른 시세 분출을 공략합니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "MID",
+    "personaName": "전략적 승부사",
+    "personaDescription": "확신이 있다면 흔들림도 기회죠. 중기적인 상승 모멘텀을 바라보고 과감하게 비중을 실어요."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "PROFIT_PURSUIT",
+    "investmentHorizon": "LONG",
+    "personaName": "미래 가치 선점자",
+    "personaDescription": "당장의 변동성보다는 미래의 큰 그림을 봐요. 성장성이 높은 곳에 미리 자리 잡고 장기 차익을 노립니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "AGGRESSIVE",
+    "investmentHorizon": "ULTRA_SHORT",
+    "personaName": "시장의 야수",
+    "personaDescription": "초 단위의 움직임에 집중해요! 극한의 리스크 속에서도 찰나의 수익을 잡아내는 순발력이 특징입니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "AGGRESSIVE",
+    "investmentHorizon": "SHORT",
+    "personaName": "하이엔드 모험가",
+    "personaDescription": "단기간에 압도적인 수익을 원하시나요? 높은 위험을 감수하며 시장의 중심에서 화끈하게 승부합니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "AGGRESSIVE",
+    "investmentHorizon": "MID",
+    "personaName": "변동성 활용가",
+    "personaDescription": "거친 파도 속에서 기회를 찾아요. 높은 리스크를 감내하며 중기적인 시세의 고점을 집요하게 노립니다."
+  },
+  {
+    "investmentPurpose": "CAPITAL_GAIN",
+    "riskProfile": "AGGRESSIVE",
+    "investmentHorizon": "LONG",
+    "personaName": "세상을 바꿀 배팅가",
+    "personaDescription": "수십 배의 수익을 꿈꾸는 대범한 투자자예요. 높은 위험도 미래의 압도적 차익을 위해서라면 견뎌낼 수 있어요."
+  }
+]

@@ -38,3 +38,12 @@ out/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+!.env.*.example
+
+# Production-only config with secrets must stay out of git.
+src/main/resources/application-secret.yml
+
+### Querydsl ###
+src/main/generated/

@@ -1,8 +1,9 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
-    username: ${MYSQL_USER}
-    password: ${MYSQL_PASSWORD}
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+    driver-class-name: org.postgresql.Driver
 
   data:
     redis:
@@ -14,3 +15,38 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+  batch:
+    jdbc:
+      initialize-schema: always
+
+realtime:
+  redis:
+    host: ${REALTIME_REDIS_HOST:localhost}
+    port: ${REALTIME_REDIS_PORT:16379}
+    password: ${REALTIME_REDIS_PASSWORD:${REDIS_PASSWORD}}
+
+kis:
+  batch:
+    stock-indicator:
+      enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}
+    hts-condition:
+      enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:false}
+
+# 운영 서버에서 Nginx 리버스 프록시를 사용할 때 HTTPS 도메인을 자동으로 인식
+server:
+  forward-headers-strategy: framework
+
+jwt:
+  secret-key: ${JWT_SECRET_KEY}
+  access-token-validity: 3600000 #1시간
+  refresh-token-validity: 1209600000 #14일
+  cookie-secure: false
+  cookie-same-site: Lax
+
+kakao:
+  client-id: ${KAKAO_CLIENT_ID}
+  client-secret: ${KAKAO_CLIENT_SECRET}
+  redirect-uri: ${KAKAO_REDIRECT_URI}
+  token-uri: https://kauth.kakao.com/oauth/token
+  user-info-uri: https://kapi.kakao.com/v2/user/me

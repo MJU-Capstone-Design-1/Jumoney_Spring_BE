@@ -1,0 +1,109 @@
+[
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "title": "좋은 회사를 합리적인 가격에 오래 보유하기",
+    "description": "회사의 실제 가치보다 낮은 가격에 사서, 나중에 가격이 제자리를 찾을 때까지 느긋하게 기다려요.",
+    "details": null
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "title": "경제적 해자 확인하기",
+    "description": "다른 경쟁사가 흉내 낼 수 없는 강력한 브랜드나 기술을 가진 기업만 골라요.",
+    "details": null
+  },
+  {
+    "masterCode": "WARREN_BUFFETT",
+    "title": "능력 범위 지키기",
+    "description": "사업 모델이 너무 복잡해서 이해하기 어려운 곳은 포기하고, 내가 완벽하게 이해할 수 있는 산업에만 집중 투자해요.",
+    "details": null
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "title": "텐버거 발굴",
+    "description": "앞으로 10배 이상 커질 가능성이 있는 작지만 튼튼한 성장주를 끝까지 믿고 기다려요.",
+    "details": null
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "title": "직접 가서 눈으로 확인하기",
+    "description": "매장에 사람이 많은지, 물건이 잘 팔리는지 직접 확인하며 기업의 성장 가능성을 확인해요.",
+    "details": null
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "title": "빚이 적고 꾸준히 성장하는 기업 선호",
+    "description": "아무리 빠르게 성장하더라도 부채가 지나치게 많으면 위험하다고 판단하며, 안정적인 재무 구조를 가진 기업을 선호해요.",
+    "details": null
+  },
+  {
+    "masterCode": "PETER_LYNCH",
+    "title": "성장 대비 너무 비싸지 않은 기업 찾기",
+    "description": "아무리 좋은 회사라도 성장률 대비 가격이 지나치게 비싸면 투자하지 않아요. (PEG로 확인할 수 있어요.)",
+    "details": null
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "title": "서로 다르게 움직이는 자산 배분",
+    "description": "하나가 떨어질 때 다른 하나는 오르는, 성격이 다른 자산들을 섞어 전체적인 내 자산의 변동성을 줄여요.",
+    "details": null
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "title": "경제의 사계절 대비하기",
+    "description": "성장과 물가 상황에 따라 경제가 변할 때마다 수익을 내줄 자산들을 미리 배치해 둬요.",
+    "details": [
+      "경제가 잘 나갈 때: 주식, 회사채",
+      "경제가 위축될 때: 국채",
+      "물가가 오를 때: 금, 원자재",
+      "물가가 안정될 때: 주식, 국채"
+    ]
+  },
+  {
+    "masterCode": "RAY_DALIO",
+    "title": "위험의 비중 맞추기",
+    "description": "자산을 똑같은 금액으로 나누는 게 아니라, 각 자산이 가진 위험의 크기를 똑같이 맞춰서 포트폴리오의 균형을 잡아요.",
+    "details": null
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "title": "C: 현재 분기 순이익 (Current Quarterly Earnings)",
+    "description": "최근 분기의 주당순이익(EPS)이 전년 동기 대비 최소 25% 이상 크고 빠르게 성장하는 기업을 선별해요.",
+    "details": null
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "title": "A: 연간 순이익 증가율 (Annual Earnings Growth)",
+    "description": "과거 3~5년 동안 연간 순이익이 꾸준하고 의미 있게 증가하며 성장세를 유지하는지 확인해요.",
+    "details": null
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "title": "N: 신제품, 신경영, 신고가 (New Products, Management, Highs)",
+    "description": "시장을 뒤흔들 신제품이나 새로운 경영진이 등장했거나, 주가가 저항선을 뚫고 새로운 신고가를 기록할 때 매수해요.",
+    "details": null
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "title": "S: 수요와 공급 (Supply and Demand)",
+    "description": "시장에 유통되는 주식 수가 적거나 자사주를 적극적으로 매입하여, 결정적인 시점에 대규모 수요가 발생할 수 있는 기업을 찾아요.",
+    "details": null
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "title": "L: 주도주 여부 (Leader or Laggard)",
+    "description": "동일한 산업 내에서도 시장을 이끌어가는 주도주만 매수하고, 뒤처지는 소외주는 과감히 피해요.",
+    "details": null
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "title": "I: 기관 투자자의 뒷받침 (Institutional Sponsorship)",
+    "description": "뛰어난 실적과 뚜렷한 철학을 가진 펀드나 기관 투자자들이 최근 들어 집중적으로 매수하고 있는 종목을 따라가요.",
+    "details": null
+  },
+  {
+    "masterCode": "WILLIAM_ONEIL",
+    "title": "M: 시장의 방향성 (Market Direction)",
+    "description": "아무리 좋은 주식도 하락장에서는 떨어지기 마련이므로, 전체 시장의 방향성이 강세장일 때만 투자하고 약세장에서는 몸을 사려요.",
+    "details": null
+  }
+]
