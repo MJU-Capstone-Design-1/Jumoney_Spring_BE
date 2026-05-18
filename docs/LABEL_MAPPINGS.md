@@ -109,6 +109,6 @@ export const masterSortMetricLabels = {
 - `recommendations[].goodSectorTags`: `SectorType` key
 - `recommendations[].sortMetricKey`: `EXECUTION_STRENGTH`, `ACCUMULATED_TRADE_AMOUNT`, `EPS_GROWTH_RATE`, `ROE`
 - `masterCode`: `WARREN_BUFFETT`, `PETER_LYNCH`, `RAY_DALIO`, `WILLIAM_ONEIL`
-- `MasterRecommendationResponse.recommendations[].tags`: `MasterOptionLogicCode` key
-- `MasterRecommendationResponse.recommendations[].sortMetricKey`: `ROE`, `PEG`, `MARKET_CAP`, `HIGH_52_WEEK_RATE`
-- `MasterResponse.sectorOptions[].sectorType`, `MasterRecommendationResponse.recommendations[].goodSectorTags`: `SectorType` key
+- `MasterChoiceResponse.recommendations[].tags`: `MasterOptionLogicCode` key
+- `MasterChoiceResponse.recommendations[].sortMetricKey`: `ROE`, `PEG`, `MARKET_CAP`, `HIGH_52_WEEK_RATE`
+- `MasterResponse.sectorOptions[].sectorType`, `MasterChoiceResponse.recommendations[].goodSectorTags`: `SectorType` key

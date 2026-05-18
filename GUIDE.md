@@ -55,7 +55,7 @@
   - `docs/features/stock/STOCK_DETAIL_FEATURE.md` (기업 상세/차트)
 
 ### ✅ 종목 추천 알고리즘
-- `docs/features/recommendation/RECOMMEND_LOGIC.md` 참고
+- `docs/features/shared/RECOMMEND_LOGIC.md` 참고
 - 오늘의 호주머니: 뉴스 분석(llm) + 설문 기반 지표 필터링
 - 거장의 선택: 뉴스 분석(llm) + 거장별 투자 지표 필터링
 

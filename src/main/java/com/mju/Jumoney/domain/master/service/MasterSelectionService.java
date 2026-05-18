@@ -3,7 +3,7 @@ package com.mju.Jumoney.domain.master.service;
 import com.mju.Jumoney.domain.master.domain.Master;
 import com.mju.Jumoney.domain.master.dto.MasterSelectionResponse;
 import com.mju.Jumoney.domain.master.repository.MasterRepository;
-import com.mju.Jumoney.domain.recommendation.exception.RecommendationErrorCode;
+import com.mju.Jumoney.domain.master.exception.MasterErrorCode;
 import com.mju.Jumoney.domain.user.domain.User;
 import com.mju.Jumoney.domain.user.exception.UserErrorCode;
 import com.mju.Jumoney.domain.user.repository.UserRepository;
@@ -42,6 +42,6 @@ public class MasterSelectionService {
 
     private Master findMasterById(Long masterId) {
         return masterRepository.findById(masterId)
-                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(MasterErrorCode.MASTER_NOT_FOUND));
     }
 }

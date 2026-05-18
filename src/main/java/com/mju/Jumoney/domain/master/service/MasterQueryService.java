@@ -6,7 +6,7 @@ import com.mju.Jumoney.domain.master.domain.MasterPortfolioStock;
 import com.mju.Jumoney.domain.master.domain.MasterPrinciple;
 import com.mju.Jumoney.domain.master.dto.*;
 import com.mju.Jumoney.domain.master.repository.*;
-import com.mju.Jumoney.domain.recommendation.exception.RecommendationErrorCode;
+import com.mju.Jumoney.domain.master.exception.MasterErrorCode;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -121,7 +121,7 @@ public class MasterQueryService {
     // ========== 조회 메서드 ==========
     private Master findMasterById(Long masterId) {
         return masterRepository.findById(masterId)
-                .orElseThrow(() -> new CustomException(RecommendationErrorCode.MASTER_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(MasterErrorCode.MASTER_NOT_FOUND));
     }
 
     private List<MasterPortfolioStock> findPortfolioStocksByMasterId(Long masterId) {
