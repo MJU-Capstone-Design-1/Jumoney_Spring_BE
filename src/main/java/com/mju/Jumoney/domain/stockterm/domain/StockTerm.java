@@ -54,4 +54,10 @@ public class StockTerm {
                 .imageFileName(imageFileName)
                 .build();
     }
+
+    public void updateContent(String subtitle, String description, String imageFileName) {
+        this.subtitle = subtitle;
+        this.description = description;
+        this.imageFileName = imageFileName;
+    }
 }
