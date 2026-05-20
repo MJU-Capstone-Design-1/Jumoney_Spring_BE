@@ -40,6 +40,15 @@ public class MarketCalendarService {
                         + today.minusDays(lookbackDays) + ", today=" + today));
     }
 
+    public boolean isOpenDay(LocalDate date, ZoneId zoneId) {
+        Optional<MarketCalendarDay> calendarDay = findCalendarDay(date);
+        if (calendarDay.isEmpty()) {
+            syncCalendarFromKis(date, zoneId);
+            calendarDay = findCalendarDay(date);
+        }
+        return calendarDay.map(MarketCalendarDay::openDay).orElse(false);
+    }
+
     private Optional<LocalDate> findPreviousOpenDayInRedis(LocalDate today, int lookbackDays) {
         LocalDate from = today.minusDays(lookbackDays);
         return from.datesUntil(today)
