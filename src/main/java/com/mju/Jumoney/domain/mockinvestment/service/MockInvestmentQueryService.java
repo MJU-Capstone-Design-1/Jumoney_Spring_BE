@@ -1,9 +1,11 @@
 package com.mju.Jumoney.domain.mockinvestment.service;
 
 import com.mju.Jumoney.domain.mockinvestment.domain.Account;
+import com.mju.Jumoney.domain.mockinvestment.domain.Order;
 import com.mju.Jumoney.domain.mockinvestment.domain.Portfolio;
 import com.mju.Jumoney.domain.mockinvestment.dto.*;
 import com.mju.Jumoney.domain.mockinvestment.exception.MockInvestmentErrorCode;
+import com.mju.Jumoney.domain.mockinvestment.repository.OrderRepository;
 import com.mju.Jumoney.domain.mockinvestment.repository.PortfolioRepository;
 import com.mju.Jumoney.domain.sector.domain.Sector;
 import com.mju.Jumoney.domain.sector.exception.SectorErrorCode;
@@ -25,7 +27,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +40,7 @@ public class MockInvestmentQueryService {
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
 
     private final MockInvestmentAccountService mockInvestmentAccountService;
+    private final OrderRepository orderRepository;
     private final PortfolioRepository portfolioRepository;
     private final SectorRepository sectorRepository;
     private final StockRepository stockRepository;
@@ -117,6 +119,15 @@ public class MockInvestmentQueryService {
                 sector.getSectorName().getDescription(),
                 stockItems
         );
+    }
+
+    public MockInvestmentOrderHistoryResponse getOrderHistory(Long userId) {
+        Account account = mockInvestmentAccountService.getRequiredAccount(userId);
+        List<MockInvestmentOrderHistoryItemResponse> orderItems = orderRepository.findByAccountIdOrderByExecutedAtDesc(account.getId()).stream()
+                .map(this::toOrderHistoryItemResponse)
+                .toList();
+
+        return new MockInvestmentOrderHistoryResponse(orderItems);
     }
 
     // ========== 조회 메서드 ==========
@@ -230,6 +241,19 @@ public class MockInvestmentQueryService {
                 currentPriceSnapshot == null ? null : currentPriceSnapshot.currentPrice(),
                 currentPriceSnapshot == null ? null : currentPriceSnapshot.changeRate(),
                 stock.isMarketLeader()
+        );
+    }
+
+    private MockInvestmentOrderHistoryItemResponse toOrderHistoryItemResponse(Order order) {
+        return new MockInvestmentOrderHistoryItemResponse(
+                order.getId(),
+                order.getOrderType().name(),
+                order.getStock() == null ? null : order.getStock().getStockCode(),
+                order.getStock() == null ? null : order.getStock().getName(),
+                order.getExecutionPrice(),
+                order.getQuantity(),
+                order.getTotalExecutionAmount(),
+                order.getExecutedAt()
         );
     }
 

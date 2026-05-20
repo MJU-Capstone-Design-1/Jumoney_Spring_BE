@@ -2,6 +2,7 @@ package com.mju.Jumoney.domain.mockinvestment.controller;
 
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentAccountResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentDashboardResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderHistoryResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderRequest;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentPortfolioListResponse;
@@ -104,6 +105,17 @@ public class MockInvestmentController {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.getPortfolios(getAuthenticatedUserId(userPrincipal))
+        ));
+    }
+
+    @Operation(summary = "모의투자 거래 이력 조회", description = "입금, 매수, 매도 이력을 최근 체결순으로 조회합니다.")
+    @GetMapping("/orders/history")
+    public ResponseEntity<ApiResponse<MockInvestmentOrderHistoryResponse>> getOrderHistory(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                mockInvestmentQueryService.getOrderHistory(getAuthenticatedUserId(userPrincipal))
         ));
     }
 
