@@ -47,6 +47,11 @@ public class MockInvestmentAccountService {
                 .orElseThrow(() -> new CustomException(MockInvestmentErrorCode.MOCK_INVESTMENT_ACCOUNT_NOT_FOUND));
     }
 
+    public Account getRequiredAccountWithLock(Long userId) {
+        return accountRepository.findByUserIdWithLock(userId)
+                .orElseThrow(() -> new CustomException(MockInvestmentErrorCode.MOCK_INVESTMENT_ACCOUNT_NOT_FOUND));
+    }
+
     @Transactional
     public void resetAccount(Long userId) {
         accountRepository.findByUserId(userId)

@@ -37,7 +37,7 @@ public class MockInvestmentCommandService {
         validateQuantity(request.quantity());
         mockInvestmentMarketService.validateOrderableNow();
 
-        Account account = mockInvestmentAccountService.getRequiredAccount(userId);
+        Account account = mockInvestmentAccountService.getRequiredAccountWithLock(userId);
         Stock stock = findStockByCode(request.stockCode());
         BigDecimal executionPrice = getRequiredCurrentPrice(stock.getStockCode());
         BigDecimal totalExecutionAmount = calculateTotalExecutionAmount(executionPrice, request.quantity());
@@ -71,11 +71,10 @@ public class MockInvestmentCommandService {
         validateQuantity(request.quantity());
         mockInvestmentMarketService.validateOrderableNow();
 
-        Account account = mockInvestmentAccountService.getRequiredAccount(userId);
+        Account account = mockInvestmentAccountService.getRequiredAccountWithLock(userId);
         Stock stock = findStockByCode(request.stockCode());
         Portfolio portfolio = portfolioRepository.findByAccountIdAndStockId(account.getId(), stock.getId())
                 .orElseThrow(() -> new CustomException(MockInvestmentErrorCode.INSUFFICIENT_STOCK_QUANTITY));
-        validateSellQuantity(portfolio, request.quantity());
 
         BigDecimal executionPrice = getRequiredCurrentPrice(stock.getStockCode());
         BigDecimal totalExecutionAmount = calculateTotalExecutionAmount(executionPrice, request.quantity());
@@ -100,11 +99,6 @@ public class MockInvestmentCommandService {
     }
 
     // ========== 조회 메서드 ==========
-    private Stock findStockById(Long stockId) {
-        return stockRepository.findById(stockId)
-                .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));
-    }
-
     private Stock findStockByCode(String stockCode) {
         return stockRepository.findByStockCode(stockCode)
                 .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));
@@ -129,12 +123,6 @@ public class MockInvestmentCommandService {
     private void validateCashBalance(Account account, BigDecimal totalExecutionAmount) {
         if (account.getCashBalance().compareTo(totalExecutionAmount) < 0) {
             throw new CustomException(MockInvestmentErrorCode.INSUFFICIENT_CASH_BALANCE);
-        }
-    }
-
-    private void validateSellQuantity(Portfolio portfolio, Integer quantity) {
-        if (portfolio.getQuantity() < quantity) {
-            throw new CustomException(MockInvestmentErrorCode.INSUFFICIENT_STOCK_QUANTITY);
         }
     }
 

@@ -29,6 +29,8 @@ import java.util.Map;
 public class MockInvestmentQueryService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    private static final int PROFIT_RATE_DIVIDE_SCALE = 6;
+    private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
 
     private final MockInvestmentAccountService mockInvestmentAccountService;
     private final PortfolioRepository portfolioRepository;
@@ -107,8 +109,8 @@ public class MockInvestmentQueryService {
         if (seedMoney == null || seedMoney.signum() == 0) {
             return BigDecimal.ZERO;
         }
-        return totalProfitAmount.divide(seedMoney, 6, RoundingMode.HALF_UP)
+        return totalProfitAmount.divide(seedMoney, PROFIT_RATE_DIVIDE_SCALE, RoundingMode.HALF_UP)
                 .multiply(HUNDRED)
-                .setScale(4, RoundingMode.HALF_UP);
+                .setScale(PROFIT_RATE_DISPLAY_SCALE, RoundingMode.HALF_UP);
     }
 }

@@ -1,5 +1,7 @@
 package com.mju.Jumoney.domain.mockinvestment.domain;
 
+import com.mju.Jumoney.domain.mockinvestment.exception.MockInvestmentErrorCode;
+import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,6 +26,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(access = AccessLevel.PRIVATE)
 public class Portfolio {
+
+    private static final int AVERAGE_PURCHASE_PRICE_SCALE = 4;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -72,17 +76,26 @@ public class Portfolio {
         this.totalPurchaseAmount = this.totalPurchaseAmount.add(buyAmount);
         this.averagePurchasePrice = this.totalPurchaseAmount.divide(
                 BigDecimal.valueOf(this.quantity),
-                4,
+                AVERAGE_PURCHASE_PRICE_SCALE,
                 RoundingMode.HALF_UP
         );
         this.updatedAt = LocalDateTime.now();
     }
 
     public BigDecimal sell(int sellQuantity) {
+        validateSellQuantity(sellQuantity);
+
         BigDecimal purchaseAmountToReduce = this.averagePurchasePrice.multiply(BigDecimal.valueOf(sellQuantity));
         this.quantity -= sellQuantity;
         this.totalPurchaseAmount = this.totalPurchaseAmount.subtract(purchaseAmountToReduce);
         this.updatedAt = LocalDateTime.now();
         return purchaseAmountToReduce;
+    }
+
+    // ========== 검증 메서드 ==========
+    private void validateSellQuantity(int sellQuantity) {
+        if (this.quantity < sellQuantity) {
+            throw new CustomException(MockInvestmentErrorCode.INSUFFICIENT_STOCK_QUANTITY);
+        }
     }
 }
