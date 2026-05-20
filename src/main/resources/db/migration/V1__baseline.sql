@@ -1,0 +1,3 @@
+-- Flyway baseline migration.
+-- Existing production databases are onboarded using baseline-on-migrate=true.
+-- Add incremental schema changes in V2__*.sql and later.

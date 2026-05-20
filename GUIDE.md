@@ -78,13 +78,13 @@
 * `KIS_APP_KEY`, `KIS_APP_SECRET`: 한국투자증권 API 키
 * `JWT_SECRET_KEY`: JWT 서명 키
 * `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`: 카카오 로그인 설정
-* `SPRING_JPA_HIBERNATE_DDL_AUTO`: 초기 연동 단계에서는 `update`, 데이터 보존 단계에서는 Flyway 도입 후 `validate` 권장
+* `SPRING_JPA_HIBERNATE_DDL_AUTO`: 현재는 프로필 설정에서 `validate`를 사용하며 수동 변경을 권장하지 않음
 
 ### 프로필과 배포
-- `local`: 로컬 개발용 프로필입니다. JPA `ddl-auto=update`, SQL 로그 출력, 로컬 PostgreSQL/Redis를 기본으로 사용합니다.
+- `local`: 로컬 개발용 프로필입니다. JPA `ddl-auto=validate`, Flyway 마이그레이션 적용, SQL 로그 출력, 로컬 PostgreSQL/Redis를 기본으로 사용합니다.
 - `prod`: EC2 운영용 프로필입니다. 환경 변수 기반 DB/Redis/KIS/Kakao 설정을 사용하며, 운영 쿠키는 기본적으로 `Secure`와 `SameSite=None`을 사용합니다.
 - EC2 프리티어에서는 Gradle/Docker 빌드가 메모리 부족을 유발할 수 있으므로 Spring 이미지는 로컬 PC 또는 CI에서 빌드해 Container Registry에 push하고, EC2에서는 pull만 수행합니다.
-- 운영 DB 스키마는 현재 초기 연동 단계에서 `ddl-auto=update`를 허용하지만, 보존해야 하는 데이터가 생기면 Flyway 마이그레이션으로 전환합니다.
+- 운영 DB 스키마는 Flyway 마이그레이션으로 관리하며, JPA는 `ddl-auto=validate`로 매핑 검증만 수행합니다.
 
 ---
 

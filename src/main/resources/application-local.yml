@@ -13,12 +13,18 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 2
+    locations: classpath:db/migration
 
   batch:
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
 
 realtime:
   redis:
