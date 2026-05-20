@@ -10,6 +10,8 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
 
     List<Portfolio> findByAccountId(Long accountId);
 
+    List<Portfolio> findByAccountIdOrderByUpdatedAtDesc(Long accountId);
+
     Optional<Portfolio> findByAccountIdAndStockId(Long accountId, Long stockId);
 
     void deleteByAccountId(Long accountId);

@@ -4,7 +4,9 @@ import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentAccountResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentDashboardResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderRequest;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentPortfolioListResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentSectorLeaderResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentSectorStocksResponse;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentAccountService;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentCommandService;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentQueryService;
@@ -91,6 +93,28 @@ public class MockInvestmentController {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.getSectorLeader(sectorId)
+        ));
+    }
+
+    @Operation(summary = "내 보유 기업 리스트 조회", description = "현재 보유 중인 종목 목록을 최근 매매순으로 조회합니다.")
+    @GetMapping("/portfolios")
+    public ResponseEntity<ApiResponse<MockInvestmentPortfolioListResponse>> getPortfolios(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                mockInvestmentQueryService.getPortfolios(getAuthenticatedUserId(userPrincipal))
+        ));
+    }
+
+    @Operation(summary = "섹터별 기업 리스트 조회", description = "선택한 섹터에 속한 종목 목록을 시가총액 순으로 조회합니다.")
+    @GetMapping("/sectors/{sectorId}/stocks")
+    public ResponseEntity<ApiResponse<MockInvestmentSectorStocksResponse>> getSectorStocks(
+            @PathVariable Long sectorId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                mockInvestmentQueryService.getSectorStocks(sectorId)
         ));
     }
 

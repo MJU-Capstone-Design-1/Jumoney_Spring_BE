@@ -2,15 +2,16 @@ package com.mju.Jumoney.domain.mockinvestment.service;
 
 import com.mju.Jumoney.domain.mockinvestment.domain.Account;
 import com.mju.Jumoney.domain.mockinvestment.domain.Portfolio;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentDashboardResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentSectorLeaderResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.*;
 import com.mju.Jumoney.domain.mockinvestment.exception.MockInvestmentErrorCode;
 import com.mju.Jumoney.domain.mockinvestment.repository.PortfolioRepository;
 import com.mju.Jumoney.domain.sector.domain.Sector;
 import com.mju.Jumoney.domain.sector.exception.SectorErrorCode;
 import com.mju.Jumoney.domain.sector.repository.SectorRepository;
 import com.mju.Jumoney.domain.stock.domain.Stock;
+import com.mju.Jumoney.domain.stock.domain.StockIndicator;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
+import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
@@ -20,8 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,7 @@ import java.util.Map;
 public class MockInvestmentQueryService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final int PROFIT_RATE_DIVIDE_SCALE = 6;
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
 
@@ -36,16 +42,13 @@ public class MockInvestmentQueryService {
     private final PortfolioRepository portfolioRepository;
     private final SectorRepository sectorRepository;
     private final StockRepository stockRepository;
+    private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
 
     public MockInvestmentDashboardResponse getDashboard(Long userId) {
         Account account = mockInvestmentAccountService.getRequiredAccount(userId);
         List<Portfolio> portfolios = portfolioRepository.findByAccountId(account.getId());
-        Map<String, StockCurrentPriceSnapshot> currentPrices = stockCurrentPriceService.getCurrentPrices(
-                portfolios.stream()
-                        .map(portfolio -> portfolio.getStock().getStockCode())
-                        .toList()
-        );
+        Map<String, StockCurrentPriceSnapshot> currentPrices = getCurrentPricesByPortfolios(portfolios);
 
         BigDecimal totalEvaluationAmount = portfolios.stream()
                 .map(portfolio -> calculateEvaluationAmount(portfolio, currentPrices))
@@ -82,6 +85,40 @@ public class MockInvestmentQueryService {
         );
     }
 
+    public MockInvestmentPortfolioListResponse getPortfolios(Long userId) {
+        Account account = mockInvestmentAccountService.getRequiredAccount(userId);
+        List<Portfolio> portfolios = portfolioRepository.findByAccountIdOrderByUpdatedAtDesc(account.getId());
+        Map<String, StockCurrentPriceSnapshot> currentPrices = getCurrentPricesByPortfolios(portfolios);
+
+        List<MockInvestmentPortfolioItemResponse> portfolioItems = portfolios.stream()
+                .map(portfolio -> toPortfolioItemResponse(portfolio, currentPrices.get(portfolio.getStock().getStockCode())))
+                .toList();
+
+        return new MockInvestmentPortfolioListResponse(portfolioItems);
+    }
+
+    public MockInvestmentSectorStocksResponse getSectorStocks(Long sectorId) {
+        Sector sector = findSectorById(sectorId);
+        List<Stock> stocks = stockRepository.findBySectorIdOrderByNameAsc(sectorId);
+        Map<Long, Long> marketCaps = getLatestMarketCaps(stocks);
+        Map<String, StockCurrentPriceSnapshot> currentPrices = getCurrentPricesByStockCodes(
+                stocks.stream()
+                        .map(Stock::getStockCode)
+                        .toList()
+        );
+
+        List<MockInvestmentSectorStockItemResponse> stockItems = stocks.stream()
+                .sorted(buildSectorStocksComparator(marketCaps))
+                .map(stock -> toSectorStockItemResponse(stock, currentPrices.get(stock.getStockCode())))
+                .toList();
+
+        return new MockInvestmentSectorStocksResponse(
+                sector.getId(),
+                sector.getSectorName().getDescription(),
+                stockItems
+        );
+    }
+
     // ========== 조회 메서드 ==========
     private Sector findSectorById(Long sectorId) {
         return sectorRepository.findById(sectorId)
@@ -93,7 +130,53 @@ public class MockInvestmentQueryService {
                 .orElseThrow(() -> new CustomException(MockInvestmentErrorCode.MARKET_LEADER_STOCK_NOT_FOUND));
     }
 
+    private Map<String, StockCurrentPriceSnapshot> getCurrentPricesByPortfolios(List<Portfolio> portfolios) {
+        return getCurrentPricesByStockCodes(
+                portfolios.stream()
+                        .map(portfolio -> portfolio.getStock().getStockCode())
+                        .toList()
+        );
+    }
+
+    private Map<String, StockCurrentPriceSnapshot> getCurrentPricesByStockCodes(List<String> stockCodes) {
+        if (stockCodes.isEmpty()) {
+            return Map.of();
+        }
+        return stockCurrentPriceService.getCurrentPrices(stockCodes);
+    }
+
+    private Map<Long, Long> getLatestMarketCaps(List<Stock> stocks) {
+        if (stocks.isEmpty()) {
+            return Map.of();
+        }
+
+        Optional<String> latestBaseTime = stockIndicatorRepository.findLatestBaseTime();
+        if (latestBaseTime.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> stockIds = stocks.stream()
+                .map(Stock::getId)
+                .toList();
+
+        return stockIndicatorRepository.findByBaseTimeAndStockIdsWithStock(latestBaseTime.get(), stockIds).stream()
+                .collect(Collectors.toMap(
+                        indicator -> indicator.getStock().getId(),
+                        StockIndicator::getMarketCap
+                ));
+    }
+
     // ========== 비즈니스 메서드 ==========
+    private Comparator<Stock> buildSectorStocksComparator(Map<Long, Long> marketCaps) {
+        return Comparator
+                .comparing(Stock::isMarketLeader, Comparator.reverseOrder())
+                .thenComparing(
+                        stock -> marketCaps.getOrDefault(stock.getId(), 0L),
+                        Comparator.reverseOrder()
+                )
+                .thenComparing(Stock::getName);
+    }
+
     private BigDecimal calculateEvaluationAmount(
             Portfolio portfolio,
             Map<String, StockCurrentPriceSnapshot> currentPrices
@@ -103,6 +186,51 @@ public class MockInvestmentQueryService {
             return BigDecimal.ZERO;
         }
         return currentPrice.currentPrice().multiply(BigDecimal.valueOf(portfolio.getQuantity()));
+    }
+
+    private MockInvestmentPortfolioItemResponse toPortfolioItemResponse(
+            Portfolio portfolio,
+            StockCurrentPriceSnapshot currentPriceSnapshot
+    ) {
+        BigDecimal currentPrice = currentPriceSnapshot == null ? null : currentPriceSnapshot.currentPrice();
+        BigDecimal changeRate = currentPriceSnapshot == null ? null : currentPriceSnapshot.changeRate();
+        BigDecimal evaluationAmount = currentPrice == null
+                ? ZERO
+                : currentPrice.multiply(BigDecimal.valueOf(portfolio.getQuantity()));
+        BigDecimal profitAmount = currentPrice == null
+                ? ZERO
+                : evaluationAmount.subtract(portfolio.getTotalPurchaseAmount());
+        BigDecimal profitRate = currentPrice == null
+                ? ZERO
+                : calculateProfitRate(profitAmount, portfolio.getTotalPurchaseAmount());
+
+        return new MockInvestmentPortfolioItemResponse(
+                portfolio.getStock().getId(),
+                portfolio.getStock().getStockCode(),
+                portfolio.getStock().getName(),
+                portfolio.getStock().getSector().getSectorName().getDescription(),
+                portfolio.getQuantity(),
+                portfolio.getAveragePurchasePrice(),
+                currentPrice,
+                evaluationAmount,
+                profitAmount,
+                profitRate,
+                changeRate
+        );
+    }
+
+    private MockInvestmentSectorStockItemResponse toSectorStockItemResponse(
+            Stock stock,
+            StockCurrentPriceSnapshot currentPriceSnapshot
+    ) {
+        return new MockInvestmentSectorStockItemResponse(
+                stock.getId(),
+                stock.getStockCode(),
+                stock.getName(),
+                currentPriceSnapshot == null ? null : currentPriceSnapshot.currentPrice(),
+                currentPriceSnapshot == null ? null : currentPriceSnapshot.changeRate(),
+                stock.isMarketLeader()
+        );
     }
 
     private BigDecimal calculateProfitRate(BigDecimal totalProfitAmount, BigDecimal seedMoney) {

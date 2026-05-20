@@ -13,5 +13,7 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     Optional<Stock> findFirstBySectorIdAndIsMarketLeaderTrue(Long sectorId);
 
+    List<Stock> findBySectorIdOrderByNameAsc(Long sectorId);
+
     Optional<Stock> findByStockCode(String stockCode);
 }
