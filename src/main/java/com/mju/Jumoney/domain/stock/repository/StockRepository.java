@@ -12,4 +12,6 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
     List<Stock> findByStockCodeIn(Collection<String> stockCodes);
 
     Optional<Stock> findFirstBySectorIdAndIsMarketLeaderTrue(Long sectorId);
+
+    Optional<Stock> findByStockCode(String stockCode);
 }

@@ -3,6 +3,7 @@ package com.mju.Jumoney.domain.mockinvestment.service;
 import com.mju.Jumoney.domain.mockinvestment.domain.Account;
 import com.mju.Jumoney.domain.mockinvestment.domain.Order;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentAccountResponse;
+import com.mju.Jumoney.domain.mockinvestment.exception.MockInvestmentErrorCode;
 import com.mju.Jumoney.domain.mockinvestment.repository.AccountRepository;
 import com.mju.Jumoney.domain.mockinvestment.repository.OrderRepository;
 import com.mju.Jumoney.domain.mockinvestment.repository.PortfolioRepository;
@@ -32,7 +33,18 @@ public class MockInvestmentAccountService {
     public MockInvestmentAccountResponse initializeAccount(Long userId) {
         return accountRepository.findByUserId(userId)
                 .map(account -> toResponse(account, false))
+                .orElseGet(() -> toResponse(createInitialAccount(userId), true));
+    }
+
+    @Transactional
+    public Account getOrInitializeAccount(Long userId) {
+        return accountRepository.findByUserId(userId)
                 .orElseGet(() -> createInitialAccount(userId));
+    }
+
+    public Account getRequiredAccount(Long userId) {
+        return accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException(MockInvestmentErrorCode.MOCK_INVESTMENT_ACCOUNT_NOT_FOUND));
     }
 
     @Transactional
@@ -46,11 +58,11 @@ public class MockInvestmentAccountService {
     }
 
     // ========== 비즈니스 메서드 ==========
-    private MockInvestmentAccountResponse createInitialAccount(Long userId) {
+    private Account createInitialAccount(Long userId) {
         User user = findUserById(userId);
         Account account = accountRepository.save(Account.create(user, INITIAL_SEED_MONEY));
         orderRepository.save(Order.createDeposit(account, INITIAL_SEED_MONEY));
-        return toResponse(account, true);
+        return account;
     }
 
     private MockInvestmentAccountResponse toResponse(Account account, boolean created) {

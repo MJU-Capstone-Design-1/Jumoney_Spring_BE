@@ -37,7 +37,7 @@ public class MockInvestmentQueryService {
     private final StockCurrentPriceService stockCurrentPriceService;
 
     public MockInvestmentDashboardResponse getDashboard(Long userId) {
-        Account account = mockInvestmentAccountService.getOrInitializeAccount(userId);
+        Account account = mockInvestmentAccountService.getRequiredAccount(userId);
         List<Portfolio> portfolios = portfolioRepository.findByAccountId(account.getId());
         Map<String, StockCurrentPriceSnapshot> currentPrices = stockCurrentPriceService.getCurrentPrices(
                 portfolios.stream()
