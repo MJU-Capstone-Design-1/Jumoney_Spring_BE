@@ -1,10 +1,6 @@
 package com.mju.Jumoney.domain.master.controller;
 
-import com.mju.Jumoney.domain.master.dto.MasterDetailResponse;
-import com.mju.Jumoney.domain.master.dto.MasterListResponse;
-import com.mju.Jumoney.domain.master.dto.MasterPortfolioChartResponse;
-import com.mju.Jumoney.domain.master.dto.MasterPortfolioDescriptionResponse;
-import com.mju.Jumoney.domain.master.dto.MasterSelectionResponse;
+import com.mju.Jumoney.domain.master.dto.*;
 import com.mju.Jumoney.domain.master.service.MasterQueryService;
 import com.mju.Jumoney.domain.master.service.MasterSelectionService;
 import com.mju.Jumoney.global.exception.CustomException;
@@ -205,12 +201,12 @@ public class MasterController {
         ));
     }
 
-    @Operation(summary = "거장 선택", description = "로그인 사용자가 자신의 팀으로 사용할 거장을 선택하거나 변경합니다.")
+    @Operation(summary = "거장 선택/변경", description = "로그인 사용자가 거장을 선택하거나 변경합니다. 변경 시 모의투자 계좌가 초기화됩니다.")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(
             responseCode = "200",
-            description = "거장 선택 성공",
+            description = "거장 선택/변경 성공",
             content = @Content(examples = @ExampleObject(
-                    name = "거장 선택 성공",
+                    name = "거장 선택/변경 성공",
                     value = """
                             {
                               "success": true,
@@ -219,7 +215,8 @@ public class MasterController {
                               "data": {
                                 "masterId": 1,
                                 "masterCode": "WARREN_BUFFETT",
-                                "masterName": "워런 버핏"
+                                "masterName": "워런 버핏",
+                                "selectionStatus": "INITIAL_SELECTION"
                               }
                             }
                             """

@@ -2,8 +2,9 @@ package com.mju.Jumoney.domain.master.service;
 
 import com.mju.Jumoney.domain.master.domain.Master;
 import com.mju.Jumoney.domain.master.dto.MasterSelectionResponse;
-import com.mju.Jumoney.domain.master.repository.MasterRepository;
+import com.mju.Jumoney.domain.master.enums.MasterSelectionStatus;
 import com.mju.Jumoney.domain.master.exception.MasterErrorCode;
+import com.mju.Jumoney.domain.master.repository.MasterRepository;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentAccountService;
 import com.mju.Jumoney.domain.user.domain.User;
 import com.mju.Jumoney.domain.user.exception.UserErrorCode;
@@ -26,9 +27,14 @@ public class MasterSelectionService {
     public MasterSelectionResponse selectMaster(Long userId, Long masterId) {
         User user = findUserById(userId);
         Master master = findMasterById(masterId);
+        Master selectedMaster = user.getSelectedMaster();
 
-        boolean masterChanged = user.getSelectedMaster() != null
-                && !user.getSelectedMaster().getId().equals(master.getId());
+        if (selectedMaster != null && selectedMaster.getId().equals(master.getId())) {
+            throw new CustomException(MasterErrorCode.MASTER_ALREADY_SELECTED);
+        }
+
+        MasterSelectionStatus selectionStatus = resolveSelectionStatus(selectedMaster, master);
+        boolean masterChanged = selectionStatus == MasterSelectionStatus.CHANGED_SELECTION;
         user.updateSelectedMaster(master);
         if (masterChanged) {
             mockInvestmentAccountService.resetAccount(userId);
@@ -37,8 +43,16 @@ public class MasterSelectionService {
         return new MasterSelectionResponse(
                 master.getId(),
                 master.getMasterCode(),
-                master.getMasterName()
+                master.getMasterName(),
+                selectionStatus
         );
+    }
+
+    private MasterSelectionStatus resolveSelectionStatus(Master selectedMaster, Master targetMaster) {
+        if (selectedMaster == null) {
+            return MasterSelectionStatus.INITIAL_SELECTION;
+        }
+        return MasterSelectionStatus.CHANGED_SELECTION;
     }
 
     // ========== 조회 메서드 ==========
