@@ -1,6 +1,7 @@
 package com.mju.Jumoney.domain.mockinvestment.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public record MockInvestmentSectorStockItemResponse(
         Long stockId,
@@ -8,6 +9,7 @@ public record MockInvestmentSectorStockItemResponse(
         String stockName,
         BigDecimal currentPrice,
         BigDecimal changeRate,
-        boolean isMarketLeader
+        boolean isMarketLeader,
+        List<String> tags
 ) {
 }

@@ -1,13 +1,6 @@
 package com.mju.Jumoney.domain.mockinvestment.controller;
 
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentAccountResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentDashboardResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderHistoryResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderRequest;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentPortfolioListResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentSectorLeaderResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentSectorStocksResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.*;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentAccountService;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentCommandService;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentQueryService;
@@ -22,12 +15,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "모의투자", description = "모의투자 API")
 @RestController
@@ -127,6 +115,17 @@ public class MockInvestmentController {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.getSectorStocks(sectorId)
+        ));
+    }
+
+    @Operation(summary = "종목 검색", description = "입력한 검색어가 종목명에 포함된 종목 목록을 조회합니다. 한 글자 검색도 지원하며, 섹터 태그와 대장주 태그를 함께 반환합니다.")
+    @GetMapping("/stocks/search")
+    public ResponseEntity<ApiResponse<MockInvestmentStockSearchResponse>> searchStocks(
+            @RequestParam String keyword
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                mockInvestmentQueryService.searchStocks(keyword)
         ));
     }
 

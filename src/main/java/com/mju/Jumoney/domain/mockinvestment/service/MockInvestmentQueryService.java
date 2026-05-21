@@ -23,10 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -119,6 +116,28 @@ public class MockInvestmentQueryService {
                 sector.getSectorName().getDescription(),
                 stockItems
         );
+    }
+
+    public MockInvestmentStockSearchResponse searchStocks(String keyword) {
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        if (normalizedKeyword.isEmpty()) {
+            return new MockInvestmentStockSearchResponse(normalizedKeyword, List.of());
+        }
+
+        List<Stock> stocks = stockRepository.findByNameContainingIgnoreCaseOrderByNameAsc(normalizedKeyword);
+        Map<Long, Long> marketCaps = getLatestMarketCaps(stocks);
+        Map<String, StockCurrentPriceSnapshot> currentPrices = getCurrentPricesByStockCodes(
+                stocks.stream()
+                        .map(Stock::getStockCode)
+                        .toList()
+        );
+
+        List<MockInvestmentSectorStockItemResponse> stockItems = stocks.stream()
+                .sorted(buildSectorStocksComparator(marketCaps))
+                .map(stock -> toSectorStockItemResponse(stock, currentPrices.get(stock.getStockCode())))
+                .toList();
+
+        return new MockInvestmentStockSearchResponse(normalizedKeyword, stockItems);
     }
 
     public MockInvestmentOrderHistoryResponse getOrderHistory(Long userId) {
@@ -240,8 +259,18 @@ public class MockInvestmentQueryService {
                 stock.getName(),
                 currentPriceSnapshot == null ? null : currentPriceSnapshot.currentPrice(),
                 currentPriceSnapshot == null ? null : currentPriceSnapshot.changeRate(),
-                stock.isMarketLeader()
+                stock.isMarketLeader(),
+                buildStockTags(stock)
         );
+    }
+
+    private List<String> buildStockTags(Stock stock) {
+        List<String> tags = new ArrayList<>();
+        tags.add(stock.getSector().getSectorName().name());
+        if (stock.isMarketLeader()) {
+            tags.add("MARKET_LEADER");
+        }
+        return tags;
     }
 
     private MockInvestmentOrderHistoryItemResponse toOrderHistoryItemResponse(Order order) {
