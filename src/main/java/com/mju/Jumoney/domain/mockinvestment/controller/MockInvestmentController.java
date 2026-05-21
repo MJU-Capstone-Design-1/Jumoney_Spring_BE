@@ -1,6 +1,7 @@
 package com.mju.Jumoney.domain.mockinvestment.controller;
 
 import com.mju.Jumoney.domain.mockinvestment.dto.*;
+import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentStockSearchSortType;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentAccountService;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentCommandService;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentQueryService;
@@ -118,14 +119,15 @@ public class MockInvestmentController {
         ));
     }
 
-    @Operation(summary = "종목 검색", description = "입력한 검색어가 종목명에 포함된 종목 목록을 조회합니다. 한 글자 검색도 지원하며, 섹터 태그와 대장주 태그를 함께 반환합니다.")
+    @Operation(summary = "종목 검색", description = "입력한 검색어가 종목명에 포함된 종목 목록을 조회합니다. 이름 순, 주가 높은 순, 주가 낮은 순, 시가총액 순, 거래대금 순으로 정렬할 수 있습니다.")
     @GetMapping("/stocks/search")
     public ResponseEntity<ApiResponse<MockInvestmentStockSearchResponse>> searchStocks(
-            @RequestParam String keyword
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "NAME_ASC") MockInvestmentStockSearchSortType sort
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
-                mockInvestmentQueryService.searchStocks(keyword)
+                mockInvestmentQueryService.searchStocks(keyword, sort)
         ));
     }
 

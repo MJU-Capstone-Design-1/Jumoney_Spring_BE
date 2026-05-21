@@ -4,6 +4,7 @@ import com.mju.Jumoney.domain.mockinvestment.domain.Account;
 import com.mju.Jumoney.domain.mockinvestment.domain.Order;
 import com.mju.Jumoney.domain.mockinvestment.domain.Portfolio;
 import com.mju.Jumoney.domain.mockinvestment.dto.*;
+import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentStockSearchSortType;
 import com.mju.Jumoney.domain.mockinvestment.exception.MockInvestmentErrorCode;
 import com.mju.Jumoney.domain.mockinvestment.repository.OrderRepository;
 import com.mju.Jumoney.domain.mockinvestment.repository.PortfolioRepository;
@@ -118,14 +119,14 @@ public class MockInvestmentQueryService {
         );
     }
 
-    public MockInvestmentStockSearchResponse searchStocks(String keyword) {
+    public MockInvestmentStockSearchResponse searchStocks(String keyword, MockInvestmentStockSearchSortType sort) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         if (normalizedKeyword.isEmpty()) {
             return new MockInvestmentStockSearchResponse(normalizedKeyword, List.of());
         }
 
         List<Stock> stocks = stockRepository.findByNameContainingIgnoreCaseOrderByNameAsc(normalizedKeyword);
-        Map<Long, Long> marketCaps = getLatestMarketCaps(stocks);
+        Map<Long, StockIndicator> indicators = getLatestIndicatorsByStockId(stocks);
         Map<String, StockCurrentPriceSnapshot> currentPrices = getCurrentPricesByStockCodes(
                 stocks.stream()
                         .map(Stock::getStockCode)
@@ -133,7 +134,7 @@ public class MockInvestmentQueryService {
         );
 
         List<MockInvestmentSectorStockItemResponse> stockItems = stocks.stream()
-                .sorted(buildSectorStocksComparator(marketCaps))
+                .sorted(buildStockSearchComparator(sort, currentPrices, indicators))
                 .map(stock -> toSectorStockItemResponse(stock, currentPrices.get(stock.getStockCode())))
                 .toList();
 
@@ -176,6 +177,14 @@ public class MockInvestmentQueryService {
     }
 
     private Map<Long, Long> getLatestMarketCaps(List<Stock> stocks) {
+        return getLatestIndicatorsByStockId(stocks).values().stream()
+                .collect(Collectors.toMap(
+                        indicator -> indicator.getStock().getId(),
+                        StockIndicator::getMarketCap
+                ));
+    }
+
+    private Map<Long, StockIndicator> getLatestIndicatorsByStockId(List<Stock> stocks) {
         if (stocks.isEmpty()) {
             return Map.of();
         }
@@ -192,7 +201,7 @@ public class MockInvestmentQueryService {
         return stockIndicatorRepository.findByBaseTimeAndStockIdsWithStock(latestBaseTime.get(), stockIds).stream()
                 .collect(Collectors.toMap(
                         indicator -> indicator.getStock().getId(),
-                        StockIndicator::getMarketCap
+                        indicator -> indicator
                 ));
     }
 
@@ -205,6 +214,78 @@ public class MockInvestmentQueryService {
                         Comparator.reverseOrder()
                 )
                 .thenComparing(Stock::getName);
+    }
+
+    private Comparator<Stock> buildStockSearchComparator(
+            MockInvestmentStockSearchSortType sort,
+            Map<String, StockCurrentPriceSnapshot> currentPrices,
+            Map<Long, StockIndicator> indicators
+    ) {
+        MockInvestmentStockSearchSortType effectiveSort = sort == null
+                ? MockInvestmentStockSearchSortType.NAME_ASC
+                : sort;
+
+        return switch (effectiveSort) {
+            case PRICE_DESC -> priceComparator(currentPrices, true);
+            case PRICE_ASC -> priceComparator(currentPrices, false);
+            case MARKET_CAP_DESC -> indicatorLongComparator(indicators, StockIndicator::getMarketCap);
+            case TRADE_AMOUNT_DESC -> indicatorLongComparator(indicators, StockIndicator::getAccumulatedTradeAmount);
+            case NAME_ASC -> nameComparator();
+        };
+    }
+
+    private Comparator<Stock> nameComparator() {
+        return Comparator.comparing(Stock::getName)
+                .thenComparing(Stock::getStockCode);
+    }
+
+    private Comparator<Stock> priceComparator(
+            Map<String, StockCurrentPriceSnapshot> currentPrices,
+            boolean descending
+    ) {
+        Comparator<BigDecimal> priceComparator = descending
+                ? Comparator.reverseOrder()
+                : Comparator.naturalOrder();
+
+        return Comparator
+                .comparing((Stock stock) -> currentPriceOf(stock, currentPrices) == null)
+                .thenComparing(
+                        stock -> currentPriceOf(stock, currentPrices),
+                        Comparator.nullsLast(priceComparator)
+                )
+                .thenComparing(Stock::getName)
+                .thenComparing(Stock::getStockCode);
+    }
+
+    private Comparator<Stock> indicatorLongComparator(
+            Map<Long, StockIndicator> indicators,
+            java.util.function.Function<StockIndicator, Long> valueExtractor
+    ) {
+        return Comparator
+                .comparing((Stock stock) -> indicatorValueOf(stock, indicators, valueExtractor) == null)
+                .thenComparing(
+                        stock -> indicatorValueOf(stock, indicators, valueExtractor),
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                )
+                .thenComparing(Stock::getName)
+                .thenComparing(Stock::getStockCode);
+    }
+
+    private BigDecimal currentPriceOf(
+            Stock stock,
+            Map<String, StockCurrentPriceSnapshot> currentPrices
+    ) {
+        StockCurrentPriceSnapshot snapshot = currentPrices.get(stock.getStockCode());
+        return snapshot == null ? null : snapshot.currentPrice();
+    }
+
+    private Long indicatorValueOf(
+            Stock stock,
+            Map<Long, StockIndicator> indicators,
+            java.util.function.Function<StockIndicator, Long> valueExtractor
+    ) {
+        StockIndicator indicator = indicators.get(stock.getId());
+        return indicator == null ? null : valueExtractor.apply(indicator);
     }
 
     private BigDecimal calculateEvaluationAmount(
