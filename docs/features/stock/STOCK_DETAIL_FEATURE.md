@@ -14,12 +14,11 @@
 ### Endpoint
 
 ```http
-GET /api/mock-investments/stocks/{stockCode}/chart?interval=MINUTE
-GET /api/mock-investments/stocks/{stockCode}/chart?interval=DAY
-GET /api/mock-investments/stocks/{stockCode}/chart?interval=WEEK
-GET /api/mock-investments/stocks/{stockCode}/chart?interval=MONTH
-GET /api/mock-investments/stocks/{stockCode}/chart?interval=YEAR
+GET /api/mock-investments/stocks/{stockCode}/charts/minute
+GET /api/mock-investments/stocks/{stockCode}/charts/minute?date=2026-05-21
 ```
+
+초기 구현은 `MINUTE`만 제공한다. `DAY`, `WEEK`, `MONTH`, `YEAR`는 KIS 기간별시세 backfill 이후 별도 엔드포인트 또는 interval 파라미터로 확장한다.
 
 ### Interval
 
@@ -39,14 +38,19 @@ GET /api/mock-investments/stocks/{stockCode}/chart?interval=YEAR
 
 Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한다.
 
-- `MINUTE`: DB 확정 분봉과 Redis 최근 미확정 분봉을 병합해 반환한다.
+- 현재 구현의 `MINUTE`: DB 확정 분봉만 반환한다. 응답의 `includesRealtime=false`가 이 상태를 뜻한다.
+- Redis 연동 이후의 `MINUTE`: DB 확정 분봉과 Redis 최근 미확정 분봉을 병합해 반환한다.
 - `DAY`, `WEEK`, `MONTH`, `YEAR`: DB 확정 캔들만 반환한다.
 - Node SSE는 Spring 응답 이후의 실시간 미확정 분봉 업데이트를 전달한다.
 
 ```json
 {
   "stockCode": "005930",
-  "interval": "MINUTE",
+  "stockName": "삼성전자",
+  "intervalType": "MINUTE",
+  "date": "2026-05-21",
+  "includesRealtime": false,
+  "lastFinalCandleTime": "2026-05-21T14:00:00",
   "candles": [
     {
       "candleTime": "2026-05-21T14:00:00",
@@ -57,16 +61,6 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
       "volume": 120340,
       "tradeAmount": 8840000000,
       "isFinal": true
-    },
-    {
-      "candleTime": "2026-05-21T14:25:00",
-      "openPrice": 73800,
-      "highPrice": 73900,
-      "lowPrice": 73700,
-      "closePrice": 73850,
-      "volume": 32000,
-      "tradeAmount": null,
-      "isFinal": false
     }
   ]
 }
@@ -83,7 +77,7 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
 | `closePrice`  | 종가                                                |
 | `volume`      | 거래량                                               |
 | `tradeAmount` | 거래대금. KIS 응답에 없거나 초기 구현에서 제외하면 `null` 허용          |
-| `isFinal`     | DB/KIS 확정 캔들은 `true`, Redis 기반 미확정 분봉은 `false`       |
+| `isFinal`     | DB/KIS 확정 캔들은 `true`, Redis 기반 미확정 분봉은 `false`    |
 
 ---
 
@@ -129,16 +123,19 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - 장중 30분마다 KIS `FHKST03010200`을 호출한다.
 - KIS가 제공하는 최근 당일 분봉을 `stock_candles(interval_type=MINUTE)`에 upsert한다.
 - 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외한다. KIS 응답의 가장 최근 분봉은 첫 체결 전 이전 분 거래량이 보일 수 있고, 호출 지연 때문에 아직 완성되지 않은 봉일 수 있기 때문이다.
-- `MINUTE` 차트 API는 DB 확정 분봉과 Redis 최근 미확정 분봉을 병합해 반환한다.
+- `MINUTE` 차트 API는 DB 확정 분봉과 Redis 최근 미확정 분봉(`stock:minute-candles:{code}`)을 병합해 반환한다.
+- Redis 분봉 연동 전에는 같은 API가 DB 확정 분봉만 반환한다.
 - Redis 미확정 분봉은 `isFinal=false`로 반환한다.
 - 같은 `candleTime`에 DB 확정 분봉과 Redis 미확정 분봉이 모두 있으면 DB 확정 분봉을 우선한다.
 
 ### Node 역할
 
 - KIS WebSocket `H0STCNT0` tick을 수신한다.
+- `stock:latest:{code}`에 최신 tick 스냅샷을 저장한다. 현재가/등락률/누적 거래량/체결강도 최신 표시용이며 차트 분봉과 분리한다.
 - tick을 같은 `candleTime` 기준으로 1분봉 미확정 캔들로 집계한다.
-- Redis에 최근 미확정 분봉을 저장하거나, Spring이 집계할 수 있는 최근 tick 이력을 유지한다.
-- SSE로 Spring 초기 응답 이후의 캔들 업데이트 이벤트를 보낸다.
+- `stock:minute-candles:{code}` ZSET에 최근 30~40분 미확정 분봉을 저장한다.
+- `stock:history:{code}`와 `stream:stock:ticks`는 Spring 비즈니스 로직 필수 의존성이 아니므로 디버깅/장애 분석/후처리 확장 목적일 때만 유지한다.
+- SSE로 Spring 초기 응답 이후의 `MINUTE_CANDLE_UPDATE` 이벤트를 보낸다.
 
 프론트가 tick 원본으로 직접 1분봉을 만드는 것도 가능하지만, 권장하지 않는다. 이유는 다음과 같다.
 
@@ -171,6 +168,35 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - Node SSE의 `MINUTE_CANDLE_UPDATE`로 마지막 미확정 캔들을 append/update한다.
 - 같은 `candleTime`의 Spring 확정 캔들이 재조회되면 Spring 값을 우선한다.
 - `isFinal=false` 캔들은 표시용 임시 데이터로만 다룬다.
+
+### Redis 분봉 계약
+
+`stock:latest:{code}`는 최신 상태 스냅샷이고, `stock:minute-candles:{code}`는 차트용 분봉 배열이다. 현재가/등락률은 `stock:latest:{code}`에서 읽고, 차트는
+`stock:minute-candles:{code}`를 병합한다.
+
+`stock:minute-candles:{code}`:
+
+| Item       | Value                                     |
+|------------|-------------------------------------------|
+| Redis type | Sorted Set                                |
+| Score      | `candleTime` epoch millis 또는 epoch minute |
+| Member     | 아래 JSON 문자열                               |
+| Retention  | 최근 30~40분                                 |
+
+```json
+{
+  "stockCode": "005930",
+  "candleTime": "2026-05-21T14:20:00",
+  "openPrice": 71000,
+  "highPrice": 71200,
+  "lowPrice": 70900,
+  "closePrice": 71100,
+  "volume": 32000,
+  "tradeAmount": 2275000000,
+  "isFinal": false,
+  "updatedAt": "2026-05-21T14:20:31"
+}
+```
 
 ---
 
@@ -225,8 +251,10 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 - 수동 동기화도 스케줄러와 동일하게 정각/30분 단위까지만 `isFinal=true`로 저장한다.
 - 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:00`이고, `14:01~14:20`은 Redis/Node SSE의 `isFinal=false` 미확정 캔들 검증 대상이다.
 - 응답의 `kisRequestCount`로 실제 KIS 호출 횟수를 확인한다.
-- 상태 확인 API의 `firstCandleTime`, `lastCandleTime`, `dbExpectedCandleCount`, `candleCount`, `hasExpectedCandleCount`, `coversExpectedRange`로 DB 적재 범위를 검증한다.
-- 상태 확인 API는 `realtimeExpectedStartTime`, `realtimeExpectedEndTime`, `realtimeCheckRequired`로 Redis 미확정 구간도 알려준다. 단, Spring에서 실제 Redis 분봉 검증까지 하려면 Node가 저장하는 미확정 분봉 Redis key 규격을 먼저 확정해야 한다.
+- 상태 확인 API의 `firstCandleTime`, `lastCandleTime`, `dbExpectedCandleCount`, `candleCount`, `hasExpectedCandleCount`,
+  `coversExpectedRange`로 DB 적재 범위를 검증한다.
+- 상태 확인 API는 `realtimeExpectedStartTime`, `realtimeExpectedEndTime`, `realtimeCheckRequired`로 Redis 미확정 구간도 알려준다. 단,
+  Spring에서 실제 Redis 분봉 검증까지 하려면 Node가 저장하는 미확정 분봉 Redis key 규격을 먼저 확정해야 한다.
 
 장 마감 이후 KIS가 당일 분봉을 더 이상 제공하지 않으면 수동 API는 실패 결과를 반환하고, 다음 개장일 장중에 다시 검증한다.
 
@@ -253,9 +281,59 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 
 ### 일/주/월/년 확정 동기화
 
-- 일봉은 장 마감 후 스케줄러로 당일 확정 데이터를 저장한다.
-- 주봉/월봉/연봉은 매일 또는 주기적으로 최신 데이터를 upsert해도 된다.
-- 과거 구간은 수동 backfill로 먼저 채운다.
+KIS 국내주식기간별시세 `FHKST03010100`을 사용한다.
+
+KIS 요청:
+
+| interval | `FID_PERIOD_DIV_CODE` | 1회 최대 건수 | 저장 기준 `candleTime` |
+|----------|------------------------|---------------|-------------------------|
+| `DAY`    | `D`                    | 100건          | 영업일 `00:00:00` |
+| `WEEK`   | `W`                    | 100건          | KIS가 반환한 주봉 기준일 `00:00:00` |
+| `MONTH`  | `M`                    | 100건          | KIS가 반환한 월봉 기준일 `00:00:00` |
+| `YEAR`   | `Y`                    | 100건          | KIS가 반환한 연봉 기준일 `00:00:00` |
+
+저장 매핑:
+
+| KIS output2 | `stock_candles` |
+|-------------|------------------|
+| `stck_bsop_date` | `candle_time` |
+| `stck_oprc` | `open_price` |
+| `stck_hgpr` | `high_price` |
+| `stck_lwpr` | `low_price` |
+| `stck_clpr` | `close_price` |
+| `acml_vol` | `volume` |
+| `acml_tr_pbmn` | `trade_amount` |
+
+초기 backfill:
+
+- 수동 API로 전체 종목 또는 단일 종목을 적재한다.
+- `DAY`: 최근 1~2년을 우선 적재한다. KIS 1회 최대 100건이므로 여러 구간으로 나눠 호출한다.
+- `WEEK`: 최근 3~5년을 우선 적재한다.
+- `MONTH`: 최근 5~10년을 우선 적재한다.
+- `YEAR`: 가능한 전체 기간을 적재한다.
+- 같은 캔들은 `unique(stock_id, interval_type, candle_time)` 기준으로 upsert한다.
+
+예상 수동 API:
+
+```http
+POST /api/local/kis/chart/period/sync?interval=DAY
+POST /api/local/kis/chart/period/sync?interval=WEEK
+POST /api/local/kis/chart/period/sync?interval=MONTH
+POST /api/local/kis/chart/period/sync?interval=YEAR
+POST /api/local/kis/chart/period/sync?stockCode=005930&interval=DAY
+```
+
+정기 동기화:
+
+- `DAY`: 장 마감 후 충분히 지연된 시각에 당일 일봉을 upsert한다. 예: `16:10` 이후.
+- `WEEK`: 매일 장 마감 후 최신 주봉을 upsert해도 되고, 금요일 장 마감 후 실행해도 된다. 단순성을 위해 초기에는 매일 최신 100건 upsert를 허용한다.
+- `MONTH`: 매일 장 마감 후 최신 100건 upsert를 허용한다. 호출량을 줄이려면 월말 또는 월초 보정 스케줄로 축소한다.
+- `YEAR`: 매일 실행할 필요가 낮다. 월 1회 또는 수동 backfill 중심으로 둔다.
+
+차트 조회:
+
+- `DAY`, `WEEK`, `MONTH`, `YEAR`는 Redis 병합 없이 DB 확정 캔들만 반환한다.
+- 프론트 표시 기간이 `1주일`, `1개월`, `1년`, `5년`처럼 UX 기간인 경우에도 백엔드는 interval과 조회 기간만 받는다.
 
 ---
 
@@ -267,5 +345,6 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 - Spring 차트 API와 Node SSE는 `candleTime` 기준을 동일하게 사용한다.
 - 같은 `candleTime`이 충돌하면 `isFinal=true`인 Spring DB 값을 우선한다.
 - 14:25에 `MINUTE` 차트 API를 호출하면 Spring은 DB 확정 캔들에 Redis 미확정 캔들을 병합해 14:25까지의 스냅샷을 반환하고, 14:25 이후 변화는 Node SSE가 전달한다.
-- 14:32에 스케줄러가 실행 중일 때 사용자가 `MINUTE` 차트 API를 호출하면, Spring은 그 시점에 DB에 커밋된 확정 캔들까지만 읽고 Redis 미확정 캔들을 병합한다. 스케줄러가 아직 해당 종목의 `14:30` 확정 캔들을 저장하지 않았다면 Redis의 `14:30` 미확정 캔들을 반환할 수 있고, 저장이 끝난 뒤 재조회하면 DB의 `isFinal=true` 캔들이 우선된다.
+- 14:32에 스케줄러가 실행 중일 때 사용자가 `MINUTE` 차트 API를 호출하면, Spring은 그 시점에 DB에 커밋된 확정 캔들까지만 읽고 Redis 미확정 캔들을 병합한다. 스케줄러가 아직 해당 종목의
+  `14:30` 확정 캔들을 저장하지 않았다면 Redis의 `14:30` 미확정 캔들을 반환할 수 있고, 저장이 끝난 뒤 재조회하면 DB의 `isFinal=true` 캔들이 우선된다.
 - 스케줄러는 종목별 upsert를 짧은 트랜잭션으로 커밋한다. 전체 200종목 동기화가 끝날 때까지 차트 조회를 막지 않는다.

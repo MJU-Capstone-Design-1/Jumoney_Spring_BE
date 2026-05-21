@@ -12,9 +12,12 @@ import com.mju.Jumoney.domain.sector.domain.Sector;
 import com.mju.Jumoney.domain.sector.exception.SectorErrorCode;
 import com.mju.Jumoney.domain.sector.repository.SectorRepository;
 import com.mju.Jumoney.domain.stock.domain.Stock;
+import com.mju.Jumoney.domain.stock.domain.StockCandle;
 import com.mju.Jumoney.domain.stock.domain.StockIndicator;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
+import com.mju.Jumoney.domain.stock.enums.StockCandleIntervalType;
 import com.mju.Jumoney.domain.stock.exception.StockErrorCode;
+import com.mju.Jumoney.domain.stock.repository.StockCandleRepository;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
@@ -25,6 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,12 +43,15 @@ public class MockInvestmentQueryService {
     private static final BigDecimal ZERO = BigDecimal.ZERO;
     private static final int PROFIT_RATE_DIVIDE_SCALE = 6;
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
+    private static final LocalTime MARKET_OPEN_TIME = LocalTime.of(9, 0);
+    private static final LocalTime MARKET_CLOSE_TIME = LocalTime.of(15, 30);
 
     private final MockInvestmentAccountService mockInvestmentAccountService;
     private final OrderRepository orderRepository;
     private final PortfolioRepository portfolioRepository;
     private final SectorRepository sectorRepository;
     private final StockRepository stockRepository;
+    private final StockCandleRepository stockCandleRepository;
     private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
 
@@ -159,6 +168,36 @@ public class MockInvestmentQueryService {
         );
     }
 
+    public MockInvestmentMinuteChartResponse getMinuteChart(String stockCode, LocalDate date) {
+        Stock stock = stockRepository.findByStockCode(stockCode)
+                .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));
+        LocalDate targetDate = date == null ? LocalDate.now() : date;
+        LocalDateTime startTime = LocalDateTime.of(targetDate, MARKET_OPEN_TIME);
+        LocalDateTime endTime = LocalDateTime.of(targetDate, MARKET_CLOSE_TIME);
+
+        List<StockCandle> candles = stockCandleRepository.findByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeAsc(
+                stock.getId(),
+                StockCandleIntervalType.MINUTE,
+                startTime,
+                endTime
+        );
+
+        List<MockInvestmentMinuteChartResponse.Candle> candleResponses = candles.stream()
+                .map(this::toMinuteChartCandleResponse)
+                .toList();
+        LocalDateTime lastFinalCandleTime = candles.isEmpty() ? null : candles.get(candles.size() - 1).getCandleTime();
+
+        return new MockInvestmentMinuteChartResponse(
+                stock.getStockCode(),
+                stock.getName(),
+                StockCandleIntervalType.MINUTE.name(),
+                targetDate,
+                false,
+                lastFinalCandleTime,
+                candleResponses
+        );
+    }
+
     public MockInvestmentStockSearchResponse searchStocks(String keyword, MockInvestmentStockSearchSortType sort) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         if (normalizedKeyword.isEmpty()) {
@@ -248,6 +287,19 @@ public class MockInvestmentQueryService {
                         indicator -> indicator.getStock().getId(),
                         indicator -> indicator
                 ));
+    }
+
+    private MockInvestmentMinuteChartResponse.Candle toMinuteChartCandleResponse(StockCandle candle) {
+        return new MockInvestmentMinuteChartResponse.Candle(
+                candle.getCandleTime(),
+                candle.getOpenPrice(),
+                candle.getHighPrice(),
+                candle.getLowPrice(),
+                candle.getClosePrice(),
+                candle.getVolume(),
+                candle.getTradeAmount(),
+                candle.isFinal()
+        );
     }
 
     // ========== 비즈니스 메서드 ==========

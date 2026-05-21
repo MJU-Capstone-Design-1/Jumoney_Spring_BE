@@ -7,23 +7,36 @@
 - Redis 클라이언트: `ioredis`
 - 키 네이밍 규칙: `<domain>:<purpose>:<identifier>`
 - 시간 기준:
-  - 뉴스 TTL은 `nextMidnightKstEpoch()` 기준 KST 자정 만료를 사용한다.
-  - 주식 실시간 이력은 TTL 대신 score 기반 슬라이딩 윈도우로 관리한다.
+    - 뉴스 TTL은 `nextMidnightKstEpoch()` 기준 KST 자정 만료를 사용한다.
+    - 주식 실시간 이력은 TTL 대신 score 기반 슬라이딩 윈도우로 관리한다.
 - 본 문서는 Node 쓰기 계약을 기준으로 하며, Spring은 이 계약에 맞춰 읽기 전용으로 연동한다.
 
 ## Stock Realtime Data
 
 Node WebSocket 서버는 `src/websocket.ts`에서 주식 실시간 데이터를 Redis에 적재한다.
 
+### Required Keys
+
+차트와 현재가 기능에서 유지해야 하는 필수 key는 다음 두 개다.
+
+| Key                           | Structure  | Purpose                       |
+|-------------------------------|------------|-------------------------------|
+| `stock:latest:{code}`         | String     | 최신 현재가, 등락률, 누적 거래량, 체결강도 스냅샷 |
+| `stock:minute-candles:{code}` | Sorted Set | 최근 30~40분 1분봉 미확정 캔들          |
+
+`stock:history:{code}`와 `stream:stock:ticks`는 Spring 비즈니스 로직의 필수 의존성이 아니다. 디버깅, 장애 분석, 후처리 소비자가 필요할 때만 유지한다.
+
 ### `stock:history:{code}` - Sorted Set
 
-| Item | Value |
-|---|---|
-| Write Location | `src/websocket.ts:92` |
-| Redis Command | `ZADD`, `ZREMRANGEBYSCORE` |
-| Score | `timestamp` ms epoch |
-| Member | 아래 JSON 문자열 |
-| Retention | 최근 30분 슬라이딩 윈도우 |
+선택 key다. tick 원본 디버깅/장애 분석이 필요할 때 유지한다.
+
+| Item           | Value                      |
+|----------------|----------------------------|
+| Write Location | `src/websocket.ts:92`      |
+| Redis Command  | `ZADD`, `ZREMRANGEBYSCORE` |
+| Score          | `timestamp` ms epoch       |
+| Member         | 아래 JSON 문자열                |
+| Retention      | 최근 30분 슬라이딩 윈도우            |
 
 ```json
 {
@@ -38,47 +51,104 @@ Node WebSocket 서버는 `src/websocket.ts`에서 주식 실시간 데이터를 
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `code` | string | 종목코드 |
-| `time` | string | 체결 시각 `HHMMSS` |
-| `price` | number | 현재가 |
-| `change` | number | 전일 대비 |
-| `rate` | number | 등락률(%) |
-| `vol` | number | 누적 거래량 |
-| `strength` | number | 체결강도 |
-| `timestamp` | number | ms epoch |
+| Field       | Type   | Description    |
+|-------------|--------|----------------|
+| `code`      | string | 종목코드           |
+| `time`      | string | 체결 시각 `HHMMSS` |
+| `price`     | number | 현재가            |
+| `change`    | number | 전일 대비          |
+| `rate`      | number | 등락률(%)         |
+| `vol`       | number | 누적 거래량         |
+| `strength`  | number | 체결강도           |
+| `timestamp` | number | ms epoch       |
 
 ### `stock:latest:{code}` - String
 
-| Item | Value |
-|---|---|
-| Write Location | `src/websocket.ts:95` |
-| Redis Command | `SET` |
-| Value | `stock:history:{code}` member와 동일한 JSON 문자열 |
-| TTL | 없음 |
-| Current Consumer | `src/app.ts:71` SSE 초기 스냅샷 |
+| Item             | Value                                              |
+|------------------|----------------------------------------------------|
+| Write Location   | `src/websocket.ts:95`                              |
+| Redis Command    | `SET`                                              |
+| Value            | 최신 tick 스냅샷 JSON 문자열                               |
+| TTL              | 없음                                                 |
+| Current Consumer | Spring `StockCurrentPriceService`, Node SSE 초기 스냅샷 |
+
+현재가/등락률/체결강도 최신 상태는 이 key에서 읽는다. 차트용 `stock:minute-candles:{code}`가 이 역할을 대체하지 않는다.
+
+```json
+{
+  "code": "005930",
+  "time": "142031",
+  "price": 71000,
+  "change": 500,
+  "rate": 0.71,
+  "vol": 12345678,
+  "strength": 105.3,
+  "timestamp": 1715511600000
+}
+```
+
+### `stock:minute-candles:{code}` - Sorted Set
+
+| Item          | Value                                     |
+|---------------|-------------------------------------------|
+| Redis Command | `ZADD`, `ZREMRANGEBYSCORE`                |
+| Score         | `candleTime` epoch millis 또는 epoch minute |
+| Member        | 아래 JSON 문자열                               |
+| Retention     | 최근 30~40분 슬라이딩 윈도우                        |
+| Consumer      | Spring MINUTE 차트 초기 스냅샷, Node SSE         |
+
+Node는 KIS WebSocket tick을 수신하면 같은 KST 1분 `candleTime` 기준으로 OHLCV를 갱신한다.
+
+```json
+{
+  "stockCode": "005930",
+  "candleTime": "2026-05-21T14:20:00",
+  "openPrice": 71000,
+  "highPrice": 71200,
+  "lowPrice": 70900,
+  "closePrice": 71100,
+  "volume": 32000,
+  "tradeAmount": 2275000000,
+  "isFinal": false,
+  "updatedAt": "2026-05-21T14:20:31"
+}
+```
+
+| Field         | Type           | Description                               |
+|---------------|----------------|-------------------------------------------|
+| `stockCode`   | string         | 종목코드                                      |
+| `candleTime`  | string         | KST 기준 1분봉 시작 시각, `yyyy-MM-dd'T'HH:mm:00` |
+| `openPrice`   | number         | 해당 분 첫 체결가                                |
+| `highPrice`   | number         | 해당 분 최고가                                  |
+| `lowPrice`    | number         | 해당 분 최저가                                  |
+| `closePrice`  | number         | 해당 분 최신 체결가                               |
+| `volume`      | number         | 해당 분 거래량                                  |
+| `tradeAmount` | number \| null | 해당 분 거래대금. 계산이 어려우면 null 허용               |
+| `isFinal`     | boolean        | Redis 미확정 캔들은 false                       |
+| `updatedAt`   | string         | 마지막 갱신 시각                                 |
 
 ### `stream:stock:ticks` - Stream
 
-| Item | Value |
-|---|---|
-| Write Location | `src/websocket.ts:98` |
-| Redis Command | `XADD stream:stock:ticks MAXLEN ~ 300000 * ...` |
-| Retention | 약 300,000 entries |
+선택 key다. 이벤트성 후처리나 별도 소비자가 필요할 때 유지한다.
+
+| Item           | Value                                           |
+|----------------|-------------------------------------------------|
+| Write Location | `src/websocket.ts:98`                           |
+| Redis Command  | `XADD stream:stock:ticks MAXLEN ~ 300000 * ...` |
+| Retention      | 약 300,000 entries                               |
 
 모든 필드는 문자열로 저장한다.
 
-| Field | Description |
-|---|---|
-| `code` | 종목코드 |
-| `price` | 현재가 |
-| `change` | 전일 대비 |
-| `rate` | 등락률 |
-| `vol` | 누적 거래량 |
-| `strength` | 체결강도 |
-| `time` | 체결 시각 `HHMMSS` |
-| `timestamp` | ms epoch |
+| Field       | Description    |
+|-------------|----------------|
+| `code`      | 종목코드           |
+| `price`     | 현재가            |
+| `change`    | 전일 대비          |
+| `rate`      | 등락률            |
+| `vol`       | 누적 거래량         |
+| `strength`  | 체결강도           |
+| `time`      | 체결 시각 `HHMMSS` |
+| `timestamp` | ms epoch       |
 
 ## News Collection And Analysis
 
@@ -86,86 +156,86 @@ Node WebSocket 서버는 `src/websocket.ts`에서 주식 실시간 데이터를 
 
 ### `news:dedup:{YYYYMMDD}` - Set
 
-| Item | Value |
-|---|---|
+| Item           | Value                  |
+|----------------|------------------------|
 | Write Location | `src/news/redis.ts:55` |
-| Redis Command | `SADD`, `EXPIREAT` |
-| Member | 정규화 URL의 SHA1 hex |
-| TTL | 다음 KST 자정 + 1시간 |
+| Redis Command  | `SADD`, `EXPIREAT`     |
+| Member         | 정규화 URL의 SHA1 hex      |
+| TTL            | 다음 KST 자정 + 1시간        |
 
 정규화 URL은 `protocol://hostname/pathname` 형식이며 query string과 fragment를 제거한다.
 
 ### `news:seq` - String Counter
 
-| Item | Value |
-|---|---|
+| Item           | Value                  |
+|----------------|------------------------|
 | Write Location | `src/news/redis.ts:63` |
-| Redis Command | `INCR` |
-| Purpose | 개별 뉴스 ID 발급 |
-| TTL | 없음 |
+| Redis Command  | `INCR`                 |
+| Purpose        | 개별 뉴스 ID 발급            |
+| TTL            | 없음                     |
 
 ### `news:item:{newsId}` - Hash
 
-| Item | Value |
-|---|---|
+| Item           | Value                  |
+|----------------|------------------------|
 | Write Location | `src/news/redis.ts:71` |
-| Redis Command | `HSET`, `EXPIREAT` |
-| TTL | 다음 KST 자정 |
+| Redis Command  | `HSET`, `EXPIREAT`     |
+| TTL            | 다음 KST 자정              |
 
-| Field | Stored Type | Description |
-|---|---|---|
-| `newsId` | string | 뉴스 ID |
-| `newUrl` | string | 원본 URL, 최대 255자 |
-| `title` | string | 제목, HTML 제거, 최대 50자 |
-| `content` | string | 본문, HTML 제거 |
-| `publishedAt` | string | 발행 시각 ms epoch |
-| `keyword` | string | 검색 키워드 |
-| `fetchedAt` | string | 수집 시각 ms epoch |
+| Field         | Stored Type | Description         |
+|---------------|-------------|---------------------|
+| `newsId`      | string      | 뉴스 ID               |
+| `newUrl`      | string      | 원본 URL, 최대 255자     |
+| `title`       | string      | 제목, HTML 제거, 최대 50자 |
+| `content`     | string      | 본문, HTML 제거         |
+| `publishedAt` | string      | 발행 시각 ms epoch      |
+| `keyword`     | string      | 검색 키워드              |
+| `fetchedAt`   | string      | 수집 시각 ms epoch      |
 
 ### `news:today` - Sorted Set
 
-| Item | Value |
-|---|---|
+| Item           | Value                  |
+|----------------|------------------------|
 | Write Location | `src/news/redis.ts:81` |
-| Redis Command | `ZADD`, `EXPIREAT` |
-| Score | `publishedAt` ms epoch |
-| Member | `newsId` |
-| TTL | 다음 KST 자정 |
-| Purpose | 당일 뉴스 시간순 인덱스 |
+| Redis Command  | `ZADD`, `EXPIREAT`     |
+| Score          | `publishedAt` ms epoch |
+| Member         | `newsId`               |
+| TTL            | 다음 KST 자정              |
+| Purpose        | 당일 뉴스 시간순 인덱스          |
 
 ### `news:analysis:today` - Hash
 
-| Item | Value |
-|---|---|
+| Item           | Value                   |
+|----------------|-------------------------|
 | Write Location | `src/news/redis.ts:122` |
-| Redis Command | `HSET`, `EXPIREAT` |
-| TTL | 다음 KST 자정 |
+| Redis Command  | `HSET`, `EXPIREAT`      |
+| TTL            | 다음 KST 자정               |
 
-| Field | Stored Type | Description |
-|---|---|---|
-| `baseTime` | ISO 8601 string | 분석 기준 시각 |
-| `analysisResult` | string | 종합 평가 |
-| `summary` | string | 핵심 요약 3-5줄 |
-| `reasoning` | string | 분석 논리와 근거 |
-| `keyword` | string | 핵심 키워드, 최대 50자 |
-| `newsCount` | string | 분석 뉴스 수 |
-| `newsIds` | JSON array string | `[1, 2, 3, ...]` |
-| `goodSectors` | JSON array string | `[{sectorName, reason}, ...]` |
-| `badSectors` | JSON array string | `[{sectorName, reason}, ...]` |
+| Field            | Stored Type       | Description                   |
+|------------------|-------------------|-------------------------------|
+| `baseTime`       | ISO 8601 string   | 분석 기준 시각                      |
+| `analysisResult` | string            | 종합 평가                         |
+| `summary`        | string            | 핵심 요약 3-5줄                    |
+| `reasoning`      | string            | 분석 논리와 근거                     |
+| `keyword`        | string            | 핵심 키워드, 최대 50자                |
+| `newsCount`      | string            | 분석 뉴스 수                       |
+| `newsIds`        | JSON array string | `[1, 2, 3, ...]`              |
+| `goodSectors`    | JSON array string | `[{sectorName, reason}, ...]` |
+| `badSectors`     | JSON array string | `[{sectorName, reason}, ...]` |
 
 ### `stream:news:analysis` - Stream
 
-| Item | Value |
-|---|---|
-| Write Location | `src/news/redis.ts:140` |
-| Redis Command | `XADD stream:news:analysis MAXLEN ~ 1000 * ...` |
-| Retention | 약 1,000 entries |
+| Item           | Value                                           |
+|----------------|-------------------------------------------------|
+| Write Location | `src/news/redis.ts:140`                         |
+| Redis Command  | `XADD stream:news:analysis MAXLEN ~ 1000 * ...` |
+| Retention      | 약 1,000 entries                                 |
 
-| Field | Stored Type |
-|---|---|
-| `baseTime` | string |
-| `newsCount` | string |
-| `keyword` | string |
+| Field       | Stored Type |
+|-------------|-------------|
+| `baseTime`  | string      |
+| `newsCount` | string      |
+| `keyword`   | string      |
 
 ## Daily Reset
 
@@ -177,14 +247,15 @@ DEL news:today news:analysis:today news:dedup:{yesterday YYYYMMDD}
 
 ## Summary
 
-| Key | Command | Structure | TTL / Limit | Write Location |
-|---|---|---|---|---|
-| `stock:history:{code}` | `ZADD` | Sorted Set | 최근 30분 | `src/websocket.ts:92` |
-| `stock:latest:{code}` | `SET` | String | 없음 | `src/websocket.ts:95` |
-| `stream:stock:ticks` | `XADD` | Stream | 약 300,000 entries | `src/websocket.ts:98` |
-| `news:dedup:{YYYYMMDD}` | `SADD` | Set | 자정 KST + 1시간 | `src/news/redis.ts:55` |
-| `news:seq` | `INCR` | String | 없음 | `src/news/redis.ts:63` |
-| `news:item:{newsId}` | `HSET` | Hash | 자정 KST | `src/news/redis.ts:71` |
-| `news:today` | `ZADD` | Sorted Set | 자정 KST | `src/news/redis.ts:81` |
-| `news:analysis:today` | `HSET` | Hash | 자정 KST | `src/news/redis.ts:122` |
-| `stream:news:analysis` | `XADD` | Stream | 약 1,000 entries | `src/news/redis.ts:140` |
+| Key                           | Command | Structure  | TTL / Limit           | Write Location          |
+|-------------------------------|---------|------------|-----------------------|-------------------------|
+| `stock:latest:{code}`         | `SET`   | String     | 없음                    | 최신 현재가/등락률/체결강도         |
+| `stock:minute-candles:{code}` | `ZADD`  | Sorted Set | 최근 30~40분             | 최근 미확정 1분봉              |
+| `stock:history:{code}`        | `ZADD`  | Sorted Set | 선택. 최근 30분            | tick 디버깅/장애 분석          |
+| `stream:stock:ticks`          | `XADD`  | Stream     | 선택. 약 300,000 entries | 이벤트성 후처리/확장             |
+| `news:dedup:{YYYYMMDD}`       | `SADD`  | Set        | 자정 KST + 1시간          | `src/news/redis.ts:55`  |
+| `news:seq`                    | `INCR`  | String     | 없음                    | `src/news/redis.ts:63`  |
+| `news:item:{newsId}`          | `HSET`  | Hash       | 자정 KST                | `src/news/redis.ts:71`  |
+| `news:today`                  | `ZADD`  | Sorted Set | 자정 KST                | `src/news/redis.ts:81`  |
+| `news:analysis:today`         | `HSET`  | Hash       | 자정 KST                | `src/news/redis.ts:122` |
+| `stream:news:analysis`        | `XADD`  | Stream     | 약 1,000 entries       | `src/news/redis.ts:140` |

@@ -121,22 +121,26 @@
 ### 3.5. 종목 차트 조회
 
 - **기능**: 종목의 확정 차트 캔들을 봉 단위로 조회.
-- **Endpoint**: `GET /api/mock-investments/stocks/{stockCode}/chart?interval={interval}`
-- **interval**: `MINUTE`, `DAY`, `WEEK`, `MONTH`, `YEAR`
+- **Endpoint**: `GET /api/mock-investments/stocks/{stockCode}/charts/minute?date={yyyy-MM-dd}`
+- **interval**: 현재 `MINUTE`만 구현.
 - **사용 테이블**: `Stock`, `StockCandle`
 - **로직**:
-    1. `MINUTE` 차트는 Spring이 DB 확정 캔들과 Redis 최근 미확정 캔들을 병합해 현재 시점까지의 스냅샷을 반환한다.
+    1. 현재 `MINUTE` 차트는 DB 확정 캔들만 반환한다.
     2. 분봉은 장중 30분마다 KIS 주식당일분봉조회(`FHKST03010200`)로 upsert한다.
-    3. 일/주/월/년봉은 KIS 국내주식기간별시세(`FHKST03010100`)로 backfill 및 주기 동기화한다.
+    3. Redis 연동 후 `stock:minute-candles:{code}`의 최근 미확정 분봉을 병합하고 `includesRealtime=true`로 확장한다.
     4. Spring 응답 이후의 미확정 분봉 업데이트는 Node SSE가 전달한다.
-    5. `DAY`, `WEEK`, `MONTH`, `YEAR` 차트는 DB 확정 캔들만 반환한다.
+    5. 일/주/월/년봉은 KIS 국내주식기간별시세(`FHKST03010100`) backfill 이후 확장한다.
 
 #### Response Data
 
 ```json
 {
   "stockCode": "005930",
-  "interval": "MINUTE",
+  "stockName": "삼성전자",
+  "intervalType": "MINUTE",
+  "date": "2026-05-21",
+  "includesRealtime": false,
+  "lastFinalCandleTime": "2026-05-21T14:00:00",
   "candles": [
     {
       "candleTime": "2026-05-21T14:00:00",
@@ -147,16 +151,6 @@
       "volume": 120340,
       "tradeAmount": 8840000000,
       "isFinal": true
-    },
-    {
-      "candleTime": "2026-05-21T14:25:00",
-      "openPrice": 73800,
-      "highPrice": 73900,
-      "lowPrice": 73700,
-      "closePrice": 73850,
-      "volume": 32000,
-      "tradeAmount": null,
-      "isFinal": false
     }
   ]
 }

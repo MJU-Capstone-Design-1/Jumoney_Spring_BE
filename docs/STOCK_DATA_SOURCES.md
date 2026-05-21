@@ -4,14 +4,14 @@
 
 ## Summary
 
-| Category           | Source                       | Storage                      | Request-time KIS REST? | Primary Usage         |
-|--------------------|------------------------------|------------------------------|------------------------|-----------------------|
-| 종목 기본 정보           | `data/stock_data.json`       | `stocks`, `sectors`          | No                     | 종목명, 종목코드, 섹터, 대장주 여부 |
-| 종목 지표              | KIS REST batch               | `stock_indicators`           | No                     | 추천 필터/정렬, 검색 정렬       |
-| HTS 조건검색 결과        | KIS REST batch               | `hts_stocks`                 | No                     | 위험 성향별 후보군            |
-| 실시간 현재가            | Node WebSocket Redis         | `stock:latest:{code}`        | No                     | 장중 현재가/등락률 표시         |
-| 현재가 fallback/cache | Spring KIS REST, Redis cache | `stock:current-price:{code}` | Yes                    | 주문, 상세 표시 fallback    |
-| 확정 차트 캔들           | KIS REST chart sync          | `stock_candles`              | No                     | 분/일/주/월/년 차트          |
+| Category           | Source                       | Storage                      | Request-time KIS REST? | Primary Usage                      |
+|--------------------|------------------------------|------------------------------|------------------------|------------------------------------|
+| 종목 기본 정보           | `data/stock_data.json`       | `stocks`, `sectors`          | No                     | 종목명, 종목코드, 섹터, 대장주 여부              |
+| 종목 지표              | KIS REST batch               | `stock_indicators`           | No                     | 추천 필터/정렬, 검색 정렬                    |
+| HTS 조건검색 결과        | KIS REST batch               | `hts_stocks`                 | No                     | 위험 성향별 후보군                         |
+| 실시간 현재가            | Node WebSocket Redis         | `stock:latest:{code}`        | No                     | 장중 현재가/등락률 표시                      |
+| 현재가 fallback/cache | Spring KIS REST, Redis cache | `stock:current-price:{code}` | Yes                    | 주문, 상세 표시 fallback                 |
+| 확정 차트 캔들           | KIS REST chart sync          | `stock_candles`              | No                     | 분/일/주/월/년 차트                       |
 | 미확정 분봉 캔들          | Node WebSocket/Redis/SSE     | Redis, SSE event             | No                     | MINUTE 차트 초기 스냅샷 보강 및 장중 마지막 분봉 표시 |
 
 ## Batch Data
@@ -71,13 +71,15 @@
 
 ### Node WebSocket Redis
 
-| Redis Key              | Source                   | Spring Usage                  |
-|------------------------|--------------------------|-------------------------------|
-| `stock:latest:{code}`  | KIS WebSocket `H0STCNT0` | 실시간 현재가, 등락률, 누적 거래량, 체결강도 표시 |
-| `stock:history:{code}` | KIS WebSocket `H0STCNT0` | 최근 틱 이력, 분봉 집계 후보             |
-| `stream:stock:ticks`   | KIS WebSocket `H0STCNT0` | 이벤트성 후처리/소비자 확장               |
+| Redis Key                     | Source                               | Spring Usage                  |
+|-------------------------------|--------------------------------------|-------------------------------|
+| `stock:latest:{code}`         | KIS WebSocket `H0STCNT0` latest tick | 실시간 현재가, 등락률, 누적 거래량, 체결강도 표시 |
+| `stock:minute-candles:{code}` | Node 1분봉 집계                          | MINUTE 차트의 최근 미확정 분봉 병합       |
+| `stock:history:{code}`        | KIS WebSocket `H0STCNT0` tick        | 선택. 디버깅/장애 분석용 최근 tick 이력     |
+| `stream:stock:ticks`          | KIS WebSocket `H0STCNT0` tick        | 선택. 이벤트성 후처리/소비자 확장           |
 
 `StockCurrentPriceService`는 `stock:latest:{code}`를 먼저 조회하고, freshness 조건을 만족하는 경우 현재가/등락률로 사용한다.
+`stock:minute-candles:{code}`는 차트 전용이며 현재가/등락률 최신 스냅샷 역할을 대체하지 않는다.
 
 ### Spring Current Price Cache
 
@@ -109,12 +111,18 @@ fallback 순서로 값을 찾는다. 검색에서 KIS REST fallback을 제거하
 
 차트는 Spring 초기 스냅샷과 Node 실시간 업데이트의 역할을 분리한다.
 
-| Data        | Owner  | Source                                | Usage            |
-|-------------|--------|---------------------------------------|------------------|
-| 확정 분봉       | Spring | KIS `FHKST03010200` 30분 주기 동기화        | DB 저장, 차트 API 반환 |
-| 확정 일/주/월/년봉 | Spring | KIS `FHKST03010100` backfill/schedule | DB 저장, 차트 API 반환 |
-| 미확정 1분봉     | Node/Spring | KIS WebSocket `H0STCNT0` tick 집계      | Spring MINUTE 초기 스냅샷에 병합, SSE로 이후 업데이트 전달 |
+| Data        | Owner  | Source                                | Usage                                     |
+|-------------|--------|---------------------------------------|-------------------------------------------|
+| 확정 분봉       | Spring | KIS `FHKST03010200` 30분 주기 동기화        | DB 저장, 차트 API 반환                          |
+| 확정 일/주/월/년봉 | Spring | KIS `FHKST03010100` backfill/schedule | DB 저장, 차트 API 반환                          |
+| 미확정 1분봉     | Node   | `stock:minute-candles:{code}`         | Spring MINUTE 초기 스냅샷에 병합, SSE로 이후 업데이트 전달 |
 
-Spring `MINUTE` 차트 API는 DB의 `isFinal=true` 확정 분봉과 Redis 기반 `isFinal=false` 미확정 분봉을 병합해 현재 시점까지의 스냅샷을 반환한다. Node SSE는 Spring 응답 이후의 `isFinal=false` 미확정 1분봉 업데이트를 전달하고, 프론트는 같은 `candleTime`의 확정 캔들이 Spring에서 내려오면 확정 캔들을 우선한다.
+Spring `MINUTE` 차트 API는 DB의 `isFinal=true` 확정 분봉과 Redis 기반 `isFinal=false` 미확정 분봉을 병합해 현재 시점까지의 스냅샷을 반환한다. Node SSE는
+Spring 응답 이후의 `isFinal=false` 미확정 1분봉 업데이트를 전달하고, 프론트는 같은 `candleTime`의 확정 캔들이 Spring에서 내려오면 확정 캔들을 우선한다.
 
-KIS 분봉 동기화는 정각/30분 정각보다 정확히 2분 늦게 실행하고, 정각/30분 단위까지만 DB 확정 저장 대상으로 삼는다. 예를 들어 `14:20` 수동 smoke 실행은 `14:00`까지만 KIS로 채우고, `14:01~14:20`은 Redis/Node SSE의 미확정 캔들로 검증한다. 수동 검증 API는 `POST /api/local/kis/chart/minute/sync?stockCode=005930`를 사용하고, DB 적재 범위 확인은 `GET /api/local/kis/chart/minute/sync/status?stockCode=005930`를 사용한다.
+KIS 분봉 동기화는 정각/30분 정각보다 정확히 2분 늦게 실행하고, 정각/30분 단위까지만 DB 확정 저장 대상으로 삼는다. 예를 들어 `14:20` 수동 smoke 실행은 `14:00`까지만 KIS로 채우고,
+`14:01~14:20`은 Redis/Node SSE의 미확정 캔들로 검증한다. 수동 검증 API는 `POST /api/local/kis/chart/minute/sync?stockCode=005930`를 사용하고,
+DB 적재 범위 확인은 `GET /api/local/kis/chart/minute/sync/status?stockCode=005930`를 사용한다.
+
+Redis 미확정 분봉 연동 전에도 Spring은 DB 확정 분봉만 반환하는 MINUTE 차트 API를 먼저 구현할 수 있다. 이 경우 응답은 정각/30분 단위 확정 구간까지만 포함하고, Redis 연동 후 같은
+API에서 최근 미확정 분봉을 병합한다.

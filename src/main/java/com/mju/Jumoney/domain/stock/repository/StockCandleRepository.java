@@ -5,6 +5,7 @@ import com.mju.Jumoney.domain.stock.enums.StockCandleIntervalType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface StockCandleRepository extends JpaRepository<StockCandle, Long> {
@@ -12,6 +13,11 @@ public interface StockCandleRepository extends JpaRepository<StockCandle, Long> 
     Optional<StockCandle> findByStockIdAndIntervalTypeAndCandleTime(Long stockId,
                                                                     StockCandleIntervalType intervalType,
                                                                     LocalDateTime candleTime);
+
+    List<StockCandle> findByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeAsc(Long stockId,
+                                                                                           StockCandleIntervalType intervalType,
+                                                                                           LocalDateTime startTime,
+                                                                                           LocalDateTime endTime);
 
     long countByStockIdAndIntervalTypeAndCandleTimeBetween(Long stockId,
                                                            StockCandleIntervalType intervalType,
