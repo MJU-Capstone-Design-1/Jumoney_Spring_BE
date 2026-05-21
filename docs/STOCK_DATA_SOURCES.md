@@ -33,25 +33,25 @@
 
 `StockIndicatorBatchService`가 전체 종목을 순회하며 KIS REST API 결과를 조립하고 `stock + baseTime(yyyyMM)` 기준으로 upsert한다.
 
-| Field | Entity Field | KIS Source | Notes |
-|---|---|---|---|
-| 시가총액 | `marketCap` | 주식현재가 시세 `FHKST01010100` | 검색/추천 시가총액 정렬 기준 |
-| 누적 거래대금 | `accumulatedTradeAmount` | 주식현재가 시세 `FHKST01010100` | 거래 활발도 정렬 후보 |
-| 체결강도 | `executionStrength` | 주식현재가 체결 `FHKST01010300` | 배치 실행 시점의 확정 저장값 |
-| PER | `per` | 주식현재가 시세 `FHKST01010100` | 가치 지표 |
-| PBR | `pbr` | 주식현재가 시세 `FHKST01010100` | 가치 지표 |
+| Field      | Entity Field | KIS Source | Notes |
+|------------|---|---|---|
+| 시가총액       | `marketCap` | 주식현재가 시세 `FHKST01010100` | 검색/추천 시가총액 정렬 기준 |
+| 누적 거래대금    | `accumulatedTradeAmount` | 주식현재가 시세 `FHKST01010100` | 거래 활발도 정렬 후보 |
+| 체결강도       | `executionStrength` | 주식현재가 체결 `FHKST01010300` | 배치 실행 시점의 확정 저장값 |
+| PER        | `per` | 주식현재가 시세 `FHKST01010100` | 가치 지표 |
+| PBR        | `pbr` | 주식현재가 시세 `FHKST01010100` | 가치 지표 |
 | 52주 고가 대비율 | `high52WeekRate` | 주식현재가 시세 `FHKST01010100` | 모멘텀/리스크 지표 |
-| 부채비율 | `debtRatio` | 국내주식 재무비율 `FHKST66430300` | 안정성 지표 |
-| 영업이익증가율 | `operatingProfitGrowthRate` | 국내주식 재무비율 `FHKST66430300` | 성장성 지표 |
-| ROE | `roe` | 국내주식 재무비율 `FHKST66430300` | 수익성 지표 |
-| EPS | `currentEps`, `lastYearEps` | 국내주식 재무비율 `FHKST66430300` | 성장성 계산 |
-| 매출액 | `currentSales`, `lastYearSales` | 국내주식 손익계산서 `FHKST66430200` | 성장성 계산 |
-| 영업이익 | `operatingProfit` | 국내주식 손익계산서 `FHKST66430200` | 수익성/안정성 필터 |
-| DPS | `dps` | 예탁원정보 배당일정 `HHKDB669102C0` | 최근 1년 DPS 합계 |
-| 시가배당률 | `dividendYield` | DPS + 현재가 | 배치에서 계산 |
-| 배당성향 | `payoutRatio` | DPS + EPS | 배치에서 계산 |
-| 신용잔고율 | `marginDebtRate` | 국내주식 신용잔고 일별추이 `FHPST04760000` | 과열/리스크 지표 |
-| 기관 순매수 | `instNetBuy20Days` | 종목별 투자자매매동향 일별 `FHPTJ04160001` | 최근 최대 20개 행 합산 |
+| 부채비율       | `debtRatio` | 국내주식 재무비율 `FHKST66430300` | 안정성 지표 |
+| 영업이익증가율    | `operatingProfitGrowthRate` | 국내주식 재무비율 `FHKST66430300` | 성장성 지표 |
+| ROE        | `roe` | 국내주식 재무비율 `FHKST66430300` | 수익성 지표 |
+| EPS        | `currentEps`, `lastYearEps` | 국내주식 재무비율 `FHKST66430300` | 성장성 계산 |
+| 매출액        | `currentSales`, `lastYearSales` | 국내주식 손익계산서 `FHKST66430200` | 성장성 계산 |
+| 영업이익       | `operatingProfit` | 국내주식 손익계산서 `FHKST66430200` | 수익성/안정성 필터 |
+| DPS        | `dps` | 예탁원정보 배당일정 `HHKDB669102C0` | 최근 1년 DPS 합계 |
+| 배당수익률      | `dividendYield` | DPS + 현재가 | 배치에서 계산 |
+| 배당성향       | `payoutRatio` | DPS + EPS | 배치에서 계산 |
+| 신용잔고율      | `marginDebtRate` | 국내주식 신용잔고 일별추이 `FHPST04760000` | 과열/리스크 지표 |
+| 기관 순매수     | `instNetBuy20Days` | 종목별 투자자매매동향 일별 `FHPTJ04160001` | 최근 최대 20개 행 합산 |
 
 체결강도는 이름만 보면 실시간 데이터처럼 보일 수 있지만, API 응답을 배치에서 읽어 DB에 저장하는 값이다. 검색/추천 정렬에서 이 값을 사용하면 사용자 요청 중 KIS REST 호출이 발생하지 않는다.
 

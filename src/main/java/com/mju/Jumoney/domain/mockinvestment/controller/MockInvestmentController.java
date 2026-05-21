@@ -86,7 +86,7 @@ public class MockInvestmentController {
         ));
     }
 
-    @Operation(summary = "내 보유 기업 리스트 조회", description = "현재 보유 중인 종목 목록을 최근 매매순으로 조회합니다.")
+    @Operation(summary = "내 보유 종목 리스트 조회", description = "현재 보유 중인 종목 목록을 최근 매매순으로 조회합니다.")
     @GetMapping("/portfolios")
     public ResponseEntity<ApiResponse<MockInvestmentPortfolioListResponse>> getPortfolios(
             @AuthenticationPrincipal UserPrincipal userPrincipal
@@ -108,7 +108,7 @@ public class MockInvestmentController {
         ));
     }
 
-    @Operation(summary = "섹터별 기업 리스트 조회", description = "선택한 섹터에 속한 종목 목록을 시가총액 순으로 조회합니다.")
+    @Operation(summary = "섹터별 종목 리스트 조회", description = "선택한 섹터에 속한 종목 목록을 시가총액 순으로 조회합니다.")
     @GetMapping("/sectors/{sectorId}/stocks")
     public ResponseEntity<ApiResponse<MockInvestmentSectorStocksResponse>> getSectorStocks(
             @PathVariable Long sectorId
@@ -116,6 +116,17 @@ public class MockInvestmentController {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.getSectorStocks(sectorId)
+        ));
+    }
+
+    @Operation(summary = "모의투자 종목 상세 조회", description = "차트 제외, 종목 코드 기준으로 종목 기본 정보와 현재 시세, 최신 지표 중심의 상세 정보를 조회합니다.")
+    @GetMapping("/stocks/{stockCode}")
+    public ResponseEntity<ApiResponse<MockInvestmentStockDetailResponse>> getStockDetail(
+            @PathVariable String stockCode
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                mockInvestmentQueryService.getStockDetail(stockCode)
         ));
     }
 

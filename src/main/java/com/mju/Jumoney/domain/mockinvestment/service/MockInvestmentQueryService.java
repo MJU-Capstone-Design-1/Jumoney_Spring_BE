@@ -14,6 +14,7 @@ import com.mju.Jumoney.domain.sector.repository.SectorRepository;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.domain.StockIndicator;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
+import com.mju.Jumoney.domain.stock.exception.StockErrorCode;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
@@ -119,6 +120,45 @@ public class MockInvestmentQueryService {
         );
     }
 
+    public MockInvestmentStockDetailResponse getStockDetail(String stockCode) {
+        Stock stock = stockRepository.findWithSectorByStockCode(stockCode)
+                .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));
+
+        StockCurrentPriceSnapshot currentPrice = stockCurrentPriceService.getCurrentPrice(stock.getStockCode())
+                .orElse(null);
+        StockIndicator indicator = getLatestIndicator(stock.getId()).orElse(null);
+
+        return new MockInvestmentStockDetailResponse(
+                stock.getId(),
+                stock.getStockCode(),
+                stock.getName(),
+                stock.getSector().getSectorName().name(),
+                stock.isMarketLeader(),
+                buildStockTags(stock),
+                new MockInvestmentStockDetailResponse.PriceInfo(
+                        currentPrice == null ? null : currentPrice.currentPrice(),
+                        currentPrice == null ? null : currentPrice.changeRate(),
+                        indicator == null ? null : indicator.getMarketCap(),
+                        indicator == null ? null : indicator.getAccumulatedTradeAmount()
+                ),
+                new MockInvestmentStockDetailResponse.InvestmentMetrics(
+                        indicator == null ? null : indicator.getPbr(),
+                        indicator == null ? null : indicator.getPer(),
+                        indicator == null ? null : indicator.getRoe(),
+                        indicator == null ? null : indicator.getDividendYield(),
+                        indicator == null ? null : indicator.getPayoutRatio(),
+                        indicator == null ? null : indicator.getExecutionStrength(),
+                        indicator == null ? null : indicator.getInstNetBuy20Days()
+                ),
+                new MockInvestmentStockDetailResponse.FinancialMetrics(
+                        indicator == null ? null : indicator.getCurrentSales(),
+                        indicator == null ? null : indicator.getOperatingProfit(),
+                        indicator == null ? null : indicator.getDebtRatio()
+                ),
+                stock.getDescription() == null ? List.of() : stock.getDescription()
+        );
+    }
+
     public MockInvestmentStockSearchResponse searchStocks(String keyword, MockInvestmentStockSearchSortType sort) {
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
         if (normalizedKeyword.isEmpty()) {
@@ -182,6 +222,11 @@ public class MockInvestmentQueryService {
                         indicator -> indicator.getStock().getId(),
                         StockIndicator::getMarketCap
                 ));
+    }
+
+    private Optional<StockIndicator> getLatestIndicator(Long stockId) {
+        return stockIndicatorRepository.findLatestBaseTime()
+                .flatMap(baseTime -> stockIndicatorRepository.findByStockIdAndBaseTime(stockId, baseTime));
     }
 
     private Map<Long, StockIndicator> getLatestIndicatorsByStockId(List<Stock> stocks) {

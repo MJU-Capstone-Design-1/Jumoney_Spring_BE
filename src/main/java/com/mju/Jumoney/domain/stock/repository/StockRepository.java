@@ -20,5 +20,8 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
     @EntityGraph(attributePaths = "sector")
     List<Stock> findByNameContainingIgnoreCaseOrderByNameAsc(String keyword);
 
+    @EntityGraph(attributePaths = "sector")
+    Optional<Stock> findWithSectorByStockCode(String stockCode);
+
     Optional<Stock> findByStockCode(String stockCode);
 }

@@ -208,7 +208,7 @@ public class KisApiClient {
         });
     }
 
-    // 예탁원정보(배당일정) API (HHKDB669102C0): 기간 내 배당 이벤트를 조회해 현금배당금 기반 시가배당률 계산에 사용합니다.
+    // 예탁원정보(배당일정) API (HHKDB669102C0): 기간 내 배당 이벤트를 조회해 현금배당금 기반 배당수익률 계산에 사용합니다.
     public List<KisDividendMetrics> getDividends(String stockCode, LocalDate from, LocalDate to) {
         return callWithRetry("배당일정", stockCode, () -> {
             kisRateLimiter.acquire();

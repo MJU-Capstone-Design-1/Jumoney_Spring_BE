@@ -43,7 +43,7 @@
         - 실시간 총 자산 = 평가 금액 합계 + `cashBalance`(예수금)
         - 총 수익률 = ((평가 금액 합계 / `totalPurchaseAmount`) - 1) * 100
 
-### 3.2. 내 보유 기업 리스트
+### 3.2. 내 보유 종목 리스트
 - **기능**: 유저가 현재 보유 중인 개별 종목들의 상세 손익 현황 조회.
 - **사용 테이블**: `Portfolio`, `Stock`
 - **로직**:
@@ -54,13 +54,60 @@
         - 평가 손익 = (실시간 현재가 - `averagePurchasePrice`) * `quantity`
         - 수익률 = ((실시간 현재가 / `averagePurchasePrice`) - 1) * 100
 
-### 3.3. 분야 별 기업 리스트
+### 3.3. 분야 별 종목 리스트
 - **기능**: 특정 분야(섹터)에 속한 종목들의 실시간 시세 및 등락률 리스트 조회.
 - **사용 테이블**: `Stock`, `Sector`
 - **로직**:
     1. `Stock` 테이블에서 해당 `sectorId`로 종목 리스트, 기업명 등 조회.
     2. 각 종목의 실시간 현재가, 전일 대비 상승/하락 금액, 전일 대비율(등락률)을 Redis에서 조회하여 병합 후 반환.
     3. 실패 시 DB에서 최신 데이터 조회
+
+### 3.4. 종목 상세 조회
+- **기능**: 차트를 제외한 종목 기본 정보, 현재 시세, 최신 지표를 종합 조회.
+- **Endpoint**: `GET /api/mock-investments/stocks/{stockCode}`
+- **사용 테이블**: `Stock`, `Sector`, `StockIndicator`
+- **로직**:
+    1. `Stock` 테이블에서 `stockCode` 기준으로 종목, 섹터, 설명을 조회한다.
+    2. `StockCurrentPriceService`로 `currentPrice`, `changeRate`를 조회한다.
+    3. `StockIndicator` 테이블에서 최신 `baseTime` 기준 지표 1건을 조회한다.
+    4. 태그는 `sector`, `isMarketLeader` 기준으로 구성한다.
+    5. 최신 지표가 없으면 지표 필드는 `null`로 반환한다.
+
+#### Response Data
+
+```json
+{
+  "stockId": 1,
+  "stockCode": "005930",
+  "stockName": "삼성전자",
+  "sector": "IT_SEMICONDUCTOR",
+  "isMarketLeader": true,
+  "tags": ["IT_SEMICONDUCTOR", "MARKET_LEADER"],
+  "price": {
+    "currentPrice": 73500,
+    "changeRate": 1.66,
+    "marketCap": 438000000000000,
+    "accumulatedTradeAmount": 845000000000
+  },
+  "investmentMetrics": {
+    "pbr": 1.45,
+    "per": 18.2,
+    "roe": 12.8,
+    "dividendYield": 2.15,
+    "payoutRatio": 35.9,
+    "executionStrength": 121.4,
+    "instNetBuy20Days": 1523000
+  },
+  "financialMetrics": {
+    "sales": 279600000000000,
+    "operatingProfit": 6540000000000,
+    "debtRatio": 24.1
+  },
+  "description": [
+    "메모리 반도체와 스마트폰 사업을 하는 대표 기업이에요."
+  ]
+}
+```
 
 ---
 
