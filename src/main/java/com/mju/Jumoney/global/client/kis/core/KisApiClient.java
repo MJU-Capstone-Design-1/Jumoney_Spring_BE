@@ -1,5 +1,7 @@
 package com.mju.Jumoney.global.client.kis.core;
 
+import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteCandleMetrics;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteChartResponse;
 import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultResponse;
@@ -33,6 +35,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -50,6 +53,7 @@ public class KisApiClient {
     private static final String EMPTY_HTS_RESULT_CODE = "MCA05918";
     private static final String HTS_CONDITION_NOT_SAVED_CODE = "MCA05762";
     private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter KIS_TIME_FORMATTER = DateTimeFormatter.ofPattern("HHmmss");
 
     private static final String TR_ID_CURRENT_PRICE = "FHKST01010100";
     private static final String TR_ID_EXECUTION_STRENGTH = "FHKST01010300";
@@ -61,6 +65,7 @@ public class KisApiClient {
     private static final String TR_ID_HTS_CONDITION_TITLE = "HHKST03900300";
     private static final String TR_ID_HTS_CONDITION_RESULT = "HHKST03900400";
     private static final String TR_ID_DOMESTIC_HOLIDAY = "CTCA0903R";
+    private static final String TR_ID_TODAY_MINUTE_CHART = "FHKST03010200";
 
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
@@ -295,6 +300,35 @@ public class KisApiClient {
         });
     }
 
+    // 주식당일분봉조회 API (FHKST03010200): 입력 시각 기준 최대 30건의 당일 1분봉을 가져옵니다.
+    public List<KisMinuteCandleMetrics> getTodayMinuteCandles(String stockCode, LocalTime inputTime) {
+        return callWithRetry("주식당일분봉조회", stockCode, () -> {
+            kisRateLimiter.acquire();
+            KisMinuteChartResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice")
+                            .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                            .queryParam("fid_input_iscd", stockCode)
+                            .queryParam("fid_input_hour_1", formatTime(inputTime))
+                            .queryParam("fid_pw_data_incu_yn", "Y")
+                            .queryParam("fid_etc_cls_code", "")
+                            .build())
+                    .headers(headers -> setKisHeaders(headers, TR_ID_TODAY_MINUTE_CHART))
+                    .retrieve()
+                    .bodyToMono(KisMinuteChartResponse.class)
+                    .onErrorMap(e -> new KisApiException("[KIS] 주식당일분봉조회 실패: stockCode=" + stockCode, e))
+                    .block();
+
+            validateSuccess(response, TR_ID_TODAY_MINUTE_CHART);
+            if (response.output() == null) {
+                return List.of();
+            }
+            return response.output().stream()
+                    .map(kisMetricMapper::toMinuteCandleMetrics)
+                    .toList();
+        });
+    }
+
     // 종목조건검색 목록조회 API (HHKST03900300): HTS에 서버저장된 사용자 조건의 seq 목록을 가져옵니다.
     public List<KisHtsConditionTitleOutput> getHtsConditionTitles(String htsUserId) {
         return callWithRetry("HTS 조건검색 목록", htsUserId, () -> {
@@ -481,5 +515,9 @@ public class KisApiClient {
 
     private String formatDate(LocalDate date) {
         return KIS_DATE_FORMATTER.format(date);
+    }
+
+    private String formatTime(LocalTime time) {
+        return KIS_TIME_FORMATTER.format(time);
     }
 }

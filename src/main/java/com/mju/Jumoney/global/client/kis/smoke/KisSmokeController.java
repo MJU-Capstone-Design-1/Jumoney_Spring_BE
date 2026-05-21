@@ -1,5 +1,7 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
+import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
+import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
 import com.mju.Jumoney.global.client.kis.smoke.dto.BatchJobRunResponse;
@@ -180,6 +182,52 @@ public class KisSmokeController {
     ) {
         validateAdminKey(adminKey);
         StockIndicatorBatchStatusResponse response = kisSmokeService.getStockIndicatorBatchStatus(resolveBaseDate(baseDate));
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "당일 분봉 수동 동기화",
+            description = "KIS 주식당일분봉조회(FHKST03010200)를 30분 단위 입력 시각으로 여러 번 호출해 당일 1분봉을 stock_candles 테이블에 upsert합니다. "
+                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. "
+                    + "KIS 응답의 최근 분봉은 아직 확정되지 않았을 수 있어 요청 시각 기준 최근 2분은 저장하지 않습니다. "
+                    + "prod 프로필에서는 adminKey가 필요합니다."
+    )
+    @PostMapping("/chart/minute/sync")
+    public ResponseEntity<ApiResponse<MinuteCandleSyncResponse>> syncTodayMinuteCandles(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "종목 코드. 생략 시 전체 종목 대상", example = "005930")
+            @RequestParam(required = false) String stockCode
+    ) {
+        validateAdminKey(adminKey);
+        MinuteCandleSyncResponse response = kisSmokeService.syncTodayMinuteCandles(stockCode);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "당일 분봉 동기화 상태 확인",
+            description = "stock_candles 테이블에 저장된 특정 종목의 당일 1분봉 범위와 건수를 확인합니다. "
+                    + "동기화 직후 firstCandleTime, lastCandleTime, dbExpectedCandleCount, candleCount로 저장 여부를 검증할 수 있습니다. "
+                    + "realtimeExpectedStartTime과 realtimeExpectedEndTime은 Redis 미확정 분봉으로 확인해야 하는 구간입니다. "
+                    + "prod 프로필에서는 adminKey가 필요합니다."
+    )
+    @GetMapping("/chart/minute/sync/status")
+    public ResponseEntity<ApiResponse<MinuteCandleSyncStatusResponse>> getTodayMinuteCandleSyncStatus(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "종목 코드", example = "005930")
+            @RequestParam String stockCode,
+
+            @Parameter(description = "확인할 날짜. 생략 시 오늘 날짜")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        validateAdminKey(adminKey);
+        MinuteCandleSyncStatusResponse response = kisSmokeService.getTodayMinuteCandleSyncStatus(stockCode, date);
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }

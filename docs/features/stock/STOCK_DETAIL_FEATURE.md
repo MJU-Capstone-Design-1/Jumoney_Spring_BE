@@ -208,6 +208,7 @@ POST /api/admin/chart/backfill?stockCode=005930&interval=DAY
 ```http
 POST /api/local/kis/chart/minute/sync
 POST /api/local/kis/chart/minute/sync?stockCode=005930
+GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 ```
 
 용도:
@@ -220,8 +221,12 @@ POST /api/local/kis/chart/minute/sync?stockCode=005930
 
 - `stockCode`를 지정하면 해당 종목만 실행한다.
 - `stockCode`를 생략하면 등록된 전체 종목을 대상으로 실행한다.
-- 요청 시각 기준 최근 2분보다 오래된 분봉만 `isFinal=true`로 저장한다.
-- 제외된 최근 분봉은 Redis/Node SSE의 `isFinal=false` 미확정 캔들로 화면에 연결한다.
+- KIS `FHKST03010200`은 한 번에 최대 30건만 반환하므로, 수동 동기화는 `15:30`, `15:00`, `14:30`처럼 정각/30분 입력 시각만 내려가며 여러 번 호출한다.
+- 수동 동기화도 스케줄러와 동일하게 정각/30분 단위까지만 `isFinal=true`로 저장한다.
+- 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:00`이고, `14:01~14:20`은 Redis/Node SSE의 `isFinal=false` 미확정 캔들 검증 대상이다.
+- 응답의 `kisRequestCount`로 실제 KIS 호출 횟수를 확인한다.
+- 상태 확인 API의 `firstCandleTime`, `lastCandleTime`, `dbExpectedCandleCount`, `candleCount`, `hasExpectedCandleCount`, `coversExpectedRange`로 DB 적재 범위를 검증한다.
+- 상태 확인 API는 `realtimeExpectedStartTime`, `realtimeExpectedEndTime`, `realtimeCheckRequired`로 Redis 미확정 구간도 알려준다. 단, Spring에서 실제 Redis 분봉 검증까지 하려면 Node가 저장하는 미확정 분봉 Redis key 규격을 먼저 확정해야 한다.
 
 장 마감 이후 KIS가 당일 분봉을 더 이상 제공하지 않으면 수동 API는 실패 결과를 반환하고, 다음 개장일 장중에 다시 검증한다.
 
@@ -233,6 +238,7 @@ POST /api/local/kis/chart/minute/sync?stockCode=005930
 - 같은 캔들은 unique key 기준 upsert한다.
 - 스케줄 실행 시각은 정각/30분 정각보다 정확히 2분 늦게 둔다. 예: `09:32`, `10:02`, `10:32`.
 - 저장 cutoff도 요청 시각 기준 최근 2분을 제외한다. 예: `14:32` 실행이면 `14:30`까지 확정 저장한다.
+- 수동 smoke 동기화도 같은 기준을 사용한다. 따라서 `14:20` 수동 실행은 `14:00`까지만 DB에 저장하고, `14:01` 이후는 Redis 미확정 구간으로 둔다.
 
 부하 추정:
 

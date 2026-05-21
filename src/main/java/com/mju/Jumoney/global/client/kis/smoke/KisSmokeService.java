@@ -1,7 +1,10 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
+import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
+import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
+import com.mju.Jumoney.domain.stock.service.StockMinuteCandleSyncService;
 import com.mju.Jumoney.global.batch.BatchBaseDateResolver;
 import com.mju.Jumoney.global.batch.StockDataBatchJobConfig;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
@@ -44,6 +47,7 @@ public class KisSmokeService {
     private final Job stockIndicatorBatchJob;
     private final Job htsConditionBatchJob;
     private final BatchBaseDateResolver batchBaseDateResolver;
+    private final StockMinuteCandleSyncService stockMinuteCandleSyncService;
 
     public KisSmokeService(KisApiClient kisApiClient,
                            StockRepository stockRepository,
@@ -51,7 +55,8 @@ public class KisSmokeService {
                            JobOperator jobOperator,
                            @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME) Job stockIndicatorBatchJob,
                            @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob,
-                           BatchBaseDateResolver batchBaseDateResolver) {
+                           BatchBaseDateResolver batchBaseDateResolver,
+                           StockMinuteCandleSyncService stockMinuteCandleSyncService) {
         this.kisApiClient = kisApiClient;
         this.stockRepository = stockRepository;
         this.stockIndicatorRepository = stockIndicatorRepository;
@@ -59,6 +64,7 @@ public class KisSmokeService {
         this.stockIndicatorBatchJob = stockIndicatorBatchJob;
         this.htsConditionBatchJob = htsConditionBatchJob;
         this.batchBaseDateResolver = batchBaseDateResolver;
+        this.stockMinuteCandleSyncService = stockMinuteCandleSyncService;
     }
 
     public KisSmokeResponse smoke(String stockCode, LocalDate baseDate, LocalDate dividendFrom, LocalDate dividendTo) {
@@ -150,6 +156,14 @@ public class KisSmokeService {
                 stockCount == indicatorCount && missingStocks.isEmpty() && invalidRequiredFieldCount == 0,
                 missingStocks
         );
+    }
+
+    public MinuteCandleSyncResponse syncTodayMinuteCandles(String stockCode) {
+        return stockMinuteCandleSyncService.syncTodayMinuteCandles(stockCode);
+    }
+
+    public MinuteCandleSyncStatusResponse getTodayMinuteCandleSyncStatus(String stockCode, LocalDate date) {
+        return stockMinuteCandleSyncService.getTodayMinuteCandleSyncStatus(stockCode, date);
     }
 
     private String toBaseTime(LocalDate baseDate) {
