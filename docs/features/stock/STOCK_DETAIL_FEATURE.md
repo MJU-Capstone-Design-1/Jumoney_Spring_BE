@@ -9,7 +9,7 @@
 
 ## 1. 차트 API 방향
 
-차트는 프론트 기간 버튼이 아니라 KIS가 제공하는 봉 단위를 그대로 노출한다. 초기 구현의 복잡도를 낮추고, KIS REST 응답과 DB 저장 단위를 1:1로 맞추기 위함이다.
+차트는 KIS가 제공하는 봉 단위를 그대로 노출한다.
 
 ### Endpoint
 
@@ -18,7 +18,7 @@ GET /api/mock-investments/stocks/{stockCode}/charts/minute
 GET /api/mock-investments/stocks/{stockCode}/charts/minute?date=2026-05-21
 ```
 
-초기 구현은 `MINUTE`만 제공한다. `DAY`, `WEEK`, `MONTH`, `YEAR`는 KIS 기간별시세 backfill 이후 별도 엔드포인트 또는 interval 파라미터로 확장한다.
+현재 구현은 `MINUTE`만 제공한다. `DAY`, `WEEK`, `MONTH`, `YEAR`는 아직 미구현이다.
 
 ### Interval
 
@@ -38,10 +38,9 @@ GET /api/mock-investments/stocks/{stockCode}/charts/minute?date=2026-05-21
 
 Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한다.
 
-- 현재 구현의 `MINUTE`: DB 확정 분봉만 반환한다. 응답의 `includesRealtime=false`가 이 상태를 뜻한다.
-- Redis 연동 이후의 `MINUTE`: DB 확정 분봉과 Redis 최근 미확정 분봉을 병합해 반환한다.
-- `DAY`, `WEEK`, `MONTH`, `YEAR`: DB 확정 캔들만 반환한다.
-- Node SSE는 Spring 응답 이후의 실시간 미확정 분봉 업데이트를 전달한다.
+- 현재 `MINUTE`: DB 확정 분봉만 반환한다. 응답의 `includesRealtime=false`가 이 상태를 뜻한다.
+- Redis 미확정 분봉 병합은 아직 미구현이다.
+- `DAY`, `WEEK`, `MONTH`, `YEAR`는 아직 미구현이다.
 
 ```json
 {
@@ -116,17 +115,16 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 ## 4. 분봉 정책
 
-분봉 DB 데이터는 KIS REST를 확정 기준으로 삼는다. Redis 최근 실시간 데이터는 Spring의 초기 스냅샷과 Node SSE의 실시간 업데이트에 사용한다.
+분봉 DB 데이터는 KIS REST를 확정 기준으로 삼는다.
 
 ### Spring 역할
 
-- 장중 30분마다 KIS `FHKST03010200`을 호출한다.
-- KIS가 제공하는 최근 당일 분봉을 `stock_candles(interval_type=MINUTE)`에 upsert한다.
-- 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외한다. KIS 응답의 가장 최근 분봉은 첫 체결 전 이전 분 거래량이 보일 수 있고, 호출 지연 때문에 아직 완성되지 않은 봉일 수 있기 때문이다.
-- `MINUTE` 차트 API는 DB 확정 분봉과 Redis 최근 미확정 분봉(`stock:minute-candles:{code}`)을 병합해 반환한다.
-- Redis 분봉 연동 전에는 같은 API가 DB 확정 분봉만 반환한다.
-- Redis 미확정 분봉은 `isFinal=false`로 반환한다.
-- 같은 `candleTime`에 DB 확정 분봉과 Redis 미확정 분봉이 모두 있으면 DB 확정 분봉을 우선한다.
+- `09:02`, `09:32`, `10:02` ... `15:32`에 KIS `FHKST03010200`을 호출한다.
+- `15:40`에 장 마감 보정 동기화를 한 번 더 실행한다.
+- KIS가 제공하는 당일 분봉을 `stock_candles(interval_type=MINUTE)`에 upsert한다.
+- 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외하고, 그 값을 정각/30분 단위로 내린 시각까지만 저장한다.
+- 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
+- `MINUTE` 차트 API는 현재 DB 확정 분봉만 반환한다.
 
 ### Node 역할
 
@@ -136,14 +134,6 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - `stock:minute-candles:{code}` ZSET에 최근 30~40분 미확정 분봉을 저장한다.
 - `stock:history:{code}`와 `stream:stock:ticks`는 Spring 비즈니스 로직 필수 의존성이 아니므로 디버깅/장애 분석/후처리 확장 목적일 때만 유지한다.
 - SSE로 Spring 초기 응답 이후의 `MINUTE_CANDLE_UPDATE` 이벤트를 보낸다.
-
-프론트가 tick 원본으로 직접 1분봉을 만드는 것도 가능하지만, 권장하지 않는다. 이유는 다음과 같다.
-
-- 여러 화면/플랫폼에서 동일한 OHLC 계산 규칙을 중복 구현하게 된다.
-- 거래량 계산, 같은 분 업데이트, 순서 역전, 중복 이벤트 처리를 프론트마다 맞춰야 한다.
-- Node가 이미 실시간 스트림의 소유자이므로, 1분봉 미확정 캔들 생성 책임도 Node에 두는 편이 일관적이다.
-
-따라서 SSE 이벤트는 가능하면 아래처럼 캔들 업데이트 형태로 제공한다.
 
 ```json
 {
@@ -164,10 +154,8 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 ### Frontend 역할
 
-- 최초 진입 시 Spring 차트 API로 현재 시점까지의 차트 스냅샷을 로드한다.
-- Node SSE의 `MINUTE_CANDLE_UPDATE`로 마지막 미확정 캔들을 append/update한다.
-- 같은 `candleTime`의 Spring 확정 캔들이 재조회되면 Spring 값을 우선한다.
-- `isFinal=false` 캔들은 표시용 임시 데이터로만 다룬다.
+- 현재는 Spring 차트 API로 DB 확정 분봉 스냅샷만 로드한다.
+- Redis/SSE 연동 이후에는 Node SSE의 `MINUTE_CANDLE_UPDATE`를 추가로 반영한다.
 
 ### Redis 분봉 계약
 
@@ -204,18 +192,11 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 ### 과거 데이터 backfill
 
-과거 데이터는 수동 배치 API로 적재한다.
+분봉 과거 데이터는 저장하지 않는다. 현재 분봉 저장 범위는 당일 데이터만이다.
 
-대상:
+일/주/월/년봉 수동 적재 API는 아직 미구현이다.
 
-- `DAY`
-- `WEEK`
-- `MONTH`
-- `YEAR`
-
-분봉 과거 데이터는 KIS 제공 범위가 제한적이므로 초기 구현에서는 당일 분봉만 저장한다.
-
-예상 API:
+예정 경로:
 
 ```http
 POST /api/admin/chart/backfill?interval=DAY
@@ -227,9 +208,9 @@ POST /api/admin/chart/backfill?stockCode=005930&interval=DAY
 
 ### 당일 분봉 smoke/backfill
 
-분봉은 당일 데이터만 우선 지원한다. 구현 당일이 장 마감 이후여도 KIS `FHKST03010200`이 당일 분봉을 제공하는 시간대라면 수동 API로 DB를 채울 수 있어야 한다.
+분봉은 당일 데이터만 지원한다.
 
-예상 API:
+수동 API:
 
 ```http
 POST /api/local/kis/chart/minute/sync
@@ -247,16 +228,15 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 
 - `stockCode`를 지정하면 해당 종목만 실행한다.
 - `stockCode`를 생략하면 등록된 전체 종목을 대상으로 실행한다.
-- KIS `FHKST03010200`은 한 번에 최대 30건만 반환하므로, 수동 동기화는 `15:30`, `15:00`, `14:30`처럼 정각/30분 입력 시각만 내려가며 여러 번 호출한다.
+- KIS `FHKST03010200`은 한 번에 최대 30건만 반환하므로, 수동 동기화는 필요한 정각/30분 입력 시각만 여러 번 호출한다.
+- 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
 - 수동 동기화도 스케줄러와 동일하게 정각/30분 단위까지만 `isFinal=true`로 저장한다.
-- 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:00`이고, `14:01~14:20`은 Redis/Node SSE의 `isFinal=false` 미확정 캔들 검증 대상이다.
+- 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:00`이다.
 - 응답의 `kisRequestCount`로 실제 KIS 호출 횟수를 확인한다.
 - 상태 확인 API의 `firstCandleTime`, `lastCandleTime`, `dbExpectedCandleCount`, `candleCount`, `hasExpectedCandleCount`,
   `coversExpectedRange`로 DB 적재 범위를 검증한다.
-- 상태 확인 API는 `realtimeExpectedStartTime`, `realtimeExpectedEndTime`, `realtimeCheckRequired`로 Redis 미확정 구간도 알려준다. 단,
-  Spring에서 실제 Redis 분봉 검증까지 하려면 Node가 저장하는 미확정 분봉 Redis key 규격을 먼저 확정해야 한다.
-
-장 마감 이후 KIS가 당일 분봉을 더 이상 제공하지 않으면 수동 API는 실패 결과를 반환하고, 다음 개장일 장중에 다시 검증한다.
+- 상태 확인 API는 `realtimeExpectedStartTime`, `realtimeExpectedEndTime`, `realtimeCheckRequired`를 내려주지만, 현재 Spring은 Redis
+  미확정 분봉을 실제 검증하지 않는다.
 
 ### 장중 분봉 동기화
 
@@ -265,8 +245,9 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 - 실패 종목은 로그와 결과 응답에 남기고 다음 종목을 계속 처리한다.
 - 같은 캔들은 unique key 기준 upsert한다.
 - 스케줄 실행 시각은 정각/30분 정각보다 정확히 2분 늦게 둔다. 예: `09:32`, `10:02`, `10:32`.
+- 장 마감 보정 스케줄은 `15:40`에 한 번 더 실행한다.
 - 저장 cutoff도 요청 시각 기준 최근 2분을 제외한다. 예: `14:32` 실행이면 `14:30`까지 확정 저장한다.
-- 수동 smoke 동기화도 같은 기준을 사용한다. 따라서 `14:20` 수동 실행은 `14:00`까지만 DB에 저장하고, `14:01` 이후는 Redis 미확정 구간으로 둔다.
+- 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
 
 부하 추정:
 
@@ -277,7 +258,7 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 250ms 간격 제한 시 200종목 한 바퀴 최소 약 50초
 ```
 
-30분 주기 안에 처리 가능한 수준으로 본다. 실제 구현에서는 API 응답 시간, DB upsert 시간, 실패 재시도 정책을 포함해 2분 내 완료를 목표로 한다.
+30분 주기 안에 처리 가능한 수준을 목표로 한다.
 
 ### 일/주/월/년 확정 동기화
 
@@ -285,24 +266,24 @@ KIS 국내주식기간별시세 `FHKST03010100`을 사용한다.
 
 KIS 요청:
 
-| interval | `FID_PERIOD_DIV_CODE` | 1회 최대 건수 | 저장 기준 `candleTime` |
-|----------|------------------------|---------------|-------------------------|
-| `DAY`    | `D`                    | 100건          | 영업일 `00:00:00` |
-| `WEEK`   | `W`                    | 100건          | KIS가 반환한 주봉 기준일 `00:00:00` |
-| `MONTH`  | `M`                    | 100건          | KIS가 반환한 월봉 기준일 `00:00:00` |
-| `YEAR`   | `Y`                    | 100건          | KIS가 반환한 연봉 기준일 `00:00:00` |
+| interval | `FID_PERIOD_DIV_CODE` | 1회 최대 건수 | 저장 기준 `candleTime`         |
+|----------|-----------------------|----------|----------------------------|
+| `DAY`    | `D`                   | 100건     | 영업일 `00:00:00`             |
+| `WEEK`   | `W`                   | 100건     | KIS가 반환한 주봉 기준일 `00:00:00` |
+| `MONTH`  | `M`                   | 100건     | KIS가 반환한 월봉 기준일 `00:00:00` |
+| `YEAR`   | `Y`                   | 100건     | KIS가 반환한 연봉 기준일 `00:00:00` |
 
 저장 매핑:
 
-| KIS output2 | `stock_candles` |
-|-------------|------------------|
-| `stck_bsop_date` | `candle_time` |
-| `stck_oprc` | `open_price` |
-| `stck_hgpr` | `high_price` |
-| `stck_lwpr` | `low_price` |
-| `stck_clpr` | `close_price` |
-| `acml_vol` | `volume` |
-| `acml_tr_pbmn` | `trade_amount` |
+| KIS output2      | `stock_candles` |
+|------------------|-----------------|
+| `stck_bsop_date` | `candle_time`   |
+| `stck_oprc`      | `open_price`    |
+| `stck_hgpr`      | `high_price`    |
+| `stck_lwpr`      | `low_price`     |
+| `stck_clpr`      | `close_price`   |
+| `acml_vol`       | `volume`        |
+| `acml_tr_pbmn`   | `trade_amount`  |
 
 초기 backfill:
 

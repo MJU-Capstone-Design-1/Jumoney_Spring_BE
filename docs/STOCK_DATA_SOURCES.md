@@ -117,12 +117,10 @@ fallback 순서로 값을 찾는다. 검색에서 KIS REST fallback을 제거하
 | 확정 일/주/월/년봉 | Spring | KIS `FHKST03010100` backfill/schedule | DB 저장, 차트 API 반환                          |
 | 미확정 1분봉     | Node   | `stock:minute-candles:{code}`         | Spring MINUTE 초기 스냅샷에 병합, SSE로 이후 업데이트 전달 |
 
-Spring `MINUTE` 차트 API는 DB의 `isFinal=true` 확정 분봉과 Redis 기반 `isFinal=false` 미확정 분봉을 병합해 현재 시점까지의 스냅샷을 반환한다. Node SSE는
-Spring 응답 이후의 `isFinal=false` 미확정 1분봉 업데이트를 전달하고, 프론트는 같은 `candleTime`의 확정 캔들이 Spring에서 내려오면 확정 캔들을 우선한다.
+현재 Spring `MINUTE` 차트 API는 DB의 `isFinal=true` 확정 분봉만 반환한다. Redis 기반 `isFinal=false` 미확정 분봉 병합은 아직 미구현이다.
 
-KIS 분봉 동기화는 정각/30분 정각보다 정확히 2분 늦게 실행하고, 정각/30분 단위까지만 DB 확정 저장 대상으로 삼는다. 예를 들어 `14:20` 수동 smoke 실행은 `14:00`까지만 KIS로 채우고,
-`14:01~14:20`은 Redis/Node SSE의 미확정 캔들로 검증한다. 수동 검증 API는 `POST /api/local/kis/chart/minute/sync?stockCode=005930`를 사용하고,
-DB 적재 범위 확인은 `GET /api/local/kis/chart/minute/sync/status?stockCode=005930`를 사용한다.
+KIS 분봉 동기화는 정각/30분 기준 2분 뒤에 실행하고, 요청 시각 기준 최근 2분을 제외한 정각/30분 단위까지만 DB 확정 저장 대상으로 삼는다. 정규 스케줄은 `09:02`, `09:32`,
+`10:02` ... `15:32`에 실행되고, `15:40`에 장 마감 보정 스케줄이 한 번 더 실행된다.
 
-Redis 미확정 분봉 연동 전에도 Spring은 DB 확정 분봉만 반환하는 MINUTE 차트 API를 먼저 구현할 수 있다. 이 경우 응답은 정각/30분 단위 확정 구간까지만 포함하고, Redis 연동 후 같은
-API에서 최근 미확정 분봉을 병합한다.
+수동 검증 API는 `POST /api/local/kis/chart/minute/sync?stockCode=005930`, DB 적재 범위 확인은
+`GET /api/local/kis/chart/minute/sync/status?stockCode=005930`를 사용한다.

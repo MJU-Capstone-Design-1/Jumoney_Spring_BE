@@ -19,9 +19,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -161,8 +159,9 @@ public class StockMinuteCandleSyncService {
         int savedCount = 0;
         int skippedRecentCount = 0;
         int kisRequestCount = 0;
+        LocalDateTime syncStartTime = resolveSyncStartTime(stock.getId(), finalizationCutoffTime);
 
-        for (LocalTime inputTime : resolveInputTimes(finalizationCutoffTime)) {
+        for (LocalTime inputTime : resolveInputTimes(syncStartTime, finalizationCutoffTime)) {
             kisRequestCount++;
             List<KisMinuteCandleMetrics> candles = kisApiClient.getTodayMinuteCandles(stock.getStockCode(), inputTime)
                     .stream()
@@ -170,16 +169,29 @@ public class StockMinuteCandleSyncService {
                     .sorted(Comparator.comparing(KisMinuteCandleMetrics::candleTime))
                     .toList();
 
+            List<KisMinuteCandleMetrics> candlesToSave = new ArrayList<>();
             for (KisMinuteCandleMetrics candle : candles) {
                 if (candle.candleTime().isAfter(finalizationCutoffTime)) {
                     skippedRecentCount++;
+                    continue;
+                }
+                if (candle.candleTime().isBefore(syncStartTime)) {
                     continue;
                 }
                 if (candle.candleTime().toLocalTime().isBefore(MARKET_OPEN_TIME)) {
                     continue;
                 }
 
-                upsertFinalMinuteCandle(stock, candle);
+                candlesToSave.add(candle);
+            }
+
+            if (candlesToSave.isEmpty()) {
+                continue;
+            }
+
+            Map<LocalDateTime, StockCandle> existingCandleMap = loadExistingCandleMap(stock.getId(), candlesToSave);
+            for (KisMinuteCandleMetrics candle : candlesToSave) {
+                upsertFinalMinuteCandle(stock, candle, existingCandleMap.get(candle.candleTime()));
                 savedCount++;
             }
         }
@@ -187,7 +199,23 @@ public class StockMinuteCandleSyncService {
         return new SyncStockResult(savedCount, skippedRecentCount, kisRequestCount);
     }
 
-    private List<LocalTime> resolveInputTimes(LocalDateTime finalizationCutoffTime) {
+    private LocalDateTime resolveSyncStartTime(Long stockId, LocalDateTime finalizationCutoffTime) {
+        LocalDateTime marketOpenTime = LocalDateTime.of(finalizationCutoffTime.toLocalDate(), MARKET_OPEN_TIME);
+        return stockCandleRepository.findFirstByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeDesc(
+                        stockId,
+                        StockCandleIntervalType.MINUTE,
+                        marketOpenTime,
+                        finalizationCutoffTime
+                )
+                .map(lastSavedCandle -> lastSavedCandle.getCandleTime().plusMinutes(1))
+                .orElse(marketOpenTime);
+    }
+
+    private List<LocalTime> resolveInputTimes(LocalDateTime syncStartTime, LocalDateTime finalizationCutoffTime) {
+        if (syncStartTime.isAfter(finalizationCutoffTime)) {
+            return List.of();
+        }
+
         LocalTime endTime = finalizationCutoffTime.toLocalTime();
         if (endTime.isBefore(MARKET_OPEN_TIME)) {
             return List.of();
@@ -195,8 +223,12 @@ public class StockMinuteCandleSyncService {
 
         List<LocalTime> inputTimes = new ArrayList<>();
         LocalTime current = endTime;
+        LocalTime startTime = syncStartTime.toLocalTime();
         while (!current.isBefore(MARKET_OPEN_TIME)) {
             inputTimes.add(current);
+            if (!current.minusMinutes(KIS_MINUTE_CHART_MAX_COUNT - 1).isAfter(startTime)) {
+                break;
+            }
             current = current.minusMinutes(KIS_MINUTE_CHART_MAX_COUNT);
         }
         return inputTimes;
@@ -272,35 +304,46 @@ public class StockMinuteCandleSyncService {
                 && candle.volume() != null;
     }
 
-    private void upsertFinalMinuteCandle(Stock stock, KisMinuteCandleMetrics candle) {
-        stockCandleRepository.findByStockIdAndIntervalTypeAndCandleTime(
-                        stock.getId(),
-                        StockCandleIntervalType.MINUTE,
-                        candle.candleTime()
-                )
-                .ifPresentOrElse(
-                        existing -> {
-                            existing.updateFinalCandle(
-                                    candle.openPrice(),
-                                    candle.highPrice(),
-                                    candle.lowPrice(),
-                                    candle.closePrice(),
-                                    candle.volume(),
-                                    candle.tradeAmount()
-                            );
-                            stockCandleRepository.save(existing);
-                        },
-                        () -> stockCandleRepository.save(StockCandle.createMinute(
-                                stock,
-                                candle.candleTime(),
-                                candle.openPrice(),
-                                candle.highPrice(),
-                                candle.lowPrice(),
-                                candle.closePrice(),
-                                candle.volume(),
-                                candle.tradeAmount()
-                        ))
-                );
+    private Map<LocalDateTime, StockCandle> loadExistingCandleMap(Long stockId, List<KisMinuteCandleMetrics> candles) {
+        LocalDateTime startTime = candles.get(0).candleTime();
+        LocalDateTime endTime = candles.get(candles.size() - 1).candleTime();
+        Map<LocalDateTime, StockCandle> existingCandleMap = new HashMap<>();
+
+        for (StockCandle existingCandle : stockCandleRepository.findByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeAsc(
+                stockId,
+                StockCandleIntervalType.MINUTE,
+                startTime,
+                endTime
+        )) {
+            existingCandleMap.put(existingCandle.getCandleTime(), existingCandle);
+        }
+        return existingCandleMap;
+    }
+
+    private void upsertFinalMinuteCandle(Stock stock, KisMinuteCandleMetrics candle, StockCandle existingCandle) {
+        if (existingCandle != null) {
+            existingCandle.updateFinalCandle(
+                    candle.openPrice(),
+                    candle.highPrice(),
+                    candle.lowPrice(),
+                    candle.closePrice(),
+                    candle.volume(),
+                    candle.tradeAmount()
+            );
+            stockCandleRepository.save(existingCandle);
+            return;
+        }
+
+        stockCandleRepository.save(StockCandle.createMinute(
+                stock,
+                candle.candleTime(),
+                candle.openPrice(),
+                candle.highPrice(),
+                candle.lowPrice(),
+                candle.closePrice(),
+                candle.volume(),
+                candle.tradeAmount()
+        ));
     }
 
     private record SyncStockResult(
