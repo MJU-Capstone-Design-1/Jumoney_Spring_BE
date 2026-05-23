@@ -162,6 +162,10 @@ public class KisSmokeService {
         return stockMinuteCandleSyncService.syncTodayMinuteCandles(stockCode);
     }
 
+    public MinuteCandleSyncResponse syncMinuteCandles(String stockCode, LocalDate tradingDate) {
+        return stockMinuteCandleSyncService.syncMinuteCandles(stockCode, tradingDate);
+    }
+
     public MinuteCandleSyncStatusResponse getTodayMinuteCandleSyncStatus(String stockCode, LocalDate date) {
         return stockMinuteCandleSyncService.getTodayMinuteCandleSyncStatus(stockCode, date);
     }

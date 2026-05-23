@@ -66,6 +66,7 @@ public class KisApiClient {
     private static final String TR_ID_HTS_CONDITION_RESULT = "HHKST03900400";
     private static final String TR_ID_DOMESTIC_HOLIDAY = "CTCA0903R";
     private static final String TR_ID_TODAY_MINUTE_CHART = "FHKST03010200";
+    private static final String TR_ID_DAILY_MINUTE_CHART = "FHKST03010230";
 
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
@@ -320,6 +321,36 @@ public class KisApiClient {
                     .block();
 
             validateSuccess(response, TR_ID_TODAY_MINUTE_CHART);
+            if (response.output() == null) {
+                return List.of();
+            }
+            return response.output().stream()
+                    .map(kisMetricMapper::toMinuteCandleMetrics)
+                    .toList();
+        });
+    }
+
+    // 주식일별분봉조회 API (FHKST03010230): 지정 영업일의 입력 시각 기준 최대 120건 분봉을 가져옵니다.
+    public List<KisMinuteCandleMetrics> getDailyMinuteCandles(String stockCode, LocalDate tradingDate, LocalTime inputTime) {
+        return callWithRetry("주식일별분봉조회", stockCode + ":" + tradingDate, () -> {
+            kisRateLimiter.acquire();
+            KisMinuteChartResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-time-dailychartprice")
+                            .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                            .queryParam("fid_input_iscd", stockCode)
+                            .queryParam("fid_input_hour_1", formatTime(inputTime))
+                            .queryParam("fid_input_date_1", formatDate(tradingDate))
+                            .queryParam("fid_pw_data_incu_yn", "Y")
+                            .queryParam("fid_fake_tick_incu_yn", "N")
+                            .build())
+                    .headers(headers -> setKisHeaders(headers, TR_ID_DAILY_MINUTE_CHART))
+                    .retrieve()
+                    .bodyToMono(KisMinuteChartResponse.class)
+                    .onErrorMap(e -> new KisApiException("[KIS] 주식일별분봉조회 실패: stockCode=" + stockCode + ", tradingDate=" + tradingDate, e))
+                    .block();
+
+            validateSuccess(response, TR_ID_DAILY_MINUTE_CHART);
             if (response.output() == null) {
                 return List.of();
             }

@@ -8,6 +8,7 @@ import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.stock.enums.StockCandleIntervalType;
 import com.mju.Jumoney.domain.stock.repository.StockCandleRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
+import com.mju.Jumoney.global.batch.MarketCalendarService;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
 import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteCandleMetrics;
 import lombok.RequiredArgsConstructor;
@@ -30,15 +31,22 @@ public class StockMinuteCandleSyncService {
     private static final LocalTime MARKET_OPEN_TIME = LocalTime.of(9, 0);
     private static final LocalTime MARKET_CLOSE_TIME = LocalTime.of(15, 30);
     private static final int KIS_MINUTE_CHART_MAX_COUNT = 30;
+    private static final int KIS_DAILY_MINUTE_CHART_MAX_COUNT = 120;
 
     private final KisApiClient kisApiClient;
     private final StockRepository stockRepository;
     private final StockCandleRepository stockCandleRepository;
+    private final MarketCalendarService marketCalendarService;
 
     public MinuteCandleSyncResponse syncTodayMinuteCandles(String stockCode) {
+        return syncMinuteCandles(stockCode, LocalDate.now(KOREA_ZONE));
+    }
+
+    public MinuteCandleSyncResponse syncMinuteCandles(String stockCode, LocalDate tradingDate) {
         String normalizedStockCode = StringUtils.hasText(stockCode) ? stockCode.trim() : null;
+        validateTradingDate(tradingDate);
         LocalDateTime requestedAt = LocalDateTime.now(KOREA_ZONE).truncatedTo(ChronoUnit.SECONDS);
-        LocalDateTime finalizationCutoffTime = resolveDbSyncEndTime(requestedAt);
+        LocalDateTime finalizationCutoffTime = resolveFinalizationCutoffTime(tradingDate, requestedAt);
         List<Stock> targetStocks = resolveTargetStocks(normalizedStockCode);
         List<MinuteCandleSyncFailureResponse> failures = new ArrayList<>();
 
@@ -49,7 +57,7 @@ public class StockMinuteCandleSyncService {
 
         for (Stock stock : targetStocks) {
             try {
-                SyncStockResult result = syncStock(stock, finalizationCutoffTime);
+                SyncStockResult result = syncStock(stock, tradingDate, finalizationCutoffTime);
                 successCount++;
                 savedCandleCount += result.savedCandleCount();
                 skippedRecentCandleCount += result.skippedRecentCandleCount();
@@ -155,15 +163,16 @@ public class StockMinuteCandleSyncService {
         return stockRepository.findAll();
     }
 
-    private SyncStockResult syncStock(Stock stock, LocalDateTime finalizationCutoffTime) {
+    private SyncStockResult syncStock(Stock stock, LocalDate tradingDate, LocalDateTime finalizationCutoffTime) {
         int savedCount = 0;
         int skippedRecentCount = 0;
         int kisRequestCount = 0;
         LocalDateTime syncStartTime = resolveSyncStartTime(stock.getId(), finalizationCutoffTime);
+        boolean isTodaySync = tradingDate.equals(LocalDate.now(KOREA_ZONE));
 
-        for (LocalTime inputTime : resolveInputTimes(syncStartTime, finalizationCutoffTime)) {
+        for (LocalTime inputTime : resolveInputTimes(syncStartTime, finalizationCutoffTime, isTodaySync ? KIS_MINUTE_CHART_MAX_COUNT : KIS_DAILY_MINUTE_CHART_MAX_COUNT)) {
             kisRequestCount++;
-            List<KisMinuteCandleMetrics> candles = kisApiClient.getTodayMinuteCandles(stock.getStockCode(), inputTime)
+            List<KisMinuteCandleMetrics> candles = loadMinuteCandles(stock.getStockCode(), tradingDate, inputTime, isTodaySync)
                     .stream()
                     .filter(this::isValidCandle)
                     .sorted(Comparator.comparing(KisMinuteCandleMetrics::candleTime))
@@ -211,7 +220,7 @@ public class StockMinuteCandleSyncService {
                 .orElse(marketOpenTime);
     }
 
-    private List<LocalTime> resolveInputTimes(LocalDateTime syncStartTime, LocalDateTime finalizationCutoffTime) {
+    private List<LocalTime> resolveInputTimes(LocalDateTime syncStartTime, LocalDateTime finalizationCutoffTime, int maxCountPerRequest) {
         if (syncStartTime.isAfter(finalizationCutoffTime)) {
             return List.of();
         }
@@ -226,12 +235,19 @@ public class StockMinuteCandleSyncService {
         LocalTime startTime = syncStartTime.toLocalTime();
         while (!current.isBefore(MARKET_OPEN_TIME)) {
             inputTimes.add(current);
-            if (!current.minusMinutes(KIS_MINUTE_CHART_MAX_COUNT - 1).isAfter(startTime)) {
+            if (!current.minusMinutes(maxCountPerRequest - 1).isAfter(startTime)) {
                 break;
             }
-            current = current.minusMinutes(KIS_MINUTE_CHART_MAX_COUNT);
+            current = current.minusMinutes(maxCountPerRequest);
         }
         return inputTimes;
+    }
+
+    private List<KisMinuteCandleMetrics> loadMinuteCandles(String stockCode, LocalDate tradingDate, LocalTime inputTime, boolean isTodaySync) {
+        if (isTodaySync) {
+            return kisApiClient.getTodayMinuteCandles(stockCode, inputTime);
+        }
+        return kisApiClient.getDailyMinuteCandles(stockCode, tradingDate, inputTime);
     }
 
     private LocalDateTime resolveExpectedDbEndTime(LocalDate targetDate) {
@@ -263,6 +279,23 @@ public class StockMinuteCandleSyncService {
                 .withMinute(flooredMinute)
                 .withSecond(0)
                 .withNano(0);
+    }
+
+    private LocalDateTime resolveFinalizationCutoffTime(LocalDate tradingDate, LocalDateTime requestedAt) {
+        LocalDate today = LocalDate.now(KOREA_ZONE);
+        if (tradingDate.isBefore(today)) {
+            return LocalDateTime.of(tradingDate, MARKET_CLOSE_TIME);
+        }
+        if (tradingDate.isAfter(today)) {
+            throw new IllegalArgumentException("미래 영업일은 동기화할 수 없습니다. tradingDate=" + tradingDate);
+        }
+        return resolveDbSyncEndTime(requestedAt);
+    }
+
+    private void validateTradingDate(LocalDate tradingDate) {
+        if (!marketCalendarService.isOpenDay(tradingDate, KOREA_ZONE)) {
+            throw new IllegalArgumentException("휴장일 또는 주말은 동기화할 수 없습니다. tradingDate=" + tradingDate);
+        }
     }
 
     private LocalDateTime resolveRealtimeExpectedStartTime(LocalDate targetDate, LocalDateTime dbExpectedEndTime) {

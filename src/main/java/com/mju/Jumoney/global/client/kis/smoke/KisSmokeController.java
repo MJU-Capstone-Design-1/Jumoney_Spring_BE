@@ -208,6 +208,31 @@ public class KisSmokeController {
     }
 
     @Operation(
+            summary = "특정 영업일 분봉 수동 동기화",
+            description = "KIS 주식일별분봉조회(FHKST03010230)를 이용해 특정 영업일의 1분봉을 stock_candles 테이블에 upsert합니다. "
+                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. "
+                    + "오늘 날짜를 넣으면 당일 분봉과 동일하게 최근 2분은 저장하지 않고, 과거 영업일을 넣으면 장 마감 15:30까지 전량 확정 분봉을 저장합니다. "
+                    + "휴장일이나 주말은 허용하지 않습니다. prod 프로필에서는 adminKey가 필요합니다."
+    )
+    @PostMapping("/chart/minute/sync/trading-day")
+    public ResponseEntity<ApiResponse<MinuteCandleSyncResponse>> syncMinuteCandlesByTradingDay(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "동기화할 영업일", example = "2026-05-22")
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tradingDate,
+
+            @Parameter(description = "종목 코드. 생략 시 전체 종목 대상", example = "005930")
+            @RequestParam(required = false) String stockCode
+    ) {
+        validateAdminKey(adminKey);
+        MinuteCandleSyncResponse response = kisSmokeService.syncMinuteCandles(stockCode, tradingDate);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
             summary = "당일 분봉 동기화 상태 확인",
             description = "stock_candles 테이블에 저장된 특정 종목의 당일 1분봉 범위와 건수를 확인합니다. "
                     + "동기화 직후 firstCandleTime, lastCandleTime, dbExpectedCandleCount, candleCount로 저장 여부를 검증할 수 있습니다. "

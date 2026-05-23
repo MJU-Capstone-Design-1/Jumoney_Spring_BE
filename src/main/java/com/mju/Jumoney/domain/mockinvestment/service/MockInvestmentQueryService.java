@@ -21,12 +21,14 @@ import com.mju.Jumoney.domain.stock.repository.StockCandleRepository;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
+import com.mju.Jumoney.global.batch.MarketCalendarService;
 import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.realtime.RealtimeMinuteCandle;
 import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
 import com.mju.Jumoney.global.realtime.StockRealtimeSnapshot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,6 +65,10 @@ public class MockInvestmentQueryService {
     private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
     private final RealtimeRedisReader realtimeRedisReader;
+    private final MarketCalendarService marketCalendarService;
+
+    @Value("${kis.batch.opening-day-lookback-days:14}")
+    private int openingDayLookbackDays;
 
     public MockInvestmentDashboardResponse getDashboard(Long userId) {
         Account account = mockInvestmentAccountService.getRequiredAccount(userId);
@@ -180,7 +186,7 @@ public class MockInvestmentQueryService {
     public MockInvestmentMinuteChartResponse getMinuteChart(String stockCode, LocalDate date) {
         Stock stock = stockRepository.findByStockCode(stockCode)
                 .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));
-        LocalDate targetDate = date == null ? LocalDate.now() : date;
+        LocalDate targetDate = resolveMinuteChartTargetDate(date);
         LocalDateTime startTime = LocalDateTime.of(targetDate, MARKET_OPEN_TIME);
         LocalDateTime endTime = LocalDateTime.of(targetDate, MARKET_CLOSE_TIME);
 
@@ -371,6 +377,19 @@ public class MockInvestmentQueryService {
 
     private String realtimeMinuteCandleKey(String stockCode) {
         return REALTIME_MINUTE_CANDLE_KEY_PREFIX + stockCode;
+    }
+
+    private LocalDate resolveMinuteChartTargetDate(LocalDate requestedDate) {
+        if (requestedDate != null) {
+            return requestedDate;
+        }
+
+        LocalDate today = LocalDate.now(KST_ZONE_ID);
+        if (marketCalendarService.isOpenDay(today, KST_ZONE_ID)) {
+            return today;
+        }
+
+        return marketCalendarService.resolvePreviousOpenDay(today, openingDayLookbackDays, KST_ZONE_ID);
     }
 
     // ========== 비즈니스 메서드 ==========
