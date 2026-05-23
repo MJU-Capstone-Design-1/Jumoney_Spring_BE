@@ -14,21 +14,22 @@
 ### Endpoint
 
 ```http
-GET /api/mock-investments/stocks/{stockCode}/charts/minute
-GET /api/mock-investments/stocks/{stockCode}/charts/minute?date=2026-05-21
+GET /api/mock-investments/stocks/{stockCode}/chart?period=ONE_DAY
+GET /api/mock-investments/stocks/{stockCode}/chart?period=ONE_DAY&date=2026-05-21
 ```
 
-현재 구현은 `MINUTE` 엔드포인트만 제공한다. 기간 기반 차트 API와 `30분봉`, `DAY`, `WEEK` 저장/조회는 아직 미구현이다.
+단일 차트 API가 `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`를 모두 제공한다. 기존
+`GET /api/mock-investments/stocks/{stockCode}/charts/minute`는 호환용으로 남겨두고 내부적으로 `period=ONE_DAY`를 사용한다.
 
 ### 기간별 봉 매핑
 
-| 기간   | 사용할 봉 | 비고                            |
-|------|-------|-------------------------------|
-| `1일` | 1분봉   | 당일 분봉                         |
-| `1주` | 30분봉  | 확정 30분봉 + 장중 마지막 진행 중 30분봉 병합 |
-| `3달` | 일봉    | 확정 일봉                         |
-| `1년` | 일봉    | 확정 일봉                         |
-| `5년` | 주봉    | 확정 주봉                         |
+| period         | 사용할 봉 | 비고                                 |
+|----------------|-------|------------------------------------|
+| `ONE_DAY`      | 1분봉   | DB 확정 1분봉 + 오늘 기준 Redis 미확정 1분봉 병합 |
+| `ONE_WEEK`     | 30분봉  | 확정 30분봉 + 장중 마지막 진행 중 30분봉 1개 병합   |
+| `THREE_MONTHS` | 일봉    | DB 확정 일봉                           |
+| `ONE_YEAR`     | 일봉    | DB 확정 일봉                           |
+| `FIVE_YEARS`   | 주봉    | DB 확정 주봉                           |
 
 ### 봉 데이터 소스
 
@@ -45,17 +46,19 @@ GET /api/mock-investments/stocks/{stockCode}/charts/minute?date=2026-05-21
 
 Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한다.
 
-- 현재 `MINUTE`: DB 확정 분봉만 반환한다. 응답의 `includesRealtime=false`가 이 상태를 뜻한다.
-- Redis 미확정 분봉 병합은 아직 미구현이다.
-- `30분봉`, `DAY`, `WEEK` 기반 기간 차트는 아직 미구현이다.
+- `ONE_DAY`: DB 확정 1분봉 + 오늘 기준 Redis 미확정 1분봉 병합을 지원한다.
+- `ONE_WEEK`: DB 확정 30분봉 + 오늘 기준 Redis 1분봉으로 집계한 마지막 진행 중 30분봉 1개 병합을 지원한다.
+- `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`: 실시간 보강 없이 DB 확정 일봉/주봉만 반환한다.
+- `date` 생략 시 기준일은 KST 기준 오늘이 개장일이면 오늘, 아니면 직전 개장일이다.
 
 ```json
 {
   "stockCode": "005930",
   "stockName": "삼성전자",
+  "period": "ONE_DAY",
   "intervalType": "MINUTE",
   "date": "2026-05-21",
-  "includesRealtime": false,
+  "includesRealtime": true,
   "lastFinalCandleTime": "2026-05-21T14:00:00",
   "candles": [
     {
@@ -67,6 +70,16 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
       "volume": 120340,
       "tradeAmount": 8840000000,
       "isFinal": true
+    },
+    {
+      "candleTime": "2026-05-21T14:21:00",
+      "openPrice": 73700,
+      "highPrice": 73900,
+      "lowPrice": 73600,
+      "closePrice": 73800,
+      "volume": 32000,
+      "tradeAmount": null,
+      "isFinal": false
     }
   ]
 }
@@ -131,9 +144,9 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - KIS가 제공하는 당일 분봉을 `stock_candles(interval_type=MINUTE)`에 upsert한다.
 - 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외하고, 그 값을 정각/30분 단위로 내린 시각까지만 저장한다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
-- `MINUTE` 차트 API는 현재 DB 확정 분봉만 반환한다.
-- `1주` 차트를 위해 확정 30분봉을 별도 저장하는 방향으로 확장한다.
-- 장중 `1주` 차트의 마지막 진행 중 30분봉은 1분봉 또는 Redis 실시간 분봉에서 즉석 집계해 응답에 병합한다.
+- `ONE_DAY` 차트 API는 DB 확정 분봉에 오늘 날짜일 때만 Redis 미확정 분봉을 병합한다.
+- `1주` 차트를 위해 확정 30분봉을 1분봉 동기화 시 함께 집계 저장한다.
+- 장중 `1주` 차트의 마지막 진행 중 30분봉은 Redis 실시간 분봉에서 즉석 집계해 응답에 병합한다.
 
 ### Node 역할
 
@@ -168,17 +181,18 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 ### Redis 분봉 계약
 
-`stock:latest:{code}`와 `stock:minute-candles:{code}`는 같은 raw 분봉 payload를 사용한다. 전자는 "현재 진행 중인 최신 분봉 1개", 후자는 "최근 40분 분봉 배열"이다.
+`stock:latest:{code}`와 `stock:minute-candles:{code}`는 같은 raw 분봉 payload를 사용한다. 전자는 "현재 진행 중인 최신 분봉 1개", 후자는 "최근 40분 분봉
+배열"이다.
 현재가/등락률은 `stock:latest:{code}`에서 읽고, 차트는 `stock:minute-candles:{code}`를 병합한다.
 
 `stock:minute-candles:{code}`:
 
-| Item       | Value                                     |
-|------------|-------------------------------------------|
-| Redis type | Sorted Set                                |
-| Score      | `minuteTs` ms epoch                         |
-| Member     | 아래 JSON 문자열                               |
-| Retention  | 최근 40분 / key TTL 1시간                     |
+| Item       | Value                |
+|------------|----------------------|
+| Redis type | Sorted Set           |
+| Score      | `minuteTs` ms epoch  |
+| Member     | 아래 JSON 문자열          |
+| Retention  | 최근 40분 / key TTL 1시간 |
 
 ```json
 {
@@ -207,28 +221,38 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 ### 과거 데이터 backfill
 
-분봉 과거 데이터는 저장하지 않는다. 현재 분봉 저장 범위는 당일 데이터만이다.
+분봉 과거 데이터는 특정 영업일 수동 동기화 API로 보정할 수 있다. 30분봉은 1분봉 동기화 과정에서 확정 1분봉을 집계해 함께 저장한다.
 
-30분봉, 일봉, 주봉 수동 적재 API는 아직 미구현이다.
-
-예정 경로:
+차트 기간 기준 수동 적재 API:
 
 ```http
-POST /api/admin/chart/backfill?interval=THIRTY_MINUTE
-POST /api/admin/chart/backfill?interval=DAY
-POST /api/admin/chart/backfill?interval=WEEK
-POST /api/admin/chart/backfill?stockCode=005930&interval=THIRTY_MINUTE
+POST /api/local/kis/chart/sync
+POST /api/local/kis/chart/sync?period=ONE_DAY
+POST /api/local/kis/chart/sync?period=ONE_WEEK
+POST /api/local/kis/chart/sync?period=THREE_MONTHS
+POST /api/local/kis/chart/sync?period=ONE_YEAR
+POST /api/local/kis/chart/sync?period=FIVE_YEARS
+POST /api/local/kis/chart/sync?stockCode=005930
+GET /api/local/kis/chart/sync/status?stockCode=005930
+GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
 ```
 
-### 당일 분봉 smoke/backfill
+`period`를 생략하면 오늘 또는 직전 개장일 기준으로 1일/1주/3달/1년/5년 차트에 필요한 데이터를 모두 동기화한다. `ONE_YEAR`는 `THREE_MONTHS`의 일봉 범위를 포함하므로 전체
+동기화에서는 `DAY` 기간봉을 최근 1년 범위로 한 번만 호출한다.
 
-분봉은 당일 데이터만 지원한다.
+상태 확인 API는 `period` 생략 시 전체 차트 기간의 DB 캔들 범위와 건수를 반환한다.
+
+### 분봉 smoke/backfill
+
+분봉은 당일 API와 특정 영업일 API를 모두 지원한다. 특정 영업일 수동 동기화도 1분봉 저장 후 완성된 30분 버킷을 `THIRTY_MINUTE`로 함께 집계 저장한다.
 
 수동 API:
 
 ```http
 POST /api/local/kis/chart/minute/sync
 POST /api/local/kis/chart/minute/sync?stockCode=005930
+POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22
+POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCode=005930
 GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 ```
 
@@ -236,13 +260,14 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 
 - 구현 직후 특정 종목의 당일 분봉 저장 검증
 - 장중 30분 스케줄러와 동일한 저장 로직 수동 실행
-- 장중 장애 또는 배치 실패 후 당일 분봉 보정
+- 장중 장애 또는 배치 실패 후 당일/특정 영업일 분봉 보정
 
 정책:
 
 - `stockCode`를 지정하면 해당 종목만 실행한다.
 - `stockCode`를 생략하면 등록된 전체 종목을 대상으로 실행한다.
 - KIS `FHKST03010200`은 한 번에 최대 30건만 반환하므로, 수동 동기화는 필요한 정각/30분 입력 시각만 여러 번 호출한다.
+- 과거 영업일은 KIS `FHKST03010230`을 사용하며, 휴장일/주말/미래일은 동기화하지 않는다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
 - 수동 동기화도 스케줄러와 동일하게 정각/30분 단위까지만 `isFinal=true`로 저장한다.
 - 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:00`이다.
@@ -295,19 +320,19 @@ KIS 요청:
 
 초기 backfill:
 
-- 수동 API로 전체 종목 또는 단일 종목을 적재한다.
+- `POST /api/local/kis/chart/sync`로 전체 차트 기간 또는 특정 차트 기간을 기준으로 전체 종목/단일 종목을 적재한다.
 - `THIRTY_MINUTE`: 1주 차트 제공 범위를 커버할 만큼 최근 영업일 데이터를 집계 저장한다.
 - `DAY`: 최근 1년 이상을 우선 적재한다.
 - `WEEK`: 최근 5년 이상을 우선 적재한다.
 - 같은 캔들은 `unique(stock_id, interval_type, candle_time)` 기준으로 upsert한다.
 
-예상 수동 API:
+수동 API:
 
 ```http
-POST /api/local/kis/chart/period/sync?interval=THIRTY_MINUTE
-POST /api/local/kis/chart/period/sync?interval=DAY
-POST /api/local/kis/chart/period/sync?interval=WEEK
-POST /api/local/kis/chart/period/sync?stockCode=005930&interval=THIRTY_MINUTE
+POST /api/local/kis/chart/sync
+POST /api/local/kis/chart/sync?period=ONE_WEEK
+POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22
+GET /api/local/kis/chart/sync/status?stockCode=005930
 ```
 
 정기 동기화:
@@ -318,7 +343,7 @@ POST /api/local/kis/chart/period/sync?stockCode=005930&interval=THIRTY_MINUTE
 
 차트 조회:
 
-- `1일`: DB 확정 1분봉만 반환한다. Redis 실시간 병합은 추후 확장이다.
+- `1일`: DB 확정 1분봉에 오늘 기준 Redis 미확정 1분봉을 병합한다.
 - `1주`: DB 확정 30분봉에 장중 마지막 진행 중 30분봉 1개를 병합한다.
 - `3달`, `1년`: DB 확정 일봉만 반환한다.
 - `5년`: DB 확정 주봉만 반환한다.

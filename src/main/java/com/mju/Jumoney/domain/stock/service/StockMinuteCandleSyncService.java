@@ -8,6 +8,7 @@ import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.stock.enums.StockCandleIntervalType;
 import com.mju.Jumoney.domain.stock.repository.StockCandleRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
+import com.mju.Jumoney.domain.stock.utils.StockCandleTimeUtil;
 import com.mju.Jumoney.global.batch.MarketCalendarService;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
 import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteCandleMetrics;
@@ -15,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -169,6 +171,7 @@ public class StockMinuteCandleSyncService {
         int kisRequestCount = 0;
         LocalDateTime syncStartTime = resolveSyncStartTime(stock.getId(), finalizationCutoffTime);
         boolean isTodaySync = tradingDate.equals(LocalDate.now(KOREA_ZONE));
+        Set<LocalDateTime> affectedThirtyMinuteBuckets = new HashSet<>();
 
         for (LocalTime inputTime : resolveInputTimes(syncStartTime, finalizationCutoffTime, isTodaySync ? KIS_MINUTE_CHART_MAX_COUNT : KIS_DAILY_MINUTE_CHART_MAX_COUNT)) {
             kisRequestCount++;
@@ -201,10 +204,12 @@ public class StockMinuteCandleSyncService {
             Map<LocalDateTime, StockCandle> existingCandleMap = loadExistingCandleMap(stock.getId(), candlesToSave);
             for (KisMinuteCandleMetrics candle : candlesToSave) {
                 upsertFinalMinuteCandle(stock, candle, existingCandleMap.get(candle.candleTime()));
+                affectedThirtyMinuteBuckets.add(StockCandleTimeUtil.toThirtyMinuteBucketStart(candle.candleTime()));
                 savedCount++;
             }
         }
 
+        upsertThirtyMinuteCandles(stock, affectedThirtyMinuteBuckets, finalizationCutoffTime);
         return new SyncStockResult(savedCount, skippedRecentCount, kisRequestCount);
     }
 
@@ -377,6 +382,72 @@ public class StockMinuteCandleSyncService {
                 candle.volume(),
                 candle.tradeAmount()
         ));
+    }
+
+    private void upsertThirtyMinuteCandles(Stock stock, Set<LocalDateTime> bucketStartTimes, LocalDateTime finalizationCutoffTime) {
+        for (LocalDateTime bucketStartTime : bucketStartTimes) {
+            LocalDateTime marketCloseTime = LocalDateTime.of(bucketStartTime.toLocalDate(), MARKET_CLOSE_TIME);
+            LocalDateTime bucketEndTime = bucketStartTime.plusMinutes(29).isAfter(marketCloseTime)
+                    ? marketCloseTime
+                    : bucketStartTime.plusMinutes(29);
+            if (bucketEndTime.isAfter(finalizationCutoffTime)) {
+                continue;
+            }
+
+            List<StockCandle> minuteCandles = stockCandleRepository.findByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeAsc(
+                    stock.getId(),
+                    StockCandleIntervalType.MINUTE,
+                    bucketStartTime,
+                    bucketEndTime
+            );
+            if (minuteCandles.isEmpty()) {
+                continue;
+            }
+            long expectedMinuteCount = calculateExpectedCandleCount(bucketStartTime, bucketEndTime);
+            if (minuteCandles.size() < expectedMinuteCount) {
+                continue;
+            }
+
+            StockCandle existingThirtyMinuteCandle = stockCandleRepository.findByStockIdAndIntervalTypeAndCandleTime(
+                    stock.getId(),
+                    StockCandleIntervalType.THIRTY_MINUTE,
+                    bucketStartTime
+            ).orElse(null);
+
+            BigDecimal openPrice = minuteCandles.get(0).getOpenPrice();
+            BigDecimal highPrice = minuteCandles.stream()
+                    .map(StockCandle::getHighPrice)
+                    .max(BigDecimal::compareTo)
+                    .orElse(null);
+            BigDecimal lowPrice = minuteCandles.stream()
+                    .map(StockCandle::getLowPrice)
+                    .min(BigDecimal::compareTo)
+                    .orElse(null);
+            BigDecimal closePrice = minuteCandles.get(minuteCandles.size() - 1).getClosePrice();
+            Long volume = minuteCandles.stream()
+                    .map(StockCandle::getVolume)
+                    .filter(Objects::nonNull)
+                    .reduce(0L, Long::sum);
+            Long tradeAmount = minuteCandles.get(minuteCandles.size() - 1).getTradeAmount();
+
+            if (existingThirtyMinuteCandle != null) {
+                existingThirtyMinuteCandle.updateFinalCandle(openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount);
+                stockCandleRepository.save(existingThirtyMinuteCandle);
+                continue;
+            }
+
+            stockCandleRepository.save(StockCandle.createFinal(
+                    stock,
+                    StockCandleIntervalType.THIRTY_MINUTE,
+                    bucketStartTime,
+                    openPrice,
+                    highPrice,
+                    lowPrice,
+                    closePrice,
+                    volume,
+                    tradeAmount
+            ));
+        }
     }
 
     private record SyncStockResult(

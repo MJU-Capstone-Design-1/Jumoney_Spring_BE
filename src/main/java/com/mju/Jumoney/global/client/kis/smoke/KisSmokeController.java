@@ -1,5 +1,8 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncStatusResponse;
+import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
@@ -253,6 +256,61 @@ public class KisSmokeController {
     ) {
         validateAdminKey(adminKey);
         MinuteCandleSyncStatusResponse response = kisSmokeService.getTodayMinuteCandleSyncStatus(stockCode, date);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "차트 기간 기준 수동 동기화",
+            description = "차트 period 기준으로 필요한 캔들을 동기화합니다. "
+                    + "period 생략 시 ONE_DAY, ONE_WEEK, THREE_MONTHS, ONE_YEAR, FIVE_YEARS를 오늘 또는 직전 개장일 기준으로 모두 채웁니다. "
+                    + "ONE_DAY/ONE_WEEK는 분봉 동기화와 30분봉 집계를 사용하고, THREE_MONTHS/ONE_YEAR는 DAY, FIVE_YEARS는 WEEK 기간봉을 사용합니다. "
+                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. prod 프로필에서는 adminKey가 필요합니다."
+    )
+    @PostMapping("/chart/sync")
+    public ResponseEntity<ApiResponse<MockInvestmentChartCandleSyncResponse>> syncChartCandles(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "차트 기간. 생략 시 전체 기간 동기화", example = "ONE_DAY")
+            @RequestParam(required = false) MockInvestmentChartPeriod period,
+
+            @Parameter(description = "동기화 기준일. 생략 시 오늘이 개장일이면 오늘, 아니면 직전 개장일")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+
+            @Parameter(description = "종목 코드. 생략 시 전체 종목 대상", example = "005930")
+            @RequestParam(required = false) String stockCode
+    ) {
+        validateAdminKey(adminKey);
+        MockInvestmentChartCandleSyncResponse response = kisSmokeService.syncChartCandles(stockCode, period, date);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "차트 기간 기준 동기화 상태 확인",
+            description = "stock_candles 테이블에 저장된 특정 종목의 차트 period별 원천 캔들 범위와 건수를 확인합니다. "
+                    + "period를 생략하면 ONE_DAY, ONE_WEEK, THREE_MONTHS, ONE_YEAR, FIVE_YEARS 상태를 모두 반환합니다. "
+                    + "부족하면 /api/local/kis/chart/sync로 보정합니다. prod 프로필에서는 adminKey가 필요합니다."
+    )
+    @GetMapping("/chart/sync/status")
+    public ResponseEntity<ApiResponse<MockInvestmentChartCandleSyncStatusResponse>> getChartCandleSyncStatus(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "종목 코드", example = "005930")
+            @RequestParam String stockCode,
+
+            @Parameter(description = "차트 기간. 생략 시 전체 기간 상태 확인", example = "ONE_DAY")
+            @RequestParam(required = false) MockInvestmentChartPeriod period,
+
+            @Parameter(description = "상태 확인 기준일. 생략 시 오늘이 개장일이면 오늘, 아니면 직전 개장일")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        validateAdminKey(adminKey);
+        MockInvestmentChartCandleSyncStatusResponse response = kisSmokeService.getChartCandleSyncStatus(stockCode, period, date);
 
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }

@@ -2,6 +2,8 @@ package com.mju.Jumoney.global.client.kis.core;
 
 import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteCandleMetrics;
 import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteChartResponse;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodCandleMetrics;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodChartResponse;
 import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultResponse;
@@ -67,6 +69,7 @@ public class KisApiClient {
     private static final String TR_ID_DOMESTIC_HOLIDAY = "CTCA0903R";
     private static final String TR_ID_TODAY_MINUTE_CHART = "FHKST03010200";
     private static final String TR_ID_DAILY_MINUTE_CHART = "FHKST03010230";
+    private static final String TR_ID_PERIOD_CHART = "FHKST03010100";
 
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
@@ -356,6 +359,36 @@ public class KisApiClient {
             }
             return response.output().stream()
                     .map(kisMetricMapper::toMinuteCandleMetrics)
+                    .toList();
+        });
+    }
+
+    // 국내주식기간별시세 API (FHKST03010100): 일/주/월/년 봉을 가져옵니다.
+    public List<KisPeriodCandleMetrics> getPeriodCandles(String stockCode, LocalDate from, LocalDate to, String periodCode) {
+        return callWithRetry("국내주식기간별시세", stockCode + ":" + periodCode, () -> {
+            kisRateLimiter.acquire();
+            KisPeriodChartResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice")
+                            .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                            .queryParam("fid_input_iscd", stockCode)
+                            .queryParam("fid_input_date_1", formatDate(from))
+                            .queryParam("fid_input_date_2", formatDate(to))
+                            .queryParam("fid_period_div_code", periodCode)
+                            .queryParam("fid_org_adj_prc", "0")
+                            .build())
+                    .headers(headers -> setKisHeaders(headers, TR_ID_PERIOD_CHART))
+                    .retrieve()
+                    .bodyToMono(KisPeriodChartResponse.class)
+                    .onErrorMap(e -> new KisApiException("[KIS] 국내주식기간별시세 조회 실패: stockCode=" + stockCode + ", periodCode=" + periodCode, e))
+                    .block();
+
+            validateSuccess(response, TR_ID_PERIOD_CHART);
+            if (response.output() == null) {
+                return List.of();
+            }
+            return response.output().stream()
+                    .map(kisMetricMapper::toPeriodCandleMetrics)
                     .toList();
         });
     }

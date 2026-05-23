@@ -2,6 +2,8 @@ package com.mju.Jumoney.global.client.kis.core;
 
 import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteCandleMetrics;
 import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteChartOutput;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodCandleMetrics;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodChartOutput;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendOutput;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
@@ -112,6 +114,18 @@ public class KisMetricMapper {
         );
     }
 
+    public KisPeriodCandleMetrics toPeriodCandleMetrics(KisPeriodChartOutput output) {
+        return new KisPeriodCandleMetrics(
+                toCandleDate(output.businessDate()),
+                toBigDecimal(output.openPrice()),
+                toBigDecimal(output.highPrice()),
+                toBigDecimal(output.lowPrice()),
+                toBigDecimal(output.closePrice()),
+                toLong(output.accumulatedVolume()),
+                toLong(output.accumulatedTradeAmount())
+        );
+    }
+
     private BigDecimal toBigDecimal(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -145,6 +159,18 @@ public class KisMetricMapper {
             return LocalDateTime.of(parsedDate, parsedTime);
         } catch (RuntimeException e) {
             log.warn("[KIS] 분봉 시간 변환 실패 (null 처리됨): date='{}', time='{}'", date, time);
+            return null;
+        }
+    }
+
+    private LocalDateTime toCandleDate(String date) {
+        if (!StringUtils.hasText(date)) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(date.trim(), KIS_DATE_FORMATTER).atStartOfDay();
+        } catch (RuntimeException e) {
+            log.warn("[KIS] 기간봉 날짜 변환 실패 (null 처리됨): date='{}'", date);
             return null;
         }
     }

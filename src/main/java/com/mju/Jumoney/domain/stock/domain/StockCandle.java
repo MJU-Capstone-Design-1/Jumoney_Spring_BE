@@ -76,10 +76,22 @@ public class StockCandle extends BaseEntity {
                                            BigDecimal closePrice,
                                            Long volume,
                                            Long tradeAmount) {
+        return createFinal(stock, StockCandleIntervalType.MINUTE, candleTime, openPrice, highPrice, lowPrice, closePrice, volume, tradeAmount);
+    }
+
+    public static StockCandle createFinal(Stock stock,
+                                          StockCandleIntervalType intervalType,
+                                          LocalDateTime candleTime,
+                                          BigDecimal openPrice,
+                                          BigDecimal highPrice,
+                                          BigDecimal lowPrice,
+                                          BigDecimal closePrice,
+                                          Long volume,
+                                          Long tradeAmount) {
         return StockCandle.builder()
                 .stock(stock)
                 .stockCode(stock.getStockCode())
-                .intervalType(StockCandleIntervalType.MINUTE)
+                .intervalType(intervalType)
                 .candleTime(candleTime)
                 .openPrice(openPrice)
                 .highPrice(highPrice)

@@ -121,16 +121,36 @@
 ### 3.5. 종목 차트 조회
 
 - **기능**: 종목의 차트 데이터를 기간 기준으로 조회.
-- **현재 Endpoint**: `GET /api/mock-investments/stocks/{stockCode}/charts/minute?date={yyyy-MM-dd}`
+- **현재 Endpoint**: `GET /api/mock-investments/stocks/{stockCode}/chart?period={period}&date={yyyy-MM-dd}`
+- **호환 Endpoint**: `GET /api/mock-investments/stocks/{stockCode}/charts/minute?date={yyyy-MM-dd}` (`period=ONE_DAY` 내부
+  위임)
 - **기간 UX**: `1일`, `1주`, `3달`, `1년`, `5년`
+- **period enum**: `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`
 - **사용 테이블**: `Stock`, `StockCandle`
 - **로직**:
-    1. 현재 구현은 `1일` 차트에 해당하는 `MINUTE` 엔드포인트만 제공한다.
-    2. 기간별 봉 매핑은 `1일 -> 1분봉`, `1주 -> 30분봉`, `3달 -> 일봉`, `1년 -> 일봉`, `5년 -> 주봉`을 기준으로 한다.
-    3. 1분봉은 KIS 주식당일분봉조회(`FHKST03010200`) 결과를 `09:02`, `09:32`, `10:02` ... `15:32`에 적재하고, `15:40`에 장 마감 보정 동기화를 한 번 더
-       수행한다.
-    4. 1주 차트는 확정 30분봉을 저장해 조회하고, 장중 마지막 진행 중 30분봉 1개는 1분봉 또는 Redis 실시간 분봉으로 보강한다.
-    5. Redis 미확정 분봉 병합과 기간 기반 차트 API는 아직 미구현이다.
+    1. 단일 차트 API가 기간별 차트 조회를 담당한다.
+    2. 기간별 봉 매핑은 `ONE_DAY -> 1분봉`, `ONE_WEEK -> 30분봉`, `THREE_MONTHS -> 일봉`, `ONE_YEAR -> 일봉`, `FIVE_YEARS -> 주봉`을 기준으로
+       한다.
+    3. `date`를 생략하면 KST 기준 오늘이 개장일이면 오늘, 아니면 직전 개장일로 보정한다.
+    4. `ONE_DAY`는 DB 확정 1분봉을 조회하고, 조회 기준일이 오늘이면 Redis 미확정 1분봉을 추가 병합한다.
+    5. `ONE_WEEK`는 DB 확정 30분봉을 조회하고, 조회 기준일이 오늘이면 Redis 1분봉으로 마지막 진행 중 30분봉 1개를 집계해 병합한다.
+    6. `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`는 실시간 보강 없이 DB 확정 봉만 반환한다.
+
+#### 수동 동기화 API
+
+```http
+POST /api/local/kis/chart/sync
+POST /api/local/kis/chart/sync?period=ONE_WEEK
+POST /api/local/kis/chart/sync?stockCode=005930
+GET /api/local/kis/chart/sync/status?stockCode=005930
+GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
+```
+
+- `period` 생략 시 `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`에 필요한 원천 캔들을 한 번에 동기화한다.
+- `ONE_DAY`/`ONE_WEEK`는 1분봉 동기화를 실행하고, 완성된 1분봉 버킷으로 30분봉을 함께 집계한다.
+- `THREE_MONTHS`/`ONE_YEAR`는 `DAY`, `FIVE_YEARS`는 `WEEK` 기간봉을 동기화한다.
+- `date` 생략 시 KST 기준 오늘이 개장일이면 오늘, 아니면 직전 개장일을 기준으로 한다.
+- 상태 확인 API는 `period`를 생략하면 전체 차트 기간의 DB 캔들 범위와 건수를 반환한다.
 
 #### Response Data
 
@@ -138,9 +158,10 @@
 {
   "stockCode": "005930",
   "stockName": "삼성전자",
+  "period": "ONE_DAY",
   "intervalType": "MINUTE",
   "date": "2026-05-21",
-  "includesRealtime": false,
+  "includesRealtime": true,
   "lastFinalCandleTime": "2026-05-21T14:00:00",
   "candles": [
     {
@@ -152,6 +173,16 @@
       "volume": 120340,
       "tradeAmount": 8840000000,
       "isFinal": true
+    },
+    {
+      "candleTime": "2026-05-21T14:21:00",
+      "openPrice": 73700,
+      "highPrice": 73900,
+      "lowPrice": 73600,
+      "closePrice": 73800,
+      "volume": 32000,
+      "tradeAmount": null,
+      "isFinal": false
     }
   ]
 }

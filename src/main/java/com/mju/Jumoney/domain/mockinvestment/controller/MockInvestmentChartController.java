@@ -1,10 +1,12 @@
 package com.mju.Jumoney.domain.mockinvestment.controller;
 
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentMinuteChartResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartResponse;
+import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentQueryService;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -21,16 +23,34 @@ public class MockInvestmentChartController {
 
     private final MockInvestmentQueryService mockInvestmentQueryService;
 
-    @Operation(summary = "모의투자 종목 분봉 차트 조회", description = "종목 코드 기준으로 DB 확정 1분봉을 조회하고, 조회 날짜가 오늘이면 Redis 미확정 분봉을 추가 병합합니다. 같은 시각 충돌 시 DB 확정 분봉을 우선합니다.")
+    @Operation(
+            summary = "모의투자 종목 차트 조회",
+            description = "period 기준 단일 차트 API입니다. ONE_DAY는 1분봉, ONE_WEEK는 30분봉, THREE_MONTHS/ONE_YEAR는 일봉, FIVE_YEARS는 주봉을 반환합니다. date 생략 시 직전 개장일 기준으로 보정합니다."
+    )
+    @GetMapping("/stocks/{stockCode}/chart")
+    public ResponseEntity<ApiResponse<MockInvestmentChartResponse>> getChart(
+            @PathVariable String stockCode,
+            @Parameter(description = "차트 기간", example = "ONE_DAY")
+            @RequestParam MockInvestmentChartPeriod period,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                mockInvestmentQueryService.getChart(stockCode, period, date)
+        ));
+    }
+
+    @Operation(summary = "모의투자 종목 1일 차트 조회", description = "기존 분봉 전용 엔드포인트 호환용입니다. 내부적으로 period=ONE_DAY 단일 차트 API를 사용합니다.")
     @GetMapping("/stocks/{stockCode}/charts/minute")
-    public ResponseEntity<ApiResponse<MockInvestmentMinuteChartResponse>> getMinuteChart(
+    public ResponseEntity<ApiResponse<MockInvestmentChartResponse>> getMinuteChart(
             @PathVariable String stockCode,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
-                mockInvestmentQueryService.getMinuteChart(stockCode, date)
+                mockInvestmentQueryService.getChart(stockCode, MockInvestmentChartPeriod.ONE_DAY, date)
         ));
     }
 }

@@ -1,5 +1,7 @@
 package com.mju.Jumoney.domain.mockinvestment.dto;
 
+import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
+import com.mju.Jumoney.domain.stock.enums.StockCandleIntervalType;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
@@ -7,25 +9,27 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record MockInvestmentMinuteChartResponse(
+public record MockInvestmentChartResponse(
         @Schema(description = "종목 코드", example = "005930")
         String stockCode,
         @Schema(description = "종목명", example = "삼성전자")
         String stockName,
+        @Schema(description = "차트 기간", example = "ONE_DAY")
+        MockInvestmentChartPeriod period,
         @Schema(description = "차트 봉 타입", example = "MINUTE")
-        String intervalType,
-        @Schema(description = "조회 날짜", example = "2026-05-21")
+        StockCandleIntervalType intervalType,
+        @Schema(description = "조회 기준일. 생략 시 직전 개장일 기준으로 보정됩니다.", example = "2026-05-21")
         LocalDate date,
-        @Schema(description = "Redis 미확정 분봉 포함 여부. 오늘 날짜 조회에서 Redis 병합이 발생하면 true")
+        @Schema(description = "Redis 미확정 캔들 포함 여부. 현재 구현은 ONE_DAY 또는 ONE_WEEK에서 true가 될 수 있습니다.")
         boolean includesRealtime,
-        @Schema(description = "응답에 포함된 마지막 확정 분봉 시각", example = "2026-05-21T14:00:00")
+        @Schema(description = "응답에 포함된 마지막 확정 봉 시각", example = "2026-05-21T14:00:00")
         LocalDateTime lastFinalCandleTime,
-        @Schema(description = "분봉 캔들 목록")
+        @Schema(description = "차트 캔들 목록")
         List<Candle> candles
 ) {
 
     public record Candle(
-            @Schema(description = "캔들 기준 시각. KST 기준 1분봉 시작 시각", example = "2026-05-21T14:00:00")
+            @Schema(description = "캔들 기준 시각", example = "2026-05-21T14:00:00")
             LocalDateTime candleTime,
             @Schema(description = "시가", example = "71000")
             BigDecimal openPrice,
@@ -37,9 +41,9 @@ public record MockInvestmentMinuteChartResponse(
             BigDecimal closePrice,
             @Schema(description = "거래량", example = "32000")
             Long volume,
-            @Schema(description = "거래대금. KIS 응답 기준 누적 거래대금 필드이며, 분 단위 거래대금이 아닐 수 있음", example = "2275000000")
+            @Schema(description = "거래대금", example = "2275000000")
             Long tradeAmount,
-            @Schema(description = "확정 캔들 여부. DB 확정 분봉은 true", example = "true")
+            @Schema(description = "확정 캔들 여부", example = "true")
             boolean isFinal
     ) {
     }

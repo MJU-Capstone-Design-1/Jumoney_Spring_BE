@@ -11,7 +11,7 @@
 | HTS 조건검색 결과        | KIS REST batch               | `hts_stocks`                 | No                     | 위험 성향별 후보군                         |
 | 실시간 현재가            | Node WebSocket Redis         | `stock:latest:{code}`        | No                     | 장중 현재가/등락률 표시                      |
 | 현재가 fallback/cache | Spring KIS REST, Redis cache | `stock:current-price:{code}` | Yes                    | 주문, 상세 표시 fallback                 |
-| 확정 차트 캔들           | KIS REST chart sync          | `stock_candles`              | No                     | 분/일/주/월/년 차트                       |
+| 확정 차트 캔들           | KIS REST chart sync          | `stock_candles`              | No                     | 분/30분/일/주 차트                       |
 | 미확정 분봉 캔들          | Node WebSocket/Redis/SSE     | Redis, SSE event             | No                     | MINUTE 차트 초기 스냅샷 보강 및 장중 마지막 분봉 표시 |
 
 ## Batch Data
@@ -128,15 +128,16 @@ fallback 순서로 값을 찾는다. 검색에서 KIS REST fallback을 제거하
 
 차트는 Spring 초기 스냅샷과 Node 실시간 업데이트의 역할을 분리한다.
 
-| Data        | Owner  | Source                                | Usage                                     |
-|-------------|--------|---------------------------------------|-------------------------------------------|
-| 확정 분봉       | Spring | KIS `FHKST03010200` 30분 주기 동기화        | DB 저장, 차트 API 반환                          |
-| 확정 30분봉     | Spring | 확정 1분봉 집계                             | 1주 차트 반환                                  |
-| 확정 일/주/월/년봉 | Spring | KIS `FHKST03010100` backfill/schedule | DB 저장, 차트 API 반환                          |
-| 미확정 1분봉     | Node   | `stock:minute-candles:{code}`         | Spring MINUTE 초기 스냅샷에 병합, SSE로 이후 업데이트 전달 |
+| Data        | Owner  | Source                                | Usage                                        |
+|-------------|--------|---------------------------------------|----------------------------------------------|
+| 확정 분봉       | Spring | KIS `FHKST03010200` 30분 주기 동기화        | DB 저장, 차트 API 반환                             |
+| 확정 30분봉     | Spring | 확정 1분봉 집계                             | 1주 차트 반환                                     |
+| 확정 일/주/월/년봉 | Spring | KIS `FHKST03010100` backfill/schedule | DB 저장, 차트 API 반환                             |
+| 미확정 1분봉     | Node   | `stock:minute-candles:{code}`         | Spring `ONE_DAY` 초기 스냅샷에 병합, SSE로 이후 업데이트 전달 |
 
-현재 Spring `MINUTE` 차트 API는 DB의 `isFinal=true` 확정 분봉만 반환한다. Redis 기반 `isFinal=false` 미확정 분봉 병합은 아직 미구현이다.
-다만 Redis 원본은 DB `StockCandle`과 필드명이 다르므로, 구현 시 `minuteTs/open/high/low/close/volume`을 API/도메인 캔들 모델로 변환하는 어댑터 계층이 필요하다.
+현재 Spring 단일 차트 API의 `ONE_DAY`는 DB의 `isFinal=true` 확정 분봉에 Redis 기반 `isFinal=false` 미확정 분봉을 병합해 반환한다. `ONE_WEEK`는 DB 확정
+30분봉에 Redis 1분봉으로 집계한 마지막 진행 중 30분봉 1개를 병합한다. `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`는 실시간 보강 없이 DB 확정 일봉/주봉만 반환한다.
+Redis 원본은 DB `StockCandle`과 필드명이 다르므로, Spring은 `minuteTs/open/high/low/close/volume`을 API 캔들 모델로 변환해 병합한다.
 
 차트 기간 매핑은 `1일 -> 1분봉`, `1주 -> 30분봉`, `3달 -> 일봉`, `1년 -> 일봉`, `5년 -> 주봉`을 기준으로 한다. `1주` 차트는 확정 30분봉을 기본으로 사용하고, 장중 마지막 진행
 중 30분봉 1개만 1분봉 또는 Redis 실시간 분봉에서 보강한다.
@@ -144,5 +145,9 @@ fallback 순서로 값을 찾는다. 검색에서 KIS REST fallback을 제거하
 KIS 분봉 동기화는 정각/30분 기준 2분 뒤에 실행하고, 요청 시각 기준 최근 2분을 제외한 정각/30분 단위까지만 DB 확정 저장 대상으로 삼는다. 정규 스케줄은 `09:02`, `09:32`,
 `10:02` ... `15:32`에 실행되고, `15:40`에 장 마감 보정 스케줄이 한 번 더 실행된다.
 
-수동 검증 API는 `POST /api/local/kis/chart/minute/sync?stockCode=005930`, DB 적재 범위 확인은
+차트 기준 수동 동기화는 `POST /api/local/kis/chart/sync?stockCode=005930`를 사용한다. `period`를 생략하면 오늘 또는 직전 개장일 기준으로 `ONE_DAY`,
+`ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`에 필요한 데이터를 모두 채운다.
+차트 기준 DB 적재 범위 확인은 `GET /api/local/kis/chart/sync/status?stockCode=005930`를 사용한다. `period`를 생략하면 전체 차트 기간 상태를 반환한다.
+저수준 검증 API는 `POST /api/local/kis/chart/minute/sync?stockCode=005930`, 특정 영업일 보정은
+`POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCode=005930`, 기존 분봉 전용 범위 확인은
 `GET /api/local/kis/chart/minute/sync/status?stockCode=005930`를 사용한다.
