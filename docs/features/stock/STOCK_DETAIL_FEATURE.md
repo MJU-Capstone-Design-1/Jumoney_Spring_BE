@@ -9,7 +9,7 @@
 
 ## 1. 차트 API 방향
 
-차트는 KIS가 제공하는 봉 단위를 그대로 노출한다.
+프론트 차트는 `1일`, `1주`, `3달`, `1년`, `5년` 기간 기준으로 제공한다.
 
 ### Endpoint
 
@@ -18,19 +18,26 @@ GET /api/mock-investments/stocks/{stockCode}/charts/minute
 GET /api/mock-investments/stocks/{stockCode}/charts/minute?date=2026-05-21
 ```
 
-현재 구현은 `MINUTE`만 제공한다. `DAY`, `WEEK`, `MONTH`, `YEAR`는 아직 미구현이다.
+현재 구현은 `MINUTE` 엔드포인트만 제공한다. 기간 기반 차트 API와 `30분봉`, `DAY`, `WEEK` 저장/조회는 아직 미구현이다.
 
-### Interval
+### 기간별 봉 매핑
 
-| interval | 의미     | KIS API                   | KIS 파라미터                |
-|----------|--------|---------------------------|-------------------------|
-| `MINUTE` | 당일 1분봉 | 주식당일분봉조회 `FHKST03010200`  | 당일 분봉                   |
-| `DAY`    | 일봉     | 국내주식기간별시세 `FHKST03010100` | `FID_PERIOD_DIV_CODE=D` |
-| `WEEK`   | 주봉     | 국내주식기간별시세 `FHKST03010100` | `FID_PERIOD_DIV_CODE=W` |
-| `MONTH`  | 월봉     | 국내주식기간별시세 `FHKST03010100` | `FID_PERIOD_DIV_CODE=M` |
-| `YEAR`   | 연봉     | 국내주식기간별시세 `FHKST03010100` | `FID_PERIOD_DIV_CODE=Y` |
+| 기간   | 사용할 봉 | 비고                            |
+|------|-------|-------------------------------|
+| `1일` | 1분봉   | 당일 분봉                         |
+| `1주` | 30분봉  | 확정 30분봉 + 장중 마지막 진행 중 30분봉 병합 |
+| `3달` | 일봉    | 확정 일봉                         |
+| `1년` | 일봉    | 확정 일봉                         |
+| `5년` | 주봉    | 확정 주봉                         |
 
-프론트가 `1일`, `1주일`, `1개월`, `1년`, `5년` UX를 원하면 프론트 내부에서 위 interval로 매핑한다. 백엔드 API는 우선 봉 단위만 책임진다.
+### 봉 데이터 소스
+
+| candle type | source                                        | notes       |
+|-------------|-----------------------------------------------|-------------|
+| 1분봉         | KIS `FHKST03010200`                           | 당일 확정 분봉 저장 |
+| 30분봉        | 1분봉 집계 저장                                     | 1주 차트용      |
+| 일봉          | KIS `FHKST03010100` + `FID_PERIOD_DIV_CODE=D` | 3달, 1년 차트용  |
+| 주봉          | KIS `FHKST03010100` + `FID_PERIOD_DIV_CODE=W` | 5년 차트용      |
 
 ---
 
@@ -40,7 +47,7 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
 
 - 현재 `MINUTE`: DB 확정 분봉만 반환한다. 응답의 `includesRealtime=false`가 이 상태를 뜻한다.
 - Redis 미확정 분봉 병합은 아직 미구현이다.
-- `DAY`, `WEEK`, `MONTH`, `YEAR`는 아직 미구현이다.
+- `30분봉`, `DAY`, `WEEK` 기반 기간 차트는 아직 미구현이다.
 
 ```json
 {
@@ -91,7 +98,7 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
 | `candle_id`     | BIGINT      | PK                                       |
 | `stock_id`      | BIGINT      | FK to `stocks.stock_id`                  |
 | `stock_code`    | VARCHAR(10) | 조회/운영 편의를 위한 종목코드 중복 저장                  |
-| `interval_type` | VARCHAR(20) | `MINUTE`, `DAY`, `WEEK`, `MONTH`, `YEAR` |
+| `interval_type` | VARCHAR(20) | `MINUTE`, `THIRTY_MINUTE`, `DAY`, `WEEK` |
 | `candle_time`   | TIMESTAMP   | KST 기준 캔들 시각                             |
 | `open_price`    | NUMERIC     | 시가                                       |
 | `high_price`    | NUMERIC     | 고가                                       |
@@ -115,7 +122,7 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 ## 4. 분봉 정책
 
-분봉 DB 데이터는 KIS REST를 확정 기준으로 삼는다.
+차트 저장은 “확정 캔들 저장 + 장중 마지막 진행 중 봉 보강” 구조를 기준으로 한다.
 
 ### Spring 역할
 
@@ -125,6 +132,8 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외하고, 그 값을 정각/30분 단위로 내린 시각까지만 저장한다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
 - `MINUTE` 차트 API는 현재 DB 확정 분봉만 반환한다.
+- `1주` 차트를 위해 확정 30분봉을 별도 저장하는 방향으로 확장한다.
+- 장중 `1주` 차트의 마지막 진행 중 30분봉은 1분봉 또는 Redis 실시간 분봉에서 즉석 집계해 응답에 병합한다.
 
 ### Node 역할
 
@@ -156,6 +165,7 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 - 현재는 Spring 차트 API로 DB 확정 분봉 스냅샷만 로드한다.
 - Redis/SSE 연동 이후에는 Node SSE의 `MINUTE_CANDLE_UPDATE`를 추가로 반영한다.
+- 기간 선택 UI는 `1일`, `1주`, `3달`, `1년`, `5년` 기준으로 구성한다.
 
 ### Redis 분봉 계약
 
@@ -194,16 +204,15 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 분봉 과거 데이터는 저장하지 않는다. 현재 분봉 저장 범위는 당일 데이터만이다.
 
-일/주/월/년봉 수동 적재 API는 아직 미구현이다.
+30분봉, 일봉, 주봉 수동 적재 API는 아직 미구현이다.
 
 예정 경로:
 
 ```http
+POST /api/admin/chart/backfill?interval=THIRTY_MINUTE
 POST /api/admin/chart/backfill?interval=DAY
 POST /api/admin/chart/backfill?interval=WEEK
-POST /api/admin/chart/backfill?interval=MONTH
-POST /api/admin/chart/backfill?interval=YEAR
-POST /api/admin/chart/backfill?stockCode=005930&interval=DAY
+POST /api/admin/chart/backfill?stockCode=005930&interval=THIRTY_MINUTE
 ```
 
 ### 당일 분봉 smoke/backfill
@@ -260,61 +269,54 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 
 30분 주기 안에 처리 가능한 수준을 목표로 한다.
 
-### 일/주/월/년 확정 동기화
+### 30분봉/일봉/주봉 확정 동기화
 
-KIS 국내주식기간별시세 `FHKST03010100`을 사용한다.
+1주 차트용 30분봉은 1분봉 확정 데이터로부터 집계 저장한다. 3달/1년/5년 차트용 일봉/주봉은 KIS 국내주식기간별시세 `FHKST03010100`을 사용한다.
 
 KIS 요청:
 
-| interval | `FID_PERIOD_DIV_CODE` | 1회 최대 건수 | 저장 기준 `candleTime`         |
-|----------|-----------------------|----------|----------------------------|
-| `DAY`    | `D`                   | 100건     | 영업일 `00:00:00`             |
-| `WEEK`   | `W`                   | 100건     | KIS가 반환한 주봉 기준일 `00:00:00` |
-| `MONTH`  | `M`                   | 100건     | KIS가 반환한 월봉 기준일 `00:00:00` |
-| `YEAR`   | `Y`                   | 100건     | KIS가 반환한 연봉 기준일 `00:00:00` |
+| interval        | source                  | 저장 기준 `candleTime`         |
+|-----------------|-------------------------|----------------------------|
+| `THIRTY_MINUTE` | 1분봉 집계                  | KST 기준 30분 버킷 시작 시각        |
+| `DAY`           | `FID_PERIOD_DIV_CODE=D` | 영업일 `00:00:00`             |
+| `WEEK`          | `FID_PERIOD_DIV_CODE=W` | KIS가 반환한 주봉 기준일 `00:00:00` |
 
 저장 매핑:
 
-| KIS output2      | `stock_candles` |
-|------------------|-----------------|
-| `stck_bsop_date` | `candle_time`   |
-| `stck_oprc`      | `open_price`    |
-| `stck_hgpr`      | `high_price`    |
-| `stck_lwpr`      | `low_price`     |
-| `stck_clpr`      | `close_price`   |
-| `acml_vol`       | `volume`        |
-| `acml_tr_pbmn`   | `trade_amount`  |
+| source        | mapping                                                                                                                                                                                           |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 30분봉 집계       | 같은 30분 버킷의 1분봉으로 OHLCV 집계                                                                                                                                                                         |
+| KIS `output2` | `stck_bsop_date -> candle_time`, `stck_oprc -> open_price`, `stck_hgpr -> high_price`, `stck_lwpr -> low_price`, `stck_clpr -> close_price`, `acml_vol -> volume`, `acml_tr_pbmn -> trade_amount` |
 
 초기 backfill:
 
 - 수동 API로 전체 종목 또는 단일 종목을 적재한다.
-- `DAY`: 최근 1~2년을 우선 적재한다. KIS 1회 최대 100건이므로 여러 구간으로 나눠 호출한다.
-- `WEEK`: 최근 3~5년을 우선 적재한다.
-- `MONTH`: 최근 5~10년을 우선 적재한다.
-- `YEAR`: 가능한 전체 기간을 적재한다.
+- `THIRTY_MINUTE`: 1주 차트 제공 범위를 커버할 만큼 최근 영업일 데이터를 집계 저장한다.
+- `DAY`: 최근 1년 이상을 우선 적재한다.
+- `WEEK`: 최근 5년 이상을 우선 적재한다.
 - 같은 캔들은 `unique(stock_id, interval_type, candle_time)` 기준으로 upsert한다.
 
 예상 수동 API:
 
 ```http
+POST /api/local/kis/chart/period/sync?interval=THIRTY_MINUTE
 POST /api/local/kis/chart/period/sync?interval=DAY
 POST /api/local/kis/chart/period/sync?interval=WEEK
-POST /api/local/kis/chart/period/sync?interval=MONTH
-POST /api/local/kis/chart/period/sync?interval=YEAR
-POST /api/local/kis/chart/period/sync?stockCode=005930&interval=DAY
+POST /api/local/kis/chart/period/sync?stockCode=005930&interval=THIRTY_MINUTE
 ```
 
 정기 동기화:
 
-- `DAY`: 장 마감 후 충분히 지연된 시각에 당일 일봉을 upsert한다. 예: `16:10` 이후.
-- `WEEK`: 매일 장 마감 후 최신 주봉을 upsert해도 되고, 금요일 장 마감 후 실행해도 된다. 단순성을 위해 초기에는 매일 최신 100건 upsert를 허용한다.
-- `MONTH`: 매일 장 마감 후 최신 100건 upsert를 허용한다. 호출량을 줄이려면 월말 또는 월초 보정 스케줄로 축소한다.
-- `YEAR`: 매일 실행할 필요가 낮다. 월 1회 또는 수동 backfill 중심으로 둔다.
+- `THIRTY_MINUTE`: 1분봉 확정 저장 이후 집계해 upsert한다.
+- `DAY`: 장 마감 후 당일 일봉을 upsert한다.
+- `WEEK`: 장 마감 후 최신 주봉을 upsert한다.
 
 차트 조회:
 
-- `DAY`, `WEEK`, `MONTH`, `YEAR`는 Redis 병합 없이 DB 확정 캔들만 반환한다.
-- 프론트 표시 기간이 `1주일`, `1개월`, `1년`, `5년`처럼 UX 기간인 경우에도 백엔드는 interval과 조회 기간만 받는다.
+- `1일`: DB 확정 1분봉만 반환한다. Redis 실시간 병합은 추후 확장이다.
+- `1주`: DB 확정 30분봉에 장중 마지막 진행 중 30분봉 1개를 병합한다.
+- `3달`, `1년`: DB 확정 일봉만 반환한다.
+- `5년`: DB 확정 주봉만 반환한다.
 
 ---
 

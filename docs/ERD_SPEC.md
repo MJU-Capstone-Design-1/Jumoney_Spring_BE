@@ -139,7 +139,7 @@
     - 필드
         - **시세 ID / stockPriceId / BIGINT / NOT NULL (PK)**
         - **종목 ID / stockId / BIGINT / NOT NULL (FK)**
-        - 캔들 타입 / intervalType / ENUM / NOT NULL (MIN, DAY, WEEK, MONTH, YEAR)
+        - 캔들 타입 / intervalType / ENUM / NOT NULL (MINUTE, THIRTY_MINUTE, DAY, WEEK)
         - 기준 시간 / baseTime / TIMESTAMP / NOT NULL
         - 시가 / openPrice / DECIMAL / NULL
         - 고가 / highPrice / DECIMAL / NULL
