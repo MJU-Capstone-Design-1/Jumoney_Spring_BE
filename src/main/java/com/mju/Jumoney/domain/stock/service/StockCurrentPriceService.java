@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -79,7 +78,7 @@ public class StockCurrentPriceService {
     private Optional<StockCurrentPriceSnapshot> getRealtimeCurrentPrice(String stockCode) {
         return realtimeRedisReader.get(realtimeKey(stockCode), StockRealtimeSnapshot.class)
                 .filter(this::isFreshRealtimeSnapshot)
-                .map(snapshot -> new StockCurrentPriceSnapshot(snapshot.price(), snapshot.rate()))
+                .map(snapshot -> new StockCurrentPriceSnapshot(snapshot.close(), snapshot.rate()))
                 .filter(this::hasDisplayValue);
     }
 
@@ -110,12 +109,12 @@ public class StockCurrentPriceService {
     }
 
     private boolean isFreshRealtimeSnapshot(StockRealtimeSnapshot snapshot) {
-        if (snapshot.timestamp() == null || realtimeFreshnessSeconds <= 0) {
+        if (snapshot.minuteTs() == null || realtimeFreshnessSeconds <= 0) {
             return false;
         }
 
         long freshnessThresholdMillis = Duration.ofSeconds(realtimeFreshnessSeconds).toMillis();
-        long ageMillis = System.currentTimeMillis() - snapshot.timestamp();
+        long ageMillis = System.currentTimeMillis() - snapshot.minuteTs();
         return ageMillis >= 0 && ageMillis <= freshnessThresholdMillis;
     }
 
