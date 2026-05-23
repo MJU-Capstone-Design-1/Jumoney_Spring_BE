@@ -138,10 +138,9 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 ### Node 역할
 
 - KIS WebSocket `H0STCNT0` tick을 수신한다.
-- `stock:latest:{code}`에 최신 tick 스냅샷을 저장한다. 현재가/등락률/누적 거래량/체결강도 최신 표시용이며 차트 분봉과 분리한다.
-- tick을 같은 `candleTime` 기준으로 1분봉 미확정 캔들로 집계한다.
-- `stock:minute-candles:{code}` ZSET에 최근 30~40분 미확정 분봉을 저장한다.
-- `stock:history:{code}`와 `stream:stock:ticks`는 Spring 비즈니스 로직 필수 의존성이 아니므로 디버깅/장애 분석/후처리 확장 목적일 때만 유지한다.
+- tick을 같은 `minuteTs` 기준으로 1분봉 미확정 캔들로 집계한다.
+- `stock:minute-candles:{code}` ZSET에 최근 40분 미확정 분봉을 저장한다.
+- `stock:latest:{code}`에는 현재 진행 중인 최신 분봉 1개를 String으로 저장한다. 현재가/등락률 표시와 단건 최신 상태 조회는 이 key를 사용한다.
 - SSE로 Spring 초기 응답 이후의 `MINUTE_CANDLE_UPDATE` 이벤트를 보낸다.
 
 ```json
@@ -169,32 +168,38 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 ### Redis 분봉 계약
 
-`stock:latest:{code}`는 최신 상태 스냅샷이고, `stock:minute-candles:{code}`는 차트용 분봉 배열이다. 현재가/등락률은 `stock:latest:{code}`에서 읽고, 차트는
-`stock:minute-candles:{code}`를 병합한다.
+`stock:latest:{code}`와 `stock:minute-candles:{code}`는 같은 raw 분봉 payload를 사용한다. 전자는 "현재 진행 중인 최신 분봉 1개", 후자는 "최근 40분 분봉 배열"이다.
+현재가/등락률은 `stock:latest:{code}`에서 읽고, 차트는 `stock:minute-candles:{code}`를 병합한다.
 
 `stock:minute-candles:{code}`:
 
 | Item       | Value                                     |
 |------------|-------------------------------------------|
 | Redis type | Sorted Set                                |
-| Score      | `candleTime` epoch millis 또는 epoch minute |
+| Score      | `minuteTs` ms epoch                         |
 | Member     | 아래 JSON 문자열                               |
-| Retention  | 최근 30~40분                                 |
+| Retention  | 최근 40분 / key TTL 1시간                     |
 
 ```json
 {
-  "stockCode": "005930",
-  "candleTime": "2026-05-21T14:20:00",
-  "openPrice": 71000,
-  "highPrice": 71200,
-  "lowPrice": 70900,
-  "closePrice": 71100,
-  "volume": 32000,
-  "tradeAmount": 2275000000,
-  "isFinal": false,
-  "updatedAt": "2026-05-21T14:20:31"
+  "code": "005930",
+  "minuteTs": 1715511600000,
+  "open": 70900,
+  "high": 71100,
+  "low": 70850,
+  "close": 71000,
+  "volume": 12500,
+  "change": 500,
+  "rate": 0.71,
+  "strength": 105.3
 }
 ```
+
+주의:
+
+- Redis raw payload는 DB/API 캔들 DTO의 `candleTime`, `openPrice`, `closePrice`, `isFinal` 구조와 다르다.
+- Spring 차트 병합 시 `minuteTs -> candleTime`, `open -> openPrice`, `close -> closePrice` 등 별도 매핑이 필요하다.
+- Redis 분봉은 미확정 실시간용이므로 `isFinal=false`는 저장값으로 존재하지 않고, 병합 단계에서 애플리케이션이 부여하는 개념으로 본다.
 
 ---
 

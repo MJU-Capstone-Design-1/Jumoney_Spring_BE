@@ -71,15 +71,32 @@
 
 ### Node WebSocket Redis
 
-| Redis Key                     | Source                               | Spring Usage                  |
-|-------------------------------|--------------------------------------|-------------------------------|
-| `stock:latest:{code}`         | KIS WebSocket `H0STCNT0` latest tick | 실시간 현재가, 등락률, 누적 거래량, 체결강도 표시 |
-| `stock:minute-candles:{code}` | Node 1분봉 집계                          | MINUTE 차트의 최근 미확정 분봉 병합       |
-| `stock:history:{code}`        | KIS WebSocket `H0STCNT0` tick        | 선택. 디버깅/장애 분석용 최근 tick 이력     |
-| `stream:stock:ticks`          | KIS WebSocket `H0STCNT0` tick        | 선택. 이벤트성 후처리/소비자 확장           |
+| Redis Key                     | Source                | Spring Usage                        |
+|-------------------------------|-----------------------|-------------------------------------|
+| `stock:latest:{code}`         | Node 1분봉 집계의 최신 진행 분봉 | 단건 최신 상태 조회, SSE 초기 스냅샷, 현재가/등락률 표시 |
+| `stock:minute-candles:{code}` | Node 1분봉 집계           | MINUTE 차트의 최근 미확정 분봉 병합             |
 
 `StockCurrentPriceService`는 `stock:latest:{code}`를 먼저 조회하고, freshness 조건을 만족하는 경우 현재가/등락률로 사용한다.
 `stock:minute-candles:{code}`는 차트 전용이며 현재가/등락률 최신 스냅샷 역할을 대체하지 않는다.
+
+최신 Redis 계약 기준으로 두 key의 payload는 동일하며, 구조는 다음 분봉 raw 포맷을 사용한다.
+
+```json
+{
+  "code": "005930",
+  "minuteTs": 1715511600000,
+  "open": 70900,
+  "high": 71100,
+  "low": 70850,
+  "close": 71000,
+  "volume": 12500,
+  "change": 500,
+  "rate": 0.71,
+  "strength": 105.3
+}
+```
+
+분봉 차트 구현 시에는 `minuteTs`를 KST 기준 분 시작 시각으로 변환해 API DTO의 `candleTime`에 매핑해야 한다.
 
 ### Spring Current Price Cache
 
@@ -119,6 +136,7 @@ fallback 순서로 값을 찾는다. 검색에서 KIS REST fallback을 제거하
 | 미확정 1분봉     | Node   | `stock:minute-candles:{code}`         | Spring MINUTE 초기 스냅샷에 병합, SSE로 이후 업데이트 전달 |
 
 현재 Spring `MINUTE` 차트 API는 DB의 `isFinal=true` 확정 분봉만 반환한다. Redis 기반 `isFinal=false` 미확정 분봉 병합은 아직 미구현이다.
+다만 Redis 원본은 DB `StockCandle`과 필드명이 다르므로, 구현 시 `minuteTs/open/high/low/close/volume`을 API/도메인 캔들 모델로 변환하는 어댑터 계층이 필요하다.
 
 차트 기간 매핑은 `1일 -> 1분봉`, `1주 -> 30분봉`, `3달 -> 일봉`, `1년 -> 일봉`, `5년 -> 주봉`을 기준으로 한다. `1주` 차트는 확정 30분봉을 기본으로 사용하고, 장중 마지막 진행
 중 30분봉 1개만 1분봉 또는 Redis 실시간 분봉에서 보강한다.
