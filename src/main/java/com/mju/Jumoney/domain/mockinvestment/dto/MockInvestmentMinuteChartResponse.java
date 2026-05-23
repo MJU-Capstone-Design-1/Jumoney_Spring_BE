@@ -16,7 +16,7 @@ public record MockInvestmentMinuteChartResponse(
         String intervalType,
         @Schema(description = "조회 날짜", example = "2026-05-21")
         LocalDate date,
-        @Schema(description = "Redis 미확정 분봉 포함 여부. 현재 구현은 DB 확정 분봉만 반환하므로 false")
+        @Schema(description = "Redis 미확정 분봉 포함 여부. 오늘 날짜 조회에서 Redis 병합이 발생하면 true")
         boolean includesRealtime,
         @Schema(description = "응답에 포함된 마지막 확정 분봉 시각", example = "2026-05-21T14:00:00")
         LocalDateTime lastFinalCandleTime,

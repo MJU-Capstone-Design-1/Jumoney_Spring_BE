@@ -21,7 +21,7 @@ public class MockInvestmentChartController {
 
     private final MockInvestmentQueryService mockInvestmentQueryService;
 
-    @Operation(summary = "모의투자 종목 분봉 차트 조회", description = "종목 코드 기준으로 DB에 저장된 확정 1분봉 차트를 조회합니다. 현재 구현은 Redis 미확정 분봉을 포함하지 않으며 includesRealtime=false로 반환합니다.")
+    @Operation(summary = "모의투자 종목 분봉 차트 조회", description = "종목 코드 기준으로 DB 확정 1분봉을 조회하고, 조회 날짜가 오늘이면 Redis 미확정 분봉을 추가 병합합니다. 같은 시각 충돌 시 DB 확정 분봉을 우선합니다.")
     @GetMapping("/stocks/{stockCode}/charts/minute")
     public ResponseEntity<ApiResponse<MockInvestmentMinuteChartResponse>> getMinuteChart(
             @PathVariable String stockCode,

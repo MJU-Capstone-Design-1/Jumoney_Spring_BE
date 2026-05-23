@@ -22,7 +22,11 @@ import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
+import com.mju.Jumoney.global.realtime.RealtimeMinuteCandle;
+import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
+import com.mju.Jumoney.global.realtime.StockRealtimeSnapshot;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +35,11 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -45,6 +51,8 @@ public class MockInvestmentQueryService {
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
     private static final LocalTime MARKET_OPEN_TIME = LocalTime.of(9, 0);
     private static final LocalTime MARKET_CLOSE_TIME = LocalTime.of(15, 30);
+    private static final ZoneId KST_ZONE_ID = ZoneId.of("Asia/Seoul");
+    private static final String REALTIME_MINUTE_CANDLE_KEY_PREFIX = "stock:minute-candles:";
 
     private final MockInvestmentAccountService mockInvestmentAccountService;
     private final OrderRepository orderRepository;
@@ -54,6 +62,7 @@ public class MockInvestmentQueryService {
     private final StockCandleRepository stockCandleRepository;
     private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
+    private final RealtimeRedisReader realtimeRedisReader;
 
     public MockInvestmentDashboardResponse getDashboard(Long userId) {
         Account account = mockInvestmentAccountService.getRequiredAccount(userId);
@@ -181,18 +190,22 @@ public class MockInvestmentQueryService {
                 startTime,
                 endTime
         );
-
-        List<MockInvestmentMinuteChartResponse.Candle> candleResponses = candles.stream()
-                .map(this::toMinuteChartCandleResponse)
-                .toList();
         LocalDateTime lastFinalCandleTime = candles.isEmpty() ? null : candles.get(candles.size() - 1).getCandleTime();
+        List<MockInvestmentMinuteChartResponse.Candle> candleResponses = mergeMinuteCandles(
+                stock.getStockCode(),
+                targetDate,
+                startTime,
+                endTime,
+                candles
+        );
+        boolean includesRealtime = candleResponses.stream().anyMatch(candle -> !candle.isFinal());
 
         return new MockInvestmentMinuteChartResponse(
                 stock.getStockCode(),
                 stock.getName(),
                 StockCandleIntervalType.MINUTE.name(),
                 targetDate,
-                false,
+                includesRealtime,
                 lastFinalCandleTime,
                 candleResponses
         );
@@ -300,6 +313,64 @@ public class MockInvestmentQueryService {
                 candle.getTradeAmount(),
                 candle.isFinal()
         );
+    }
+
+    private List<MockInvestmentMinuteChartResponse.Candle> mergeMinuteCandles(String stockCode,
+                                                                              LocalDate targetDate,
+                                                                              LocalDateTime startTime,
+                                                                              LocalDateTime endTime,
+                                                                              List<StockCandle> finalCandles) {
+        Map<LocalDateTime, MockInvestmentMinuteChartResponse.Candle> mergedCandles = new LinkedHashMap<>();
+        for (StockCandle finalCandle : finalCandles) {
+            MockInvestmentMinuteChartResponse.Candle candleResponse = toMinuteChartCandleResponse(finalCandle);
+            mergedCandles.put(candleResponse.candleTime(), candleResponse);
+        }
+
+        if (!LocalDate.now(KST_ZONE_ID).equals(targetDate)) {
+            return new ArrayList<>(mergedCandles.values());
+        }
+
+        for (RealtimeMinuteCandle realtimeCandle : getRealtimeMinuteCandles(stockCode)) {
+            LocalDateTime candleTime = realtimeCandle.candleTime();
+            if (candleTime == null || candleTime.isBefore(startTime) || candleTime.isAfter(endTime)) {
+                continue;
+            }
+
+            mergedCandles.putIfAbsent(candleTime, toMinuteChartCandleResponse(realtimeCandle));
+        }
+
+        return mergedCandles.values().stream()
+                .sorted(Comparator.comparing(MockInvestmentMinuteChartResponse.Candle::candleTime))
+                .toList();
+    }
+
+    private List<RealtimeMinuteCandle> getRealtimeMinuteCandles(String stockCode) {
+        try {
+            return realtimeRedisReader.zSetRange(realtimeMinuteCandleKey(stockCode), 0, -1, StockRealtimeSnapshot.class).stream()
+                    .map(RealtimeMinuteCandle::from)
+                    .sorted(Comparator.comparing(RealtimeMinuteCandle::candleTime, Comparator.nullsLast(Comparator.naturalOrder())))
+                    .toList();
+        } catch (RuntimeException e) {
+            log.warn("[MockInvestmentMinuteChart] Redis 미확정 분봉 조회 실패. DB 확정 분봉만 반환합니다. stockCode={}", stockCode, e);
+            return List.of();
+        }
+    }
+
+    private MockInvestmentMinuteChartResponse.Candle toMinuteChartCandleResponse(RealtimeMinuteCandle candle) {
+        return new MockInvestmentMinuteChartResponse.Candle(
+                candle.candleTime(),
+                candle.openPrice(),
+                candle.highPrice(),
+                candle.lowPrice(),
+                candle.closePrice(),
+                candle.volume(),
+                candle.tradeAmount(),
+                candle.isFinal()
+        );
+    }
+
+    private String realtimeMinuteCandleKey(String stockCode) {
+        return REALTIME_MINUTE_CANDLE_KEY_PREFIX + stockCode;
     }
 
     // ========== 비즈니스 메서드 ==========
