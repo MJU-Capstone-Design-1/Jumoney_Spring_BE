@@ -122,8 +122,6 @@
 
 - **기능**: 종목의 차트 데이터를 기간 기준으로 조회.
 - **현재 Endpoint**: `GET /api/mock-investments/stocks/{stockCode}/chart?period={period}&date={yyyy-MM-dd}`
-- **호환 Endpoint**: `GET /api/mock-investments/stocks/{stockCode}/charts/minute?date={yyyy-MM-dd}` (`period=ONE_DAY` 내부
-  위임)
 - **기간 UX**: `1일`, `1주`, `3달`, `1년`, `5년`
 - **period enum**: `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`
 - **사용 테이블**: `Stock`, `StockCandle`
@@ -142,6 +140,7 @@
 POST /api/local/kis/chart/sync
 POST /api/local/kis/chart/sync?period=ONE_WEEK
 POST /api/local/kis/chart/sync?stockCode=005930
+POST /api/local/kis/chart/sync/range?period=ONE_WEEK&fromDate=2026-05-18&toDate=2026-05-22&stockCode=005930
 GET /api/local/kis/chart/sync/status?stockCode=005930
 GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
 ```
@@ -149,6 +148,7 @@ GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
 - `period` 생략 시 `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`에 필요한 원천 캔들을 한 번에 동기화한다.
 - `ONE_DAY`/`ONE_WEEK`는 1분봉 동기화를 실행하고, 완성된 1분봉 버킷으로 30분봉을 함께 집계한다.
 - `THREE_MONTHS`/`ONE_YEAR`는 `DAY`, `FIVE_YEARS`는 `WEEK` 기간봉을 동기화한다.
+- 특정 기간만 보정할 때는 `/chart/sync/range`에 `period`, `fromDate`, `toDate`, `stockCode`를 지정한다.
 - `date` 생략 시 KST 기준 오늘이 개장일이면 오늘, 아니면 직전 개장일을 기준으로 한다.
 - 상태 확인 API는 `period`를 생략하면 전체 차트 기간의 DB 캔들 범위와 건수를 반환한다.
 

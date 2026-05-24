@@ -37,6 +37,9 @@ public class MockInvestmentChartSyncService {
     private static final LocalTime MARKET_OPEN_TIME = LocalTime.of(9, 0);
     private static final LocalTime MARKET_CLOSE_TIME = LocalTime.of(15, 30);
     private static final int THIRTY_MINUTE_BUCKET_COUNT_PER_OPEN_DAY = 14;
+    private static final int DAY_CANDLE_CHUNK_DAYS = 90;
+    private static final int WEEK_CANDLE_CHUNK_DAYS = 365;
+    private static final int ONE_WEEK_OPEN_DAY_COUNT = 5;
 
     private final StockMinuteCandleSyncService stockMinuteCandleSyncService;
     private final KisApiClient kisApiClient;
@@ -57,7 +60,8 @@ public class MockInvestmentChartSyncService {
 
         List<MockInvestmentChartCandleSyncResponse.SourceSync> sourceSyncs = new ArrayList<>();
         if (targetPeriods.contains(MockInvestmentChartPeriod.ONE_WEEK)) {
-            sourceSyncs.add(syncMinuteSource(normalizedStockCode, targetDate.minusDays(6), targetDate));
+            List<LocalDate> oneWeekOpenDays = resolveRecentOpenDays(targetDate, ONE_WEEK_OPEN_DAY_COUNT);
+            sourceSyncs.add(syncMinuteSource(normalizedStockCode, oneWeekOpenDays.get(0), targetDate));
         } else if (targetPeriods.contains(MockInvestmentChartPeriod.ONE_DAY)) {
             sourceSyncs.add(syncMinuteSource(normalizedStockCode, targetDate, targetDate));
         }
@@ -79,6 +83,56 @@ public class MockInvestmentChartSyncService {
                 targetPeriods.stream().map(Enum::name).toList(),
                 sourceSyncs
         );
+    }
+
+    public MockInvestmentChartCandleSyncResponse syncChartCandlesInRange(String stockCode,
+                                                                         MockInvestmentChartPeriod period,
+                                                                         LocalDate fromDate,
+                                                                         LocalDate toDate) {
+        if (period == null) {
+            throw new IllegalArgumentException("차트 기간이 필요합니다.");
+        }
+        if (fromDate == null || toDate == null) {
+            throw new IllegalArgumentException("동기화 시작일과 종료일이 필요합니다.");
+        }
+        if (fromDate.isAfter(toDate)) {
+            throw new IllegalArgumentException("동기화 시작일은 종료일보다 늦을 수 없습니다. fromDate=" + fromDate + ", toDate=" + toDate);
+        }
+
+        String normalizedStockCode = normalizeStockCode(stockCode);
+        LocalDateTime requestedAt = LocalDateTime.now(KST_ZONE_ID).truncatedTo(ChronoUnit.SECONDS);
+        MockInvestmentChartCandleSyncResponse.SourceSync sourceSync = switch (period) {
+            case ONE_DAY, ONE_WEEK -> syncMinuteSource(normalizedStockCode, fromDate, toDate);
+            case THREE_MONTHS, ONE_YEAR ->
+                    syncKisPeriodSource(normalizedStockCode, StockCandleIntervalType.DAY, fromDate, toDate);
+            case FIVE_YEARS -> syncKisPeriodSource(normalizedStockCode, StockCandleIntervalType.WEEK, fromDate, toDate);
+        };
+
+        return new MockInvestmentChartCandleSyncResponse(
+                normalizedStockCode,
+                toDate,
+                requestedAt,
+                List.of(period.name()),
+                List.of(sourceSync)
+        );
+    }
+
+    public List<MockInvestmentChartCandleSyncResponse.SourceSync> syncLatestFinalPeriodCandles(String stockCode,
+                                                                                               LocalDate finalDailyDate) {
+        String normalizedStockCode = normalizeStockCode(stockCode);
+        List<MockInvestmentChartCandleSyncResponse.SourceSync> sourceSyncs = new ArrayList<>();
+        sourceSyncs.add(syncKisPeriodSource(normalizedStockCode, StockCandleIntervalType.DAY, finalDailyDate, finalDailyDate));
+
+        if (isLastOpenDayOfWeek(finalDailyDate)) {
+            sourceSyncs.add(syncKisPeriodSource(
+                    normalizedStockCode,
+                    StockCandleIntervalType.WEEK,
+                    finalDailyDate.minusDays(10),
+                    finalDailyDate
+            ));
+        }
+
+        return sourceSyncs;
     }
 
     public MockInvestmentChartCandleSyncStatusResponse getChartCandleSyncStatus(String stockCode,
@@ -138,8 +192,9 @@ public class MockInvestmentChartSyncService {
 
         for (Stock stock : targetStocks) {
             try {
-                kisRequestCount++;
-                savedCandleCount += syncKisPeriodSourceForStock(stock, intervalType, fromDate, toDate);
+                PeriodSourceSyncResult result = syncKisPeriodSourceForStock(stock, intervalType, fromDate, toDate);
+                savedCandleCount += result.savedCandleCount();
+                kisRequestCount += result.kisRequestCount();
                 successCount++;
             } catch (Exception e) {
                 failures.add(new MockInvestmentChartCandleSyncResponse.Failure(
@@ -165,16 +220,14 @@ public class MockInvestmentChartSyncService {
         );
     }
 
-    private int syncKisPeriodSourceForStock(Stock stock,
-                                            StockCandleIntervalType intervalType,
-                                            LocalDate fromDate,
-                                            LocalDate toDate) {
-        List<KisPeriodCandleMetrics> candles = kisApiClient.getPeriodCandles(stock.getStockCode(), fromDate, toDate, toKisPeriodCode(intervalType)).stream()
-                .filter(this::isValidKisPeriodCandle)
-                .sorted(Comparator.comparing(KisPeriodCandleMetrics::candleTime))
-                .toList();
+    private PeriodSourceSyncResult syncKisPeriodSourceForStock(Stock stock,
+                                                               StockCandleIntervalType intervalType,
+                                                               LocalDate fromDate,
+                                                               LocalDate toDate) {
+        PeriodCandleLoadResult loadResult = loadPeriodCandles(stock.getStockCode(), intervalType, fromDate, toDate);
+        List<KisPeriodCandleMetrics> candles = loadResult.candles();
         if (candles.isEmpty()) {
-            return 0;
+            return new PeriodSourceSyncResult(0, loadResult.kisRequestCount());
         }
 
         Map<LocalDateTime, StockCandle> existingCandleMap = stockCandleRepository.findByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeAsc(
@@ -188,7 +241,47 @@ public class MockInvestmentChartSyncService {
         for (KisPeriodCandleMetrics candle : candles) {
             upsertFinalPeriodCandle(stock, intervalType, candle, existingCandleMap.get(candle.candleTime()));
         }
-        return candles.size();
+        return new PeriodSourceSyncResult(candles.size(), loadResult.kisRequestCount());
+    }
+
+    private PeriodCandleLoadResult loadPeriodCandles(String stockCode,
+                                                     StockCandleIntervalType intervalType,
+                                                     LocalDate fromDate,
+                                                     LocalDate toDate) {
+        String periodCode = toKisPeriodCode(intervalType);
+        int chunkDays = periodChunkDays(intervalType);
+        Map<LocalDateTime, KisPeriodCandleMetrics> candleMap = new TreeMap<>();
+        int kisRequestCount = 0;
+
+        LocalDate chunkFrom = fromDate;
+        while (!chunkFrom.isAfter(toDate)) {
+            LocalDate chunkTo = chunkFrom.plusDays(chunkDays - 1);
+            if (chunkTo.isAfter(toDate)) {
+                chunkTo = toDate;
+            }
+
+            kisRequestCount++;
+            kisApiClient.getPeriodCandles(stockCode, chunkFrom, chunkTo, periodCode).stream()
+                    .filter(this::isValidKisPeriodCandle)
+                    .forEach(candle -> candleMap.put(candle.candleTime(), candle));
+
+            chunkFrom = chunkTo.plusDays(1);
+        }
+
+        return new PeriodCandleLoadResult(
+                candleMap.values().stream()
+                        .sorted(Comparator.comparing(KisPeriodCandleMetrics::candleTime))
+                        .toList(),
+                kisRequestCount
+        );
+    }
+
+    private int periodChunkDays(StockCandleIntervalType intervalType) {
+        return switch (intervalType) {
+            case DAY -> DAY_CANDLE_CHUNK_DAYS;
+            case WEEK -> WEEK_CANDLE_CHUNK_DAYS;
+            default -> throw new IllegalArgumentException("KIS 기간봉은 DAY 또는 WEEK만 지원합니다. intervalType=" + intervalType);
+        };
     }
 
     private void upsertFinalPeriodCandle(Stock stock,
@@ -314,6 +407,29 @@ public class MockInvestmentChartSyncService {
                 .toList();
     }
 
+    private List<LocalDate> resolveRecentOpenDays(LocalDate targetDate, int openDayCount) {
+        List<LocalDate> openDays = new ArrayList<>();
+        LocalDate currentDate = targetDate;
+        int lookbackLimit = Math.max(openingDayLookbackDays, openDayCount * 4);
+        for (int checkedDays = 0; checkedDays <= lookbackLimit && openDays.size() < openDayCount; checkedDays++) {
+            if (marketCalendarService.isOpenDay(currentDate, KST_ZONE_ID)) {
+                openDays.add(currentDate);
+            }
+            currentDate = currentDate.minusDays(1);
+        }
+        if (openDays.size() < openDayCount) {
+            throw new IllegalStateException("최근 영업일을 충분히 찾을 수 없습니다. targetDate=" + targetDate + ", openDayCount=" + openDayCount);
+        }
+        Collections.reverse(openDays);
+        return openDays;
+    }
+
+    private boolean isLastOpenDayOfWeek(LocalDate date) {
+        LocalDate weekEnd = date.plusDays(6L - date.getDayOfWeek().getValue());
+        return date.plusDays(1).datesUntil(weekEnd.plusDays(1))
+                .noneMatch(nextDate -> marketCalendarService.isOpenDay(nextDate, KST_ZONE_ID));
+    }
+
     private ChartStatusRange resolveStatusRange(MockInvestmentChartPeriod period, LocalDate targetDate) {
         return switch (period) {
             case ONE_DAY -> {
@@ -327,9 +443,8 @@ public class MockInvestmentChartSyncService {
                 );
             }
             case ONE_WEEK -> {
-                LocalDate startDate = targetDate.minusDays(6);
-                List<LocalDate> openDays = resolveOpenDays(startDate, targetDate);
-                LocalDate expectedStartDate = openDays.isEmpty() ? startDate : openDays.get(0);
+                List<LocalDate> openDays = resolveRecentOpenDays(targetDate, ONE_WEEK_OPEN_DAY_COUNT);
+                LocalDate expectedStartDate = openDays.get(0);
                 yield new ChartStatusRange(
                         StockCandleIntervalType.THIRTY_MINUTE,
                         LocalDateTime.of(expectedStartDate, MARKET_OPEN_TIME),
@@ -449,6 +564,18 @@ public class MockInvestmentChartSyncService {
             LocalDateTime endTime,
             Long expectedCandleCount,
             int startToleranceDays
+    ) {
+    }
+
+    private record PeriodCandleLoadResult(
+            List<KisPeriodCandleMetrics> candles,
+            int kisRequestCount
+    ) {
+    }
+
+    private record PeriodSourceSyncResult(
+            int savedCandleCount,
+            int kisRequestCount
     ) {
     }
 }

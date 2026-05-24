@@ -1,5 +1,7 @@
 package com.mju.Jumoney.global.batch;
 
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncResponse;
+import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentChartSyncService;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
 import com.mju.Jumoney.domain.stock.service.StockMinuteCandleSyncService;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class StockDataBatchScheduler {
     private final BatchBaseDateResolver batchBaseDateResolver;
     private final MarketCalendarService marketCalendarService;
     private final StockMinuteCandleSyncService stockMinuteCandleSyncService;
+    private final MockInvestmentChartSyncService mockInvestmentChartSyncService;
     private final Job stockIndicatorBatchJob;
     private final Job htsConditionBatchJob;
     private final boolean stockIndicatorEnabled;
@@ -40,6 +43,7 @@ public class StockDataBatchScheduler {
             BatchBaseDateResolver batchBaseDateResolver,
             MarketCalendarService marketCalendarService,
             StockMinuteCandleSyncService stockMinuteCandleSyncService,
+            MockInvestmentChartSyncService mockInvestmentChartSyncService,
             @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME) Job stockIndicatorBatchJob,
             @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob,
             @Value("${kis.batch.stock-indicator.enabled:true}") boolean stockIndicatorEnabled,
@@ -51,6 +55,7 @@ public class StockDataBatchScheduler {
         this.batchBaseDateResolver = batchBaseDateResolver;
         this.marketCalendarService = marketCalendarService;
         this.stockMinuteCandleSyncService = stockMinuteCandleSyncService;
+        this.mockInvestmentChartSyncService = mockInvestmentChartSyncService;
         this.stockIndicatorBatchJob = stockIndicatorBatchJob;
         this.htsConditionBatchJob = htsConditionBatchJob;
         this.stockIndicatorEnabled = stockIndicatorEnabled;
@@ -114,6 +119,14 @@ public class StockDataBatchScheduler {
         log.info("[StockDataBatchScheduler] 분봉 동기화 스케줄 실행 시작: scheduleType={}, date={}", scheduleType, today);
         try {
             MinuteCandleSyncResponse response = stockMinuteCandleSyncService.syncTodayMinuteCandles(null);
+            LocalDate finalDailyCandleDate = resolveFinalDailyCandleDate(today, scheduleType);
+            var finalPeriodSyncs = mockInvestmentChartSyncService.syncLatestFinalPeriodCandles(null, finalDailyCandleDate);
+            int finalPeriodKisRequestCount = finalPeriodSyncs.stream()
+                    .mapToInt(MockInvestmentChartCandleSyncResponse.SourceSync::kisRequestCount)
+                    .sum();
+            int finalPeriodSavedCandleCount = finalPeriodSyncs.stream()
+                    .mapToInt(MockInvestmentChartCandleSyncResponse.SourceSync::savedCandleCount)
+                    .sum();
             log.info("[StockDataBatchScheduler] 분봉 동기화 스케줄 실행 완료: scheduleType={}, date={}, cutoff={}, targetStockCount={}, kisRequestCount={}, successCount={}, failureCount={}, savedCandleCount={}, skippedRecentCandleCount={}",
                     scheduleType,
                     today,
@@ -124,9 +137,22 @@ public class StockDataBatchScheduler {
                     response.failureCount(),
                     response.savedCandleCount(),
                     response.skippedRecentCandleCount());
+            log.info("[StockDataBatchScheduler] 최신 확정 일/주봉 동기화 완료: scheduleType={}, finalDailyCandleDate={}, sourceCount={}, kisRequestCount={}, savedCandleCount={}",
+                    scheduleType,
+                    finalDailyCandleDate,
+                    finalPeriodSyncs.size(),
+                    finalPeriodKisRequestCount,
+                    finalPeriodSavedCandleCount);
         } catch (Exception e) {
             log.error("[StockDataBatchScheduler] 분봉 동기화 스케줄 실행 실패: scheduleType={}, date={}", scheduleType, today, e);
         }
+    }
+
+    private LocalDate resolveFinalDailyCandleDate(LocalDate today, String scheduleType) {
+        if ("close".equals(scheduleType)) {
+            return today;
+        }
+        return marketCalendarService.resolvePreviousOpenDay(today, 14, zoneId);
     }
 
     private void runBatchJob(boolean enabled, Job job, String jobName) {

@@ -209,6 +209,7 @@ public class StockMinuteCandleSyncService {
             }
         }
 
+        affectedThirtyMinuteBuckets.addAll(resolveThirtyMinuteBucketStartTimes(tradingDate));
         upsertThirtyMinuteCandles(stock, affectedThirtyMinuteBuckets, finalizationCutoffTime);
         return new SyncStockResult(savedCount, skippedRecentCount, kisRequestCount);
     }
@@ -448,6 +449,17 @@ public class StockMinuteCandleSyncService {
                     tradeAmount
             ));
         }
+    }
+
+    private Set<LocalDateTime> resolveThirtyMinuteBucketStartTimes(LocalDate tradingDate) {
+        Set<LocalDateTime> bucketStartTimes = new HashSet<>();
+        LocalDateTime bucketStartTime = LocalDateTime.of(tradingDate, MARKET_OPEN_TIME);
+        LocalDateTime marketCloseTime = LocalDateTime.of(tradingDate, MARKET_CLOSE_TIME);
+        while (!bucketStartTime.isAfter(marketCloseTime)) {
+            bucketStartTimes.add(bucketStartTime);
+            bucketStartTime = bucketStartTime.plusMinutes(30);
+        }
+        return bucketStartTimes;
     }
 
     private record SyncStockResult(

@@ -40,17 +40,4 @@ public class MockInvestmentChartController {
                 mockInvestmentQueryService.getChart(stockCode, period, date)
         ));
     }
-
-    @Operation(summary = "모의투자 종목 1일 차트 조회", description = "기존 분봉 전용 엔드포인트 호환용입니다. 내부적으로 period=ONE_DAY 단일 차트 API를 사용합니다.")
-    @GetMapping("/stocks/{stockCode}/charts/minute")
-    public ResponseEntity<ApiResponse<MockInvestmentChartResponse>> getMinuteChart(
-            @PathVariable String stockCode,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                SuccessCode.OK,
-                mockInvestmentQueryService.getChart(stockCode, MockInvestmentChartPeriod.ONE_DAY, date)
-        ));
-    }
 }

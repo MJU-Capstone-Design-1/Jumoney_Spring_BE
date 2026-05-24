@@ -55,6 +55,7 @@ public class MockInvestmentQueryService {
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
     private static final LocalTime MARKET_OPEN_TIME = LocalTime.of(9, 0);
     private static final LocalTime MARKET_CLOSE_TIME = LocalTime.of(15, 30);
+    private static final int ONE_WEEK_OPEN_DAY_COUNT = 5;
     private static final ZoneId KST_ZONE_ID = ZoneId.of("Asia/Seoul");
     private static final String REALTIME_MINUTE_CANDLE_KEY_PREFIX = "stock:minute-candles:";
 
@@ -237,7 +238,7 @@ public class MockInvestmentQueryService {
         Stock stock = stockRepository.findByStockCode(stockCode)
                 .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));
         LocalDate targetDate = resolveChartTargetDate(date);
-        LocalDate startDate = targetDate.minusDays(6);
+        LocalDate startDate = resolveRecentOpenDays(targetDate, ONE_WEEK_OPEN_DAY_COUNT).get(0);
         LocalDateTime startTime = LocalDateTime.of(startDate, MARKET_OPEN_TIME);
         LocalDateTime endTime = LocalDateTime.of(targetDate, MARKET_CLOSE_TIME);
 
@@ -557,6 +558,23 @@ public class MockInvestmentQueryService {
         }
 
         return marketCalendarService.resolvePreviousOpenDay(today, openingDayLookbackDays, KST_ZONE_ID);
+    }
+
+    private List<LocalDate> resolveRecentOpenDays(LocalDate targetDate, int openDayCount) {
+        List<LocalDate> openDays = new ArrayList<>();
+        LocalDate currentDate = targetDate;
+        int lookbackLimit = Math.max(openingDayLookbackDays, openDayCount * 4);
+        for (int checkedDays = 0; checkedDays <= lookbackLimit && openDays.size() < openDayCount; checkedDays++) {
+            if (marketCalendarService.isOpenDay(currentDate, KST_ZONE_ID)) {
+                openDays.add(currentDate);
+            }
+            currentDate = currentDate.minusDays(1);
+        }
+        if (openDays.size() < openDayCount) {
+            throw new IllegalStateException("최근 영업일을 충분히 찾을 수 없습니다. targetDate=" + targetDate + ", openDayCount=" + openDayCount);
+        }
+        Collections.reverse(openDays);
+        return openDays;
     }
 
     private enum DateRangeUnit {

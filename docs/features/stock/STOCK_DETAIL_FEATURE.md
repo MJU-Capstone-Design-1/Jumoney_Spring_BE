@@ -18,8 +18,7 @@ GET /api/mock-investments/stocks/{stockCode}/chart?period=ONE_DAY
 GET /api/mock-investments/stocks/{stockCode}/chart?period=ONE_DAY&date=2026-05-21
 ```
 
-단일 차트 API가 `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`를 모두 제공한다. 기존
-`GET /api/mock-investments/stocks/{stockCode}/charts/minute`는 호환용으로 남겨두고 내부적으로 `period=ONE_DAY`를 사용한다.
+단일 차트 API가 `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`를 모두 제공한다.
 
 ### 기간별 봉 매핑
 

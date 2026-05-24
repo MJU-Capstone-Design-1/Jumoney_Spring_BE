@@ -289,6 +289,38 @@ public class KisSmokeController {
     }
 
     @Operation(
+            summary = "차트 특정 기간 수동 동기화",
+            description = "지정한 기간만 차트 원천 캔들로 보정합니다. "
+                    + "ONE_DAY/ONE_WEEK는 해당 기간의 영업일 분봉을 동기화하고 30분봉을 재집계합니다. "
+                    + "THREE_MONTHS/ONE_YEAR는 DAY 기간봉, FIVE_YEARS는 WEEK 기간봉을 지정 기간만 upsert합니다. "
+                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. prod 프로필에서는 adminKey가 필요합니다."
+    )
+    @PostMapping("/chart/sync/range")
+    public ResponseEntity<ApiResponse<MockInvestmentChartCandleSyncResponse>> syncChartCandlesInRange(
+            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "차트 기간", example = "ONE_WEEK")
+            @RequestParam MockInvestmentChartPeriod period,
+
+            @Parameter(description = "동기화 시작일", example = "2026-05-18")
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+
+            @Parameter(description = "동기화 종료일", example = "2026-05-22")
+            @RequestParam
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+
+            @Parameter(description = "종목 코드. 생략 시 전체 종목 대상", example = "005930")
+            @RequestParam(required = false) String stockCode
+    ) {
+        validateAdminKey(adminKey);
+        MockInvestmentChartCandleSyncResponse response = kisSmokeService.syncChartCandlesInRange(stockCode, period, fromDate, toDate);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
             summary = "차트 기간 기준 동기화 상태 확인",
             description = "stock_candles 테이블에 저장된 특정 종목의 차트 period별 원천 캔들 범위와 건수를 확인합니다. "
                     + "period를 생략하면 ONE_DAY, ONE_WEEK, THREE_MONTHS, ONE_YEAR, FIVE_YEARS 상태를 모두 반환합니다. "

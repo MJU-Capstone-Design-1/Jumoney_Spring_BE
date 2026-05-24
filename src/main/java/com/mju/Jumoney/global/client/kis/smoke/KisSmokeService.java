@@ -183,6 +183,13 @@ public class KisSmokeService {
         return mockInvestmentChartSyncService.syncChartCandles(stockCode, period, date);
     }
 
+    public MockInvestmentChartCandleSyncResponse syncChartCandlesInRange(String stockCode,
+                                                                         MockInvestmentChartPeriod period,
+                                                                         LocalDate fromDate,
+                                                                         LocalDate toDate) {
+        return mockInvestmentChartSyncService.syncChartCandlesInRange(stockCode, period, fromDate, toDate);
+    }
+
     public MockInvestmentChartCandleSyncStatusResponse getChartCandleSyncStatus(String stockCode,
                                                                                 MockInvestmentChartPeriod period,
                                                                                 LocalDate date) {
