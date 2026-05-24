@@ -70,6 +70,22 @@ public class RealtimeRedisReader {
         return values == null ? Collections.emptySet() : values;
     }
 
+    public <T> Set<T> zSetRange(String key, long start, long end, Class<T> clazz) {
+        return parseZSet(zSetRangeRaw(key, start, end), clazz, key);
+    }
+
+    public <T> Set<T> zSetReverseRange(String key, long start, long end, Class<T> clazz) {
+        return parseZSet(zSetReverseRangeRaw(key, start, end), clazz, key);
+    }
+
+    private <T> Set<T> parseZSet(Set<String> rawValues, Class<T> clazz, String key) {
+        Set<T> parsedValues = new java.util.LinkedHashSet<>();
+        for (String value : rawValues) {
+            parse(value, clazz, key).ifPresent(parsedValues::add);
+        }
+        return parsedValues;
+    }
+
     private <T> Optional<T> parse(String json, Class<T> clazz, String source) {
         try {
             return Optional.of(objectMapper.readValue(json, clazz));

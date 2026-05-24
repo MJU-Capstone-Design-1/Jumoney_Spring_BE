@@ -15,10 +15,11 @@ public record MasterResponse(
         String masterName,
         String recommendationDescription,
         List<MasterOptionResponse> options,
-        List<SectorOptionResponse> sectorOptions
+        List<SectorOptionResponse> sectorOptions,
+        boolean isSelected
 ) {
 
-    public static MasterResponse of(Master master, List<MasterOption> options) {
+    public static MasterResponse of(Master master, List<MasterOption> options, boolean isSelected) {
         return new MasterResponse(
                 master.getId(),
                 master.getMasterCode(),
@@ -27,7 +28,8 @@ public record MasterResponse(
                 options.stream()
                         .map(MasterOptionResponse::from)
                         .toList(),
-                hasSectorSelectableOption(options) ? buildSectorOptions() : List.of()
+                hasSectorSelectableOption(options) ? buildSectorOptions() : List.of(),
+                isSelected
         );
     }
 

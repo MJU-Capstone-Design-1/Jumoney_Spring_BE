@@ -38,6 +38,10 @@ kis:
     hts-condition:
       enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:false}
       cron: "0 30 6 * * TUE-SAT"
+    minute-candle:
+      enabled: ${KIS_MINUTE_CANDLE_SCHEDULER_ENABLED:false}
+      cron: "0 2,32 9-15 * * MON-FRI"
+      close-cron: "0 40 15 * * MON-FRI"
   client:
     connect-timeout-millis: 5000  # 5초
     read-timeout-seconds: 10      # 10초

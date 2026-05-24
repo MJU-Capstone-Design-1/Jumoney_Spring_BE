@@ -214,7 +214,7 @@ public class StockIndicatorBatchService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    // 시가배당률 = 최근 1년 DPS 합계 / 현재가 * 100
+    // 배당수익률 = 최근 1년 DPS 합계 / 현재가 * 100
     private BigDecimal calculateDividendYield(BigDecimal dps, BigDecimal currentPrice) {
         if (dps == null || currentPrice == null || currentPrice.signum() <= 0) {
             return BigDecimal.ZERO;

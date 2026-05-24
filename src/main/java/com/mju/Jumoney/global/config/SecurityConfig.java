@@ -87,7 +87,15 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // 해당 주소에서 오는 API 요청을 허용 (로컬용, 운영용)
-        config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173", "https://jumoney.site"));
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "https://jumoney.site",
+                "https://www.jumoney.site"
+                //"https://api.jumoney.site"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

@@ -79,12 +79,7 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private void initStockData() throws Exception {
-        if (stockRepository.count() > 0) {
-            log.info(" 종목 데이터가 이미 존재하여 초기화를 건너뜁니다.");
-            return;
-        }
-
-        log.info(" 종목 데이터(200개) 초기화 진행 중");
+        log.info(" 종목 데이터 초기화/갱신 진행 중");
 
         ClassPathResource resource = new ClassPathResource("data/stock_data.json");
         List<StockInitDto> stockDtos = objectMapper.readValue(
@@ -92,6 +87,9 @@ public class DataInitializer implements ApplicationRunner {
                 new TypeReference<List<StockInitDto>>() {
                 }
         );
+
+        int createdCount = 0;
+        int updatedCount = 0;
 
         for (StockInitDto dto : stockDtos) {
             SectorType sectorType = SectorType.fromDescription(dto.sectorName());
@@ -105,19 +103,32 @@ public class DataInitializer implements ApplicationRunner {
 
             MarketType marketType = MarketType.fromCode(dto.marketCode());
 
-            Stock stock = Stock.create(
-                    sector,
-                    dto.ticker(),
-                    dto.name(),
-                    marketType,
-                    descriptionList,
-                    dto.isLeader()
-            );
+            Optional<Stock> existingStock = stockRepository.findByStockCode(dto.ticker());
+            if (existingStock.isPresent()) {
+                existingStock.get().updateBasicInfo(
+                        sector,
+                        dto.name(),
+                        marketType,
+                        descriptionList,
+                        dto.isLeader()
+                );
+                updatedCount++;
+            } else {
+                Stock stock = Stock.create(
+                        sector,
+                        dto.ticker(),
+                        dto.name(),
+                        marketType,
+                        descriptionList,
+                        dto.isLeader()
+                );
 
-            stockRepository.save(stock);
+                stockRepository.save(stock);
+                createdCount++;
+            }
         }
 
-        log.info(" 총 {}개 종목 및 섹터 데이터 초기화 완료", stockDtos.size());
+        log.info(" 총 {}개 종목 데이터 초기화/갱신 완료(created={}, updated={})", stockDtos.size(), createdCount, updatedCount);
     }
 
     private void initStockTermData() throws Exception {

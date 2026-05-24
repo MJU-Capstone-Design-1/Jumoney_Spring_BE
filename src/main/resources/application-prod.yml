@@ -41,6 +41,8 @@ kis:
       enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:true}
     hts-condition:
       enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:true}
+    minute-candle:
+      enabled: ${KIS_MINUTE_CANDLE_SCHEDULER_ENABLED:true}
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}

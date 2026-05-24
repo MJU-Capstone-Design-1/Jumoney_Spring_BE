@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum StockTermErrorCode implements BaseErrorCode {
     STOCK_TERM_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "STOCK_TERM404_CATEGORY", "주식 용어 카테고리를 찾을 수 없습니다."),
-    STOCK_TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "STOCK_TERM404", "주식 용어를 찾을 수 없습니다.");
+    STOCK_TERM_NOT_FOUND(HttpStatus.NOT_FOUND, "STOCK_TERM404", "주식 용어를 찾을 수 없습니다."),
+    STOCK_TERM_AUTHENTICATION_REQUIRED(HttpStatus.UNAUTHORIZED, "STOCK_TERM401_AUTHENTICATION_REQUIRED", "회원 로그인이 필요합니다.");
 
     private final HttpStatus status;
     private final String code;

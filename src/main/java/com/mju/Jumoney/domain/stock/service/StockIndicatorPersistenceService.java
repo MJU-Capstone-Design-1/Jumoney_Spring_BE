@@ -19,32 +19,36 @@ public class StockIndicatorPersistenceService {
     // REQUIRES_NEW -> 새로운 트랜잭션 생성
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void upsert(StockIndicatorMetrics metrics) {
-        StockIndicator stockIndicator = stockIndicatorRepository.findByStockAndBaseTime(metrics.stock(), metrics.baseTime())
-                .orElseGet(() -> StockIndicator.create(
-                        metrics.stock(),
-                        metrics.baseTime(),
-                        metrics.marketCap(),
-                        metrics.accumulatedTradeAmount(),
-                        metrics.executionStrength(),
-                        metrics.debtRatio(),
-                        metrics.operatingProfit(),
-                        metrics.operatingProfitGrowthRate(),
-                        metrics.dps(),
-                        metrics.dividendYield(),
-                        metrics.payoutRatio(),
-                        metrics.roe(),
-                        metrics.per(),
-                        metrics.pbr(),
-                        metrics.currentEps(),
-                        metrics.lastYearEps(),
-                        metrics.currentSales(),
-                        metrics.lastYearSales(),
-                        metrics.marginDebtRate(),
-                        metrics.high52WeekRate(),
-                        metrics.instNetBuy20Days()
-                ));
+        StockIndicator existing = stockIndicatorRepository.findByStockAndBaseTime(metrics.stock(), metrics.baseTime())
+                .orElse(null);
+        if (existing == null) {
+            stockIndicatorRepository.save(StockIndicator.create(
+                    metrics.stock(),
+                    metrics.baseTime(),
+                    metrics.marketCap(),
+                    metrics.accumulatedTradeAmount(),
+                    metrics.executionStrength(),
+                    metrics.debtRatio(),
+                    metrics.operatingProfit(),
+                    metrics.operatingProfitGrowthRate(),
+                    metrics.dps(),
+                    metrics.dividendYield(),
+                    metrics.payoutRatio(),
+                    metrics.roe(),
+                    metrics.per(),
+                    metrics.pbr(),
+                    metrics.currentEps(),
+                    metrics.lastYearEps(),
+                    metrics.currentSales(),
+                    metrics.lastYearSales(),
+                    metrics.marginDebtRate(),
+                    metrics.high52WeekRate(),
+                    metrics.instNetBuy20Days()
+            ));
+            return;
+        }
 
-        stockIndicator.updateMetrics(
+        existing.updateMetrics(
                 metrics.marketCap(),
                 metrics.accumulatedTradeAmount(),
                 metrics.executionStrength(),
@@ -65,8 +69,6 @@ public class StockIndicatorPersistenceService {
                 metrics.high52WeekRate(),
                 metrics.instNetBuy20Days()
         );
-
-        stockIndicatorRepository.save(stockIndicator);
     }
 
     public record StockIndicatorMetrics(

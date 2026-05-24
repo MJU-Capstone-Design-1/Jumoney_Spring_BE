@@ -59,4 +59,13 @@ public class Stock {
                 .isMarketLeader(isMarketLeader)
                 .build();
     }
+
+    public void updateBasicInfo(Sector sector, String name, MarketType marketType,
+                                List<String> description, boolean isMarketLeader) {
+        this.sector = sector;
+        this.name = name;
+        this.marketType = marketType;
+        this.description = description;
+        this.isMarketLeader = isMarketLeader;
+    }
 }

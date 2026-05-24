@@ -3,22 +3,18 @@ package com.mju.Jumoney.domain.stockterm.service;
 import com.mju.Jumoney.domain.stockterm.domain.StockTerm;
 import com.mju.Jumoney.domain.stockterm.domain.StockTermLearning;
 import com.mju.Jumoney.domain.stockterm.domain.StockTermScrap;
-import com.mju.Jumoney.domain.stockterm.dto.ScrappedStockTermResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryTermsResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermDetailResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermSummaryResponse;
+import com.mju.Jumoney.domain.stockterm.dto.*;
+import com.mju.Jumoney.domain.stockterm.enums.StockTermCategory;
 import com.mju.Jumoney.domain.stockterm.exception.StockTermErrorCode;
 import com.mju.Jumoney.domain.stockterm.repository.StockTermLearningRepository;
 import com.mju.Jumoney.domain.stockterm.repository.StockTermRepository;
 import com.mju.Jumoney.domain.stockterm.repository.StockTermScrapRepository;
-import com.mju.Jumoney.domain.stockterm.enums.StockTermCategory;
 import com.mju.Jumoney.domain.user.domain.User;
 import com.mju.Jumoney.domain.user.repository.UserRepository;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
@@ -78,9 +74,10 @@ public class StockTermQueryService {
     @Transactional
     public StockTermDetailResponse getTermDetail(Long userId, Long termId) {
         StockTerm stockTerm = findStockTermById(termId);
-        boolean isScrapped = stockTermScrapRepository.existsByUserIdAndStockTermId(userId, termId);
+        boolean isScrapped = userId != null && stockTermScrapRepository.existsByUserIdAndStockTermId(userId, termId);
+        boolean isLearned = userId != null;
         trackLearningIfNeeded(userId, termId, stockTerm);
-        return toDetailResponse(stockTerm, isScrapped);
+        return toDetailResponse(stockTerm, isScrapped, isLearned);
     }
 
     // ========== 조회 메서드 ==========
@@ -108,12 +105,18 @@ public class StockTermQueryService {
     }
 
     private Set<Long> findScrappedTermIds(Long userId, List<Long> termIds) {
+        if (userId == null) {
+            return Set.of();
+        }
         return stockTermScrapRepository.findByUserIdAndStockTermIdIn(userId, termIds).stream()
                 .map(scrap -> scrap.getStockTerm().getId())
                 .collect(Collectors.toSet());
     }
 
     private Set<Long> findLearnedTermIds(Long userId, List<Long> termIds) {
+        if (userId == null) {
+            return Set.of();
+        }
         return stockTermLearningRepository.findByUserIdAndStockTermIdIn(userId, termIds).stream()
                 .map(learning -> learning.getStockTerm().getId())
                 .collect(Collectors.toSet());
@@ -125,6 +128,9 @@ public class StockTermQueryService {
 
     // ========== 비즈니스 메서드 ==========
     private void trackLearningIfNeeded(Long userId, Long termId, StockTerm stockTerm) {
+        if (userId == null) {
+            return;
+        }
         if (stockTermLearningRepository.existsByUserIdAndStockTermId(userId, termId)) {
             return;
         }
@@ -159,7 +165,7 @@ public class StockTermQueryService {
         );
     }
 
-    private StockTermDetailResponse toDetailResponse(StockTerm stockTerm, boolean isScrapped) {
+    private StockTermDetailResponse toDetailResponse(StockTerm stockTerm, boolean isScrapped, boolean isLearned) {
         return new StockTermDetailResponse(
                 stockTerm.getId(),
                 stockTerm.getCategory().getCategoryId(),
@@ -167,7 +173,7 @@ public class StockTermQueryService {
                 stockTerm.getTermName(),
                 stockTerm.getDescription(),
                 isScrapped,
-                true
+                isLearned
         );
     }
 

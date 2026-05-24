@@ -1,5 +1,9 @@
 package com.mju.Jumoney.global.client.kis.core;
 
+import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteCandleMetrics;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteChartResponse;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodCandleMetrics;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodChartResponse;
 import com.mju.Jumoney.global.client.kis.dto.common.KisApiResponse;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultResponse;
@@ -33,6 +37,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
@@ -50,6 +55,7 @@ public class KisApiClient {
     private static final String EMPTY_HTS_RESULT_CODE = "MCA05918";
     private static final String HTS_CONDITION_NOT_SAVED_CODE = "MCA05762";
     private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter KIS_TIME_FORMATTER = DateTimeFormatter.ofPattern("HHmmss");
 
     private static final String TR_ID_CURRENT_PRICE = "FHKST01010100";
     private static final String TR_ID_EXECUTION_STRENGTH = "FHKST01010300";
@@ -61,6 +67,9 @@ public class KisApiClient {
     private static final String TR_ID_HTS_CONDITION_TITLE = "HHKST03900300";
     private static final String TR_ID_HTS_CONDITION_RESULT = "HHKST03900400";
     private static final String TR_ID_DOMESTIC_HOLIDAY = "CTCA0903R";
+    private static final String TR_ID_TODAY_MINUTE_CHART = "FHKST03010200";
+    private static final String TR_ID_DAILY_MINUTE_CHART = "FHKST03010230";
+    private static final String TR_ID_PERIOD_CHART = "FHKST03010100";
 
     private final WebClient webClient;
     private final KisTokenManager kisTokenManager;
@@ -208,7 +217,7 @@ public class KisApiClient {
         });
     }
 
-    // 예탁원정보(배당일정) API (HHKDB669102C0): 기간 내 배당 이벤트를 조회해 현금배당금 기반 시가배당률 계산에 사용합니다.
+    // 예탁원정보(배당일정) API (HHKDB669102C0): 기간 내 배당 이벤트를 조회해 현금배당금 기반 배당수익률 계산에 사용합니다.
     public List<KisDividendMetrics> getDividends(String stockCode, LocalDate from, LocalDate to) {
         return callWithRetry("배당일정", stockCode, () -> {
             kisRateLimiter.acquire();
@@ -291,6 +300,95 @@ public class KisApiClient {
             }
             return response.output().stream()
                     .map(kisMetricMapper::toInvestorTradeDailyMetrics)
+                    .toList();
+        });
+    }
+
+    // 주식당일분봉조회 API (FHKST03010200): 입력 시각 기준 최대 30건의 당일 1분봉을 가져옵니다.
+    public List<KisMinuteCandleMetrics> getTodayMinuteCandles(String stockCode, LocalTime inputTime) {
+        return callWithRetry("주식당일분봉조회", stockCode, () -> {
+            kisRateLimiter.acquire();
+            KisMinuteChartResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice")
+                            .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                            .queryParam("fid_input_iscd", stockCode)
+                            .queryParam("fid_input_hour_1", formatTime(inputTime))
+                            .queryParam("fid_pw_data_incu_yn", "Y")
+                            .queryParam("fid_etc_cls_code", "")
+                            .build())
+                    .headers(headers -> setKisHeaders(headers, TR_ID_TODAY_MINUTE_CHART))
+                    .retrieve()
+                    .bodyToMono(KisMinuteChartResponse.class)
+                    .onErrorMap(e -> new KisApiException("[KIS] 주식당일분봉조회 실패: stockCode=" + stockCode, e))
+                    .block();
+
+            validateSuccess(response, TR_ID_TODAY_MINUTE_CHART);
+            if (response.output() == null) {
+                return List.of();
+            }
+            return response.output().stream()
+                    .map(kisMetricMapper::toMinuteCandleMetrics)
+                    .toList();
+        });
+    }
+
+    // 주식일별분봉조회 API (FHKST03010230): 지정 영업일의 입력 시각 기준 최대 120건 분봉을 가져옵니다.
+    public List<KisMinuteCandleMetrics> getDailyMinuteCandles(String stockCode, LocalDate tradingDate, LocalTime inputTime) {
+        return callWithRetry("주식일별분봉조회", stockCode + ":" + tradingDate, () -> {
+            kisRateLimiter.acquire();
+            KisMinuteChartResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-time-dailychartprice")
+                            .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                            .queryParam("fid_input_iscd", stockCode)
+                            .queryParam("fid_input_hour_1", formatTime(inputTime))
+                            .queryParam("fid_input_date_1", formatDate(tradingDate))
+                            .queryParam("fid_pw_data_incu_yn", "Y")
+                            .queryParam("fid_fake_tick_incu_yn", "N")
+                            .build())
+                    .headers(headers -> setKisHeaders(headers, TR_ID_DAILY_MINUTE_CHART))
+                    .retrieve()
+                    .bodyToMono(KisMinuteChartResponse.class)
+                    .onErrorMap(e -> new KisApiException("[KIS] 주식일별분봉조회 실패: stockCode=" + stockCode + ", tradingDate=" + tradingDate, e))
+                    .block();
+
+            validateSuccess(response, TR_ID_DAILY_MINUTE_CHART);
+            if (response.output() == null) {
+                return List.of();
+            }
+            return response.output().stream()
+                    .map(kisMetricMapper::toMinuteCandleMetrics)
+                    .toList();
+        });
+    }
+
+    // 국내주식기간별시세 API (FHKST03010100): 일/주/월/년 봉을 가져옵니다.
+    public List<KisPeriodCandleMetrics> getPeriodCandles(String stockCode, LocalDate from, LocalDate to, String periodCode) {
+        return callWithRetry("국내주식기간별시세", stockCode + ":" + periodCode, () -> {
+            kisRateLimiter.acquire();
+            KisPeriodChartResponse response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice")
+                            .queryParam("fid_cond_mrkt_div_code", MARKET_DIV_CODE_KRX)
+                            .queryParam("fid_input_iscd", stockCode)
+                            .queryParam("fid_input_date_1", formatDate(from))
+                            .queryParam("fid_input_date_2", formatDate(to))
+                            .queryParam("fid_period_div_code", periodCode)
+                            .queryParam("fid_org_adj_prc", "0")
+                            .build())
+                    .headers(headers -> setKisHeaders(headers, TR_ID_PERIOD_CHART))
+                    .retrieve()
+                    .bodyToMono(KisPeriodChartResponse.class)
+                    .onErrorMap(e -> new KisApiException("[KIS] 국내주식기간별시세 조회 실패: stockCode=" + stockCode + ", periodCode=" + periodCode, e))
+                    .block();
+
+            validateSuccess(response, TR_ID_PERIOD_CHART);
+            if (response.output() == null) {
+                return List.of();
+            }
+            return response.output().stream()
+                    .map(kisMetricMapper::toPeriodCandleMetrics)
                     .toList();
         });
     }
@@ -481,5 +579,9 @@ public class KisApiClient {
 
     private String formatDate(LocalDate date) {
         return KIS_DATE_FORMATTER.format(date);
+    }
+
+    private String formatTime(LocalTime time) {
+        return KIS_TIME_FORMATTER.format(time);
     }
 }

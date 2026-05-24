@@ -1,5 +1,9 @@
 package com.mju.Jumoney.global.client.kis.core;
 
+import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteCandleMetrics;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisMinuteChartOutput;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodCandleMetrics;
+import com.mju.Jumoney.global.client.kis.dto.chart.KisPeriodChartOutput;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendOutput;
 import com.mju.Jumoney.global.client.kis.dto.finance.KisFinancialRatioMetrics;
@@ -19,12 +23,19 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 // KIS 응답 파싱
 // 문자열 숫자를 애플리케이션에서 쓰기 좋은 BigDecimal로 변환합니다.
 @Slf4j
 @Component
 public class KisMetricMapper {
+
+    private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter KIS_TIME_FORMATTER = DateTimeFormatter.ofPattern("HHmmss");
 
     public KisCurrentPriceMetrics toCurrentPriceMetrics(KisCurrentPriceOutput output) {
         return new KisCurrentPriceMetrics(
@@ -91,6 +102,30 @@ public class KisMetricMapper {
         );
     }
 
+    public KisMinuteCandleMetrics toMinuteCandleMetrics(KisMinuteChartOutput output) {
+        return new KisMinuteCandleMetrics(
+                toCandleTime(output.businessDate(), output.executionTime()),
+                toBigDecimal(output.openPrice()),
+                toBigDecimal(output.highPrice()),
+                toBigDecimal(output.lowPrice()),
+                toBigDecimal(output.currentPrice()),
+                toLong(output.executionVolume()),
+                toLong(output.accumulatedTradeAmount())
+        );
+    }
+
+    public KisPeriodCandleMetrics toPeriodCandleMetrics(KisPeriodChartOutput output) {
+        return new KisPeriodCandleMetrics(
+                toCandleDate(output.businessDate()),
+                toBigDecimal(output.openPrice()),
+                toBigDecimal(output.highPrice()),
+                toBigDecimal(output.lowPrice()),
+                toBigDecimal(output.closePrice()),
+                toLong(output.accumulatedVolume()),
+                toLong(output.accumulatedTradeAmount())
+        );
+    }
+
     private BigDecimal toBigDecimal(String value) {
         if (!StringUtils.hasText(value)) {
             return null;
@@ -105,6 +140,37 @@ public class KisMetricMapper {
             return new BigDecimal(normalized);
         } catch (NumberFormatException e) {
             log.warn("[KIS] 숫자 변환 실패 (null 처리됨): value='{}'", value);
+            return null;
+        }
+    }
+
+    private Long toLong(String value) {
+        BigDecimal decimal = toBigDecimal(value);
+        return decimal == null ? null : decimal.longValue();
+    }
+
+    private LocalDateTime toCandleTime(String date, String time) {
+        if (!StringUtils.hasText(date) || !StringUtils.hasText(time)) {
+            return null;
+        }
+        try {
+            LocalDate parsedDate = LocalDate.parse(date.trim(), KIS_DATE_FORMATTER);
+            LocalTime parsedTime = LocalTime.parse(time.trim(), KIS_TIME_FORMATTER);
+            return LocalDateTime.of(parsedDate, parsedTime);
+        } catch (RuntimeException e) {
+            log.warn("[KIS] 분봉 시간 변환 실패 (null 처리됨): date='{}', time='{}'", date, time);
+            return null;
+        }
+    }
+
+    private LocalDateTime toCandleDate(String date) {
+        if (!StringUtils.hasText(date)) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(date.trim(), KIS_DATE_FORMATTER).atStartOfDay();
+        } catch (RuntimeException e) {
+            log.warn("[KIS] 기간봉 날짜 변환 실패 (null 처리됨): date='{}'", date);
             return null;
         }
     }

@@ -1,7 +1,14 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncResponse;
+import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncStatusResponse;
+import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
+import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentChartSyncService;
+import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
+import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
+import com.mju.Jumoney.domain.stock.service.StockMinuteCandleSyncService;
 import com.mju.Jumoney.global.batch.BatchBaseDateResolver;
 import com.mju.Jumoney.global.batch.StockDataBatchJobConfig;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
@@ -44,6 +51,8 @@ public class KisSmokeService {
     private final Job stockIndicatorBatchJob;
     private final Job htsConditionBatchJob;
     private final BatchBaseDateResolver batchBaseDateResolver;
+    private final StockMinuteCandleSyncService stockMinuteCandleSyncService;
+    private final MockInvestmentChartSyncService mockInvestmentChartSyncService;
 
     public KisSmokeService(KisApiClient kisApiClient,
                            StockRepository stockRepository,
@@ -51,7 +60,9 @@ public class KisSmokeService {
                            JobOperator jobOperator,
                            @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME) Job stockIndicatorBatchJob,
                            @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob,
-                           BatchBaseDateResolver batchBaseDateResolver) {
+                           BatchBaseDateResolver batchBaseDateResolver,
+                           StockMinuteCandleSyncService stockMinuteCandleSyncService,
+                           MockInvestmentChartSyncService mockInvestmentChartSyncService) {
         this.kisApiClient = kisApiClient;
         this.stockRepository = stockRepository;
         this.stockIndicatorRepository = stockIndicatorRepository;
@@ -59,6 +70,8 @@ public class KisSmokeService {
         this.stockIndicatorBatchJob = stockIndicatorBatchJob;
         this.htsConditionBatchJob = htsConditionBatchJob;
         this.batchBaseDateResolver = batchBaseDateResolver;
+        this.stockMinuteCandleSyncService = stockMinuteCandleSyncService;
+        this.mockInvestmentChartSyncService = mockInvestmentChartSyncService;
     }
 
     public KisSmokeResponse smoke(String stockCode, LocalDate baseDate, LocalDate dividendFrom, LocalDate dividendTo) {
@@ -150,6 +163,37 @@ public class KisSmokeService {
                 stockCount == indicatorCount && missingStocks.isEmpty() && invalidRequiredFieldCount == 0,
                 missingStocks
         );
+    }
+
+    public MinuteCandleSyncResponse syncTodayMinuteCandles(String stockCode) {
+        return stockMinuteCandleSyncService.syncTodayMinuteCandles(stockCode);
+    }
+
+    public MinuteCandleSyncResponse syncMinuteCandles(String stockCode, LocalDate tradingDate) {
+        return stockMinuteCandleSyncService.syncMinuteCandles(stockCode, tradingDate);
+    }
+
+    public MinuteCandleSyncStatusResponse getTodayMinuteCandleSyncStatus(String stockCode, LocalDate date) {
+        return stockMinuteCandleSyncService.getTodayMinuteCandleSyncStatus(stockCode, date);
+    }
+
+    public MockInvestmentChartCandleSyncResponse syncChartCandles(String stockCode,
+                                                                  MockInvestmentChartPeriod period,
+                                                                  LocalDate date) {
+        return mockInvestmentChartSyncService.syncChartCandles(stockCode, period, date);
+    }
+
+    public MockInvestmentChartCandleSyncResponse syncChartCandlesInRange(String stockCode,
+                                                                         MockInvestmentChartPeriod period,
+                                                                         LocalDate fromDate,
+                                                                         LocalDate toDate) {
+        return mockInvestmentChartSyncService.syncChartCandlesInRange(stockCode, period, fromDate, toDate);
+    }
+
+    public MockInvestmentChartCandleSyncStatusResponse getChartCandleSyncStatus(String stockCode,
+                                                                                MockInvestmentChartPeriod period,
+                                                                                LocalDate date) {
+        return mockInvestmentChartSyncService.getChartCandleSyncStatus(stockCode, period, date);
     }
 
     private String toBaseTime(LocalDate baseDate) {

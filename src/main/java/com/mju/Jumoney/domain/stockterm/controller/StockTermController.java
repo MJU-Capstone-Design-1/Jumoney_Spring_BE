@@ -1,27 +1,19 @@
 package com.mju.Jumoney.domain.stockterm.controller;
 
-import com.mju.Jumoney.domain.stockterm.dto.ScrappedStockTermResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermCategoryTermsResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermDetailResponse;
-import com.mju.Jumoney.domain.stockterm.dto.StockTermScrapToggleResponse;
+import com.mju.Jumoney.domain.stockterm.dto.*;
+import com.mju.Jumoney.domain.stockterm.exception.StockTermErrorCode;
 import com.mju.Jumoney.domain.stockterm.service.StockTermCommandService;
 import com.mju.Jumoney.domain.stockterm.service.StockTermQueryService;
 import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.jwt.UserPrincipal;
 import com.mju.Jumoney.global.response.ApiResponse;
-import com.mju.Jumoney.global.response.ErrorCode;
 import com.mju.Jumoney.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -48,7 +40,7 @@ public class StockTermController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
-                stockTermQueryService.getTermsByCategory(getAuthenticatedUserId(userPrincipal), categoryId)
+                stockTermQueryService.getTermsByCategory(getOptionalUserId(userPrincipal), categoryId)
         ));
     }
 
@@ -60,7 +52,7 @@ public class StockTermController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
-                stockTermQueryService.getTermDetail(getAuthenticatedUserId(userPrincipal), termId)
+                stockTermQueryService.getTermDetail(getOptionalUserId(userPrincipal), termId)
         ));
     }
 
@@ -89,8 +81,12 @@ public class StockTermController {
 
     private Long getAuthenticatedUserId(UserPrincipal userPrincipal) {
         if (userPrincipal == null) {
-            throw new CustomException(ErrorCode.UNAUTHORIZED);
+            throw new CustomException(StockTermErrorCode.STOCK_TERM_AUTHENTICATION_REQUIRED);
         }
         return userPrincipal.userId();
+    }
+
+    private Long getOptionalUserId(UserPrincipal userPrincipal) {
+        return userPrincipal == null ? null : userPrincipal.userId();
     }
 }

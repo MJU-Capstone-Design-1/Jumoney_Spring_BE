@@ -4,12 +4,14 @@ import java.math.BigDecimal;
 
 public record StockRealtimeSnapshot(
         String code,
-        String time,
-        BigDecimal price,
+        Long minuteTs,
+        BigDecimal open,
+        BigDecimal high,
+        BigDecimal low,
+        BigDecimal close,
         BigDecimal change,
         BigDecimal rate,
-        Long vol,
-        BigDecimal strength,
-        Long timestamp
+        Long volume,
+        BigDecimal strength
 ) {
 }

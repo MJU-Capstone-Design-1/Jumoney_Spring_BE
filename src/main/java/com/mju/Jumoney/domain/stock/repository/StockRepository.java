@@ -1,6 +1,7 @@
 package com.mju.Jumoney.domain.stock.repository;
 
 import com.mju.Jumoney.domain.stock.domain.Stock;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
@@ -13,7 +14,14 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     Optional<Stock> findFirstBySectorIdAndIsMarketLeaderTrue(Long sectorId);
 
+    @EntityGraph(attributePaths = "sector")
     List<Stock> findBySectorIdOrderByNameAsc(Long sectorId);
+
+    @EntityGraph(attributePaths = "sector")
+    List<Stock> findByNameContainingIgnoreCaseOrderByNameAsc(String keyword);
+
+    @EntityGraph(attributePaths = "sector")
+    Optional<Stock> findWithSectorByStockCode(String stockCode);
 
     Optional<Stock> findByStockCode(String stockCode);
 }
