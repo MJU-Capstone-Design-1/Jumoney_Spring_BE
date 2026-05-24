@@ -39,6 +39,6 @@ jwt:
 kakao:
   client-id: test-client-id
   client-secret: test-client-secret
-  redirect-uri: http://localhost/test/callback
+  allowed-redirect-uris: http://localhost/test/callback
   token-uri: https://kauth.kakao.com/oauth/token
   user-info-uri: https://kapi.kakao.com/v2/user/me
