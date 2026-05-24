@@ -28,12 +28,13 @@ public class AuthController {
     @Operation(summary = "카카오 로그인", description = "카카오에서 발급받은 인가 코드(code)를 이용해 로그인을 진행합니다.")
     @GetMapping("/kakao/login")
     public ResponseEntity<AuthLoginResponse> kakaoLogin(
-            @RequestParam("code") String authorizationCode
+            @RequestParam("code") String authorizationCode,
+            @RequestParam("redirectUri") String redirectUri
     ) {
         log.info("[AuthController] 카카오 로그인 요청 수신");
 
         // 1. AuthService를 통해 카카오 로그인 진행 및 JWT 발급
-        LoginResult loginResult = authService.loginWithKakao(authorizationCode);
+        LoginResult loginResult = authService.loginWithKakao(authorizationCode, redirectUri);
 
         // 2. Refresh Token을 담을 HttpOnly + Secure 쿠키 생성
         ResponseCookie cookie = createRefreshTokenCookie(loginResult.refreshToken());

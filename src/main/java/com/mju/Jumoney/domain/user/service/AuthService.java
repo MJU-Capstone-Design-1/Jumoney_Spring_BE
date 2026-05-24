@@ -38,11 +38,11 @@ public class AuthService {
 
     // 카카오 로그인 및 자동 회원가입
     @Transactional
-    public LoginResult loginWithKakao(String authorizationCode) {
+    public LoginResult loginWithKakao(String authorizationCode, String redirectUri) {
         log.info("[AuthService] 카카오 로그인 처리 시작");
 
         // 1. 카카오 토큰 발급 및 사용자 정보 조회
-        String kakaoAccessToken = kakaoClient.getAccessToken(authorizationCode);
+        String kakaoAccessToken = kakaoClient.getAccessToken(authorizationCode, redirectUri);
         KakaoUserInfoResponse userInfo = kakaoClient.getUserInfo(kakaoAccessToken);
 
         String providerId = String.valueOf(userInfo.getId());

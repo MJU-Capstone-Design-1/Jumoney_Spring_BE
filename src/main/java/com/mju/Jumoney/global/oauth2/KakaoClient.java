@@ -1,12 +1,19 @@
 package com.mju.Jumoney.global.oauth2;
 
+import com.mju.Jumoney.global.exception.CustomException;
+import com.mju.Jumoney.global.response.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -19,8 +26,8 @@ public class KakaoClient {
     @Value("${kakao.client-secret}")
     private String clientSecret;
 
-    @Value("${kakao.redirect-uri}")
-    private String redirectUri;
+    @Value("${kakao.allowed-redirect-uris}")
+    private String allowedRedirectUris;
 
     @Value("${kakao.token-uri}")
     private String tokenUri;
@@ -31,20 +38,33 @@ public class KakaoClient {
     private final WebClient webClient = WebClient.create();
 
     // 인가 코드로 카카오 Access Token 요청하기
-    public String getAccessToken(String code) {
-        log.info("[KakaoClient] Access Token 요청: code={}", code);
-
-        String formData = "grant_type=authorization_code" +
-                "&client_id=" + clientId +
-                "&redirect_uri=" + redirectUri +
-                "&code=" + code +
-                "&client_secret=" + clientSecret;
+    public String getAccessToken(String code, String redirectUri) {
+        validateRedirectUri(redirectUri);
+        log.info("[KakaoClient] Access Token 요청 시작 - redirectUri={}", redirectUri);
 
         Map response = webClient.post()
                 .uri(tokenUri)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .bodyValue(formData)
+                .body(BodyInserters.fromFormData("grant_type", "authorization_code")
+                        .with("client_id", clientId)
+                        .with("redirect_uri", redirectUri)
+                        .with("code", code)
+                        .with("client_secret", clientSecret))
                 .retrieve()
+                .onStatus(
+                        status -> status.isError(),
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                                .defaultIfEmpty("")
+                                .flatMap(errorBody -> {
+                                    log.error(
+                                            "[KakaoClient] 카카오 Access Token 발급 실패 - status={}, redirectUri={}, response={}",
+                                            clientResponse.statusCode(),
+                                            redirectUri,
+                                            errorBody
+                                    );
+                                    return Mono.error(new RuntimeException("카카오 인증 실패: Access Token 발급 오류"));
+                                })
+                )
                 .bodyToMono(Map.class)
                 .block();
 
@@ -55,6 +75,20 @@ public class KakaoClient {
 
         log.info("[KakaoClient] 카카오 Access Token 발급 완료");
         return response.get("access_token").toString();
+    }
+
+    private void validateRedirectUri(String redirectUri) {
+        if (!StringUtils.hasText(redirectUri) || !getAllowedRedirectUriList().contains(redirectUri)) {
+            log.warn("[KakaoClient] 허용되지 않은 카카오 redirectUri 요청 - redirectUri={}", redirectUri);
+            throw new CustomException(ErrorCode.BAD_REQUEST);
+        }
+    }
+
+    private List<String> getAllowedRedirectUriList() {
+        return Arrays.stream(allowedRedirectUris.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 
     // 카카오 Access Token으로 카카오 사용자 정보(ID, 닉네임) 가져오기
