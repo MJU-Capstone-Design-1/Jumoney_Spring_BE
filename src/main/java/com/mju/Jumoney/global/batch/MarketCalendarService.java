@@ -12,9 +12,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +45,26 @@ public class MarketCalendarService {
             calendarDay = findCalendarDay(date);
         }
         return calendarDay.map(MarketCalendarDay::openDay).orElse(false);
+    }
+
+    /**
+     * targetDate 기준으로 최근 openDayCount개의 개장일을 과거에서 현재 순으로 반환합니다.
+     */
+    public List<LocalDate> resolveRecentOpenDays(LocalDate targetDate, int openDayCount, int lookbackLimit, ZoneId zoneId) {
+        List<LocalDate> openDays = new ArrayList<>();
+        LocalDate currentDate = targetDate;
+        for (int checkedDays = 0; checkedDays <= lookbackLimit && openDays.size() < openDayCount; checkedDays++) {
+            if (isOpenDay(currentDate, zoneId)) {
+                openDays.add(currentDate);
+            }
+            currentDate = currentDate.minusDays(1);
+        }
+        if (openDays.size() < openDayCount) {
+            throw new IllegalStateException("최근 영업일을 충분히 찾을 수 없습니다. targetDate="
+                    + targetDate + ", openDayCount=" + openDayCount);
+        }
+        Collections.reverse(openDays);
+        return openDays;
     }
 
     private Optional<LocalDate> findPreviousOpenDayInRedis(LocalDate today, int lookbackDays) {

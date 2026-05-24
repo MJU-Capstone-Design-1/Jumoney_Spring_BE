@@ -352,8 +352,8 @@ public class MockInvestmentChartSyncService {
         boolean hasAnyCandle = candleCount > 0;
         boolean hasExpectedCandleCount = range.expectedCandleCount() == null || candleCount >= range.expectedCandleCount();
         boolean coversExpectedRange = hasAnyCandle
-                && !firstCandleTime.isAfter(range.startTime().plusDays(range.startToleranceDays()))
-                && !lastCandleTime.isBefore(range.endTime());
+                && firstCandleTime != null && !firstCandleTime.isAfter(range.startTime().plusDays(range.startToleranceDays()))
+                && lastCandleTime != null && !lastCandleTime.isBefore(range.endTime());
         boolean complete = hasAnyCandle && hasExpectedCandleCount && coversExpectedRange;
 
         return new MockInvestmentChartCandleSyncStatusResponse.PeriodStatus(
@@ -408,20 +408,8 @@ public class MockInvestmentChartSyncService {
     }
 
     private List<LocalDate> resolveRecentOpenDays(LocalDate targetDate, int openDayCount) {
-        List<LocalDate> openDays = new ArrayList<>();
-        LocalDate currentDate = targetDate;
         int lookbackLimit = Math.max(openingDayLookbackDays, openDayCount * 4);
-        for (int checkedDays = 0; checkedDays <= lookbackLimit && openDays.size() < openDayCount; checkedDays++) {
-            if (marketCalendarService.isOpenDay(currentDate, KST_ZONE_ID)) {
-                openDays.add(currentDate);
-            }
-            currentDate = currentDate.minusDays(1);
-        }
-        if (openDays.size() < openDayCount) {
-            throw new IllegalStateException("최근 영업일을 충분히 찾을 수 없습니다. targetDate=" + targetDate + ", openDayCount=" + openDayCount);
-        }
-        Collections.reverse(openDays);
-        return openDays;
+        return marketCalendarService.resolveRecentOpenDays(targetDate, openDayCount, lookbackLimit, KST_ZONE_ID);
     }
 
     private boolean isLastOpenDayOfWeek(LocalDate date) {

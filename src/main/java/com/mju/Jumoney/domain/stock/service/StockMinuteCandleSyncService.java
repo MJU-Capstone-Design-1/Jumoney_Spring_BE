@@ -127,8 +127,8 @@ public class StockMinuteCandleSyncService {
         boolean hasAnyCandle = candleCount > 0;
         boolean hasExpectedCandleCount = candleCount >= dbExpectedCandleCount;
         boolean coversExpectedRange = hasAnyCandle
-                && !firstCandleTime.isAfter(dbExpectedStartTime)
-                && !lastCandleTime.isBefore(dbExpectedEndTime);
+                && firstCandleTime != null && !firstCandleTime.isAfter(dbExpectedStartTime)
+                && lastCandleTime != null && !lastCandleTime.isBefore(dbExpectedEndTime);
         LocalDateTime realtimeExpectedStartTime = resolveRealtimeExpectedStartTime(targetDate, dbExpectedEndTime);
         LocalDateTime realtimeExpectedEndTime = resolveRealtimeExpectedEndTime(targetDate);
         boolean realtimeCheckRequired = realtimeExpectedStartTime != null
