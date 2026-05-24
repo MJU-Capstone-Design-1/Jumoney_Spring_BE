@@ -45,6 +45,18 @@ export const labelMappings = {
   STEEL_MATERIALS: "철강/소재",
   CONSTRUCTION_UTILITY: "건설/유틸리티",
   ESSENTIAL_CONSUMER: "필수소비재",
+  MARKET_LEADER: "대장주",
+
+  NAME_ASC: "이름 순",
+  PRICE_DESC: "주가 높은 순",
+  PRICE_ASC: "주가 낮은 순",
+  MARKET_CAP_DESC: "시가총액 순",
+  TRADE_AMOUNT_DESC: "누적 거래대금 순",
+
+  INITIAL_SELECTION: "처음 선택",
+  CHANGED_SELECTION: "다른 거장에서 변경",
+
+  MASTER409_ALREADY_SELECTED: "이미 선택한 거장입니다.",
 } as const;
 
 export const recommendationTagLabels = {
@@ -112,3 +124,28 @@ export const masterSortMetricLabels = {
 - `MasterChoiceResponse.recommendations[].tags`: `MasterOptionLogicCode` key
 - `MasterChoiceResponse.recommendations[].sortMetricKey`: `ROE`, `PEG`, `MARKET_CAP`, `HIGH_52_WEEK_RATE`
 - `MasterResponse.sectorOptions[].sectorType`, `MasterChoiceResponse.recommendations[].goodSectorTags`: `SectorType` key
+
+## 모의투자 응답 key
+
+- `MockInvestmentSectorStockItemResponse.tags`: `SectorType` key, `MARKET_LEADER`
+- `MockInvestmentStockDetailResponse.sector`: `SectorType` key
+- `MockInvestmentStockDetailResponse.tags`: `SectorType` key, `MARKET_LEADER`
+- `MockInvestmentStockSearchSortType`: `NAME_ASC`, `PRICE_DESC`, `PRICE_ASC`, `MARKET_CAP_DESC`, `TRADE_AMOUNT_DESC`
+
+### 종목 상세 응답 구조
+
+- `price.currentPrice`: 현재가
+- `price.changeRate`: 전일 대비 등락률
+- `price.marketCap`: 시가총액
+- `price.accumulatedTradeAmount`: 누적 거래대금
+- `investmentMetrics.pbr`: PBR
+- `investmentMetrics.per`: PER
+- `investmentMetrics.roe`: ROE
+- `investmentMetrics.dividendYield`: 시가배당률
+- `investmentMetrics.payoutRatio`: 배당성향
+- `investmentMetrics.executionStrength`: 체결강도
+- `investmentMetrics.instNetBuy20Days`: 최근 20거래일 기관 순매수 수량
+- `financialMetrics.sales`: 매출액
+- `financialMetrics.operatingProfit`: 영업이익
+- `financialMetrics.debtRatio`: 부채비율
+

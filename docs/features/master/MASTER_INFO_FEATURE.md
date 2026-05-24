@@ -101,13 +101,24 @@
 {
   "masterId": 1,
   "masterCode": "WARREN_BUFFETT",
-  "masterName": "워런 버핏"
+  "masterName": "워런 버핏",
+  "selectionStatus": "INITIAL_SELECTION"
 }
 ```
+
+### Response 필드
+
+- `masterId`: 선택된 거장 ID
+- `masterCode`: 선택된 거장 코드
+- `masterName`: 선택된 거장 이름
+- `selectionStatus`: 선택 결과 상태
+  - `INITIAL_SELECTION`: 처음 거장을 선택한 경우
+  - `CHANGED_SELECTION`: 다른 거장에서 현재 거장으로 변경한 경우
 
 ### 구현 시 확인할 점
 
 - 로그인 사용자 기준으로 선택한 거장을 저장한다.
+- 이미 같은 거장을 다시 선택하면 `MASTER409_ALREADY_SELECTED` 예외를 반환한다.
 - 저장 위치는 `User.selectedMaster` 또는 별도 선택 이력 테이블 중 서비스 정책에 맞춰 결정한다.
 
 ---

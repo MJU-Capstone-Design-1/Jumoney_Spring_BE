@@ -120,7 +120,7 @@
         - 영업이익 / operatingProfit / BIGINT / NOT NULL
         - 영업이익 증가율 / operatingProfitGrowthRate / DECIMAL / NOT NULL
         - 주당배당금 / dps / DECIMAL / NOT NULL / 기간 내 주당배당금(DPS) 합계
-        - 시가배당률 / dividendYield / DECIMAL / NOT NULL / `DPS / 현재가 * 100`으로 계산
+        - 배당수익률 / dividendYield / DECIMAL / NOT NULL / `DPS / 현재가 * 100`으로 계산
         - 배당성향 / payoutRatio / DECIMAL / NULL / `기간 내 주당배당금(DPS) 합계 / EPS * 100`으로 계산, DPS 또는 EPS 결측 시 NULL
         - ROE / roe / DECIMAL / NOT NULL
         - PER / per / DECIMAL / NOT NULL
@@ -139,7 +139,7 @@
     - 필드
         - **시세 ID / stockPriceId / BIGINT / NOT NULL (PK)**
         - **종목 ID / stockId / BIGINT / NOT NULL (FK)**
-        - 캔들 타입 / intervalType / ENUM / NOT NULL (MIN, DAY, WEEK, MONTH, YEAR)
+        - 캔들 타입 / intervalType / ENUM / NOT NULL (MINUTE, THIRTY_MINUTE, DAY, WEEK)
         - 기준 시간 / baseTime / TIMESTAMP / NOT NULL
         - 시가 / openPrice / DECIMAL / NULL
         - 고가 / highPrice / DECIMAL / NULL

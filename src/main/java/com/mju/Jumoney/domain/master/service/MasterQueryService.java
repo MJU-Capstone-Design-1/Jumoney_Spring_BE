@@ -5,8 +5,9 @@ import com.mju.Jumoney.domain.master.domain.MasterCase;
 import com.mju.Jumoney.domain.master.domain.MasterPortfolioStock;
 import com.mju.Jumoney.domain.master.domain.MasterPrinciple;
 import com.mju.Jumoney.domain.master.dto.*;
-import com.mju.Jumoney.domain.master.repository.*;
 import com.mju.Jumoney.domain.master.exception.MasterErrorCode;
+import com.mju.Jumoney.domain.master.repository.*;
+import com.mju.Jumoney.domain.user.repository.UserRepository;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,8 +30,13 @@ public class MasterQueryService {
     private final MasterPrincipleRepository masterPrincipleRepository;
     private final MasterPortfolioStockRepository masterPortfolioStockRepository;
     private final MasterCaseRepository masterCaseRepository;
+    private final UserRepository userRepository;
 
     public List<MasterListResponse> getMasterList() {
+        return getMasterList(null);
+    }
+
+    public List<MasterListResponse> getMasterList(Long userId) {
         List<Master> masters = masterRepository.findAllByOrderByDisplayOrderAsc();
         if (masters.isEmpty()) {
             return List.of();
@@ -50,7 +56,8 @@ public class MasterQueryService {
                         master.getId(),
                         master.getMasterCode(),
                         master.getMasterName(),
-                        tagMap.getOrDefault(master.getId(), List.of())
+                        tagMap.getOrDefault(master.getId(), List.of()),
+                        isSelectedMaster(userId, master.getId())
                 ))
                 .toList();
     }
@@ -80,11 +87,16 @@ public class MasterQueryService {
     }
 
     public MasterResponse getMaster(Long masterId) {
+        return getMaster(masterId, null);
+    }
+
+    public MasterResponse getMaster(Long masterId, Long userId) {
         Master master = findMasterById(masterId);
 
         return MasterResponse.of(
                 master,
-                masterOptionRepository.findByMasterIdOrderByDisplayOrderAsc(masterId)
+                masterOptionRepository.findByMasterIdOrderByDisplayOrderAsc(masterId),
+                isSelectedMaster(userId, masterId)
         );
     }
 
@@ -130,6 +142,15 @@ public class MasterQueryService {
 
     private Optional<MasterCase> findRepresentativeCase(Long masterId) {
         return masterCaseRepository.findFirstByMasterIdOrderByIdAsc(masterId);
+    }
+
+    private boolean isSelectedMaster(Long userId, Long masterId) {
+        if (userId == null) {
+            return false;
+        }
+        return userRepository.findById(userId)
+                .map(user -> user.getSelectedMaster() != null && user.getSelectedMaster().getId().equals(masterId))
+                .orElse(false);
     }
 
     // ========== 비즈니스 로직 메서드 ==========
