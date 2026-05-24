@@ -78,8 +78,10 @@ public class MockInvestmentController {
     @Operation(summary = "관심 섹터 대장주 조회", description = "선택한 섹터의 대장주 1개를 조회합니다. (현재가, 전일 대비 등락률 포함)")
     @GetMapping("/sectors/{sectorId}/leader")
     public ResponseEntity<ApiResponse<MockInvestmentSectorLeaderResponse>> getSectorLeader(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long sectorId
     ) {
+        validateAccountExists(userPrincipal);
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.getSectorLeader(sectorId)
@@ -111,8 +113,10 @@ public class MockInvestmentController {
     @Operation(summary = "섹터별 종목 리스트 조회", description = "선택한 섹터에 속한 종목 목록을 시가총액 순으로 조회합니다.")
     @GetMapping("/sectors/{sectorId}/stocks")
     public ResponseEntity<ApiResponse<MockInvestmentSectorStocksResponse>> getSectorStocks(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable Long sectorId
     ) {
+        validateAccountExists(userPrincipal);
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.getSectorStocks(sectorId)
@@ -122,8 +126,10 @@ public class MockInvestmentController {
     @Operation(summary = "모의투자 종목 상세 조회", description = "차트 제외, 종목 코드 기준으로 종목 기본 정보와 현재 시세, 최신 지표 중심의 상세 정보를 조회합니다.")
     @GetMapping("/stocks/{stockCode}")
     public ResponseEntity<ApiResponse<MockInvestmentStockDetailResponse>> getStockDetail(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable String stockCode
     ) {
+        validateAccountExists(userPrincipal);
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.getStockDetail(stockCode)
@@ -133,9 +139,11 @@ public class MockInvestmentController {
     @Operation(summary = "종목 검색", description = "입력한 검색어가 종목명에 포함된 종목 목록을 조회합니다. 이름 순, 주가 높은 순, 주가 낮은 순, 시가총액 순, 거래대금 순으로 정렬할 수 있습니다.")
     @GetMapping("/stocks/search")
     public ResponseEntity<ApiResponse<MockInvestmentStockSearchResponse>> searchStocks(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
             @RequestParam String keyword,
             @RequestParam(defaultValue = "NAME_ASC") MockInvestmentStockSearchSortType sort
     ) {
+        validateAccountExists(userPrincipal);
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 mockInvestmentQueryService.searchStocks(keyword, sort)
@@ -148,5 +156,9 @@ public class MockInvestmentController {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
         return userPrincipal.userId();
+    }
+
+    private void validateAccountExists(UserPrincipal userPrincipal) {
+        mockInvestmentAccountService.validateAccountExists(getAuthenticatedUserId(userPrincipal));
     }
 }

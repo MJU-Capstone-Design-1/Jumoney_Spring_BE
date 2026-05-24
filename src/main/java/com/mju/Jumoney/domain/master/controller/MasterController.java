@@ -58,8 +58,13 @@ public class MasterController {
             ))
     )
     @GetMapping("/masters")
-    public ResponseEntity<ApiResponse<List<MasterListResponse>>> getMasters() {
-        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, masterQueryService.getMasterList()));
+    public ResponseEntity<ApiResponse<List<MasterListResponse>>> getMasters(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                masterQueryService.getMasterList(getOptionalUserId(userPrincipal))
+        ));
     }
 
     @Operation(summary = "거장 상세정보 조회", description = "거장 상세정보(태그, 명언, 투자 철학, 투자 원칙)를 조회합니다.")
@@ -239,5 +244,9 @@ public class MasterController {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
         return userPrincipal.userId();
+    }
+
+    private Long getOptionalUserId(UserPrincipal userPrincipal) {
+        return userPrincipal == null ? null : userPrincipal.userId();
     }
 }

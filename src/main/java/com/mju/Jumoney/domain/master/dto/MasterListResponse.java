@@ -8,6 +8,7 @@ public record MasterListResponse(
         Long masterId,
         MasterCode masterCode,
         String masterName,
-        List<String> tags
+        List<String> tags,
+        boolean isSelected
 ) {
 }
