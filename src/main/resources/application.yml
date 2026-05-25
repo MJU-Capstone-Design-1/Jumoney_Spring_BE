@@ -62,3 +62,9 @@ realtime:
     host: ${REALTIME_REDIS_HOST:localhost}
     port: ${REALTIME_REDIS_PORT:6379}
     password: ${REALTIME_REDIS_PASSWORD:}
+
+verified-operation:
+  scheduler:
+    enabled: ${VERIFIED_OPERATION_SCHEDULER_ENABLED:false}
+    cron: "0 15 9 * * MON-FRI"
+    zone-id: Asia/Seoul

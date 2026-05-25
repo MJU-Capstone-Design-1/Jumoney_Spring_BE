@@ -56,6 +56,10 @@ public class User extends BaseSoftDeleteEntity {
     private Master selectedMaster;
 
     // ========== 비즈니스 메서드 ==========
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
     public void updateServiceNickname(String serviceNickname) {
         this.serviceNickname = serviceNickname;
     }

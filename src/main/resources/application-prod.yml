@@ -44,6 +44,10 @@ kis:
     minute-candle:
       enabled: ${KIS_MINUTE_CANDLE_SCHEDULER_ENABLED:true}
 
+verified-operation:
+  scheduler:
+    enabled: ${VERIFIED_OPERATION_SCHEDULER_ENABLED:true}
+
 jwt:
   secret-key: ${JWT_SECRET_KEY}
   access-token-validity: ${JWT_ACCESS_TOKEN_VALIDITY:3600000}
