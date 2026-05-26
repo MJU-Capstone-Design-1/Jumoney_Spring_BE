@@ -10,7 +10,7 @@ import java.util.List;
 public interface VerifiedOperationTradeLotRepository extends JpaRepository<VerifiedOperationTradeLot, Long> {
 
     @EntityGraph(attributePaths = {"stock"})
-    List<VerifiedOperationTradeLot> findByAccountCodeAndRemainingQuantityGreaterThanAndSellDueAtLessThanEqualOrderByBoughtAtAsc(
+    List<VerifiedOperationTradeLot> findByAccountCodeAndRemainingQuantityGreaterThanAndSellDueAtBeforeOrderByBoughtAtAsc(
             String accountCode,
             int remainingQuantity,
             LocalDateTime sellDueAt

@@ -15,12 +15,7 @@ import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.domain.user.domain.User;
 import com.mju.Jumoney.domain.user.enums.AuthProvider;
 import com.mju.Jumoney.domain.user.repository.UserRepository;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountConfig;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountResponse;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountSummaryResponse;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationConditionResponse;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationHoldingResponse;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationMasterAccountResponse;
+import com.mju.Jumoney.domain.verifiedoperation.dto.*;
 import com.mju.Jumoney.domain.verifiedoperation.enums.VerifiedOperationAccountType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,7 +33,7 @@ public class VerifiedOperationQueryService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final String OPERATION_DESCRIPTION =
-            "2026년 5월 26일부터 매일 추천 종목 1종목을 1주 매수하는 모의 운용 계정이에요. 추천 로직의 신뢰성을 확인해볼 수 있어요.";
+            "2026년 5월 27일부터 매일 추천 종목 1종목을 1주 매수하는 모의 운용 계정이에요. 추천 로직의 신뢰성을 확인해볼 수 있어요.";
     private static final int PROFIT_RATE_DIVIDE_SCALE = 6;
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
 

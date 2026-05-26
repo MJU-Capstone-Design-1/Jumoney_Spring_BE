@@ -112,11 +112,12 @@ public class VerifiedOperationTradingService {
     }
 
     private void sellDueLots(VerifiedOperationAccountConfig config, Long userId, LocalDateTime now) {
+        LocalDateTime dueDateExclusiveEnd = now.toLocalDate().plusDays(1).atStartOfDay();
         List<VerifiedOperationTradeLot> dueLots = tradeLotRepository
-                .findByAccountCodeAndRemainingQuantityGreaterThanAndSellDueAtLessThanEqualOrderByBoughtAtAsc(
+                .findByAccountCodeAndRemainingQuantityGreaterThanAndSellDueAtBeforeOrderByBoughtAtAsc(
                         config.accountCode(),
                         0,
-                        now
+                        dueDateExclusiveEnd
                 );
         for (VerifiedOperationTradeLot lot : dueLots) {
             try {
@@ -248,10 +249,10 @@ public class VerifiedOperationTradingService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("투자 기간 조건이 없습니다: " + config.accountCode()));
         return switch (horizon) {
-            case ULTRA_SHORT -> boughtAt.plusDays(1);
-            case SHORT -> boughtAt.plusDays(7);
-            case MID -> boughtAt.plusMonths(3);
-            case LONG -> boughtAt.plusYears(1);
+            case ULTRA_SHORT -> boughtAt.toLocalDate().plusDays(1).atStartOfDay();
+            case SHORT -> boughtAt.toLocalDate().plusDays(7).atStartOfDay();
+            case MID -> boughtAt.toLocalDate().plusMonths(3).atStartOfDay();
+            case LONG -> boughtAt.toLocalDate().plusYears(1).atStartOfDay();
             default -> throw new IllegalStateException("투자 기간 조건이 아닙니다: " + horizon);
         };
     }
