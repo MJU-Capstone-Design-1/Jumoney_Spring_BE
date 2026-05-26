@@ -94,7 +94,7 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
 | `lowPrice`    | 저가                                                |
 | `closePrice`  | 종가                                                |
 | `volume`      | 거래량                                               |
-| `tradeAmount` | 거래대금. Redis/KIS 원천에 값이 없던 과거 데이터는 `null` 허용          |
+| `tradeAmount` | 거래대금. Redis/KIS 원천에 값이 없던 과거 데이터는 `null` 허용       |
 | `isFinal`     | DB/KIS 확정 캔들은 `true`, Redis 기반 미확정 분봉은 `false`    |
 
 ---
@@ -141,7 +141,7 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - `09:02`, `09:32`, `10:02` ... `15:32`에 KIS `FHKST03010200`을 호출한다.
 - `15:40`에 장 마감 보정 동기화를 한 번 더 실행한다.
 - KIS가 제공하는 당일 분봉을 `stock_candles(interval_type=MINUTE)`에 upsert한다.
-- 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외하고, 그 값을 정각/30분 단위로 내린 시각까지만 저장한다.
+- 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외하고, 분 단위 시각까지 DB 확정 분봉으로 저장한다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
 - KRX 장마감 동시호가 구간인 `15:20~15:29`는 체결이 없으므로, DB 확정 분봉 저장 시 `15:19` 종가를 기준으로 `volume=0` 1분봉을 보강한다.
 - `15:30`은 장마감 단일가 체결 봉으로 별도 저장한다.
@@ -216,7 +216,8 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - Redis raw payload는 DB/API 캔들 DTO의 `candleTime`, `openPrice`, `closePrice`, `isFinal` 구조와 다르다.
 - Spring 차트 병합 시 `minuteTs -> candleTime`, `open -> openPrice`, `close -> closePrice` 등 별도 매핑이 필요하다.
 - Redis raw `tradeAmount`는 Spring 차트 응답의 `tradeAmount`로 전달한다. `ONE_WEEK`의 장중 진행 30분봉은 Redis 1분봉들의 `tradeAmount`를 합산한다.
-- Redis raw `strength`는 오늘의 호주머니 초단기 추천 정렬에서 freshness 조건을 만족할 때 우선 사용한다. 모의투자 상세의 공개 체결강도(`investmentMetrics.executionStrength`)는 DB `StockIndicator.executionStrength`를 사용한다.
+- Redis raw `strength`는 오늘의 호주머니 초단기 추천 정렬에서 freshness 조건을 만족할 때 우선 사용한다. 모의투자 상세의 공개 체결강도(
+  `investmentMetrics.executionStrength`)는 DB `StockIndicator.executionStrength`를 사용한다.
 - Redis 분봉은 미확정 실시간용이므로 `isFinal=false`는 저장값으로 존재하지 않고, 병합 단계에서 애플리케이션이 부여하는 개념으로 본다.
 
 ---
@@ -272,8 +273,8 @@ POST /api/smoke/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCo
 - KIS `FHKST03010200`은 한 번에 최대 30건만 반환하므로, 수동 동기화는 필요한 정각/30분 입력 시각만 여러 번 호출한다.
 - 과거 영업일은 KIS `FHKST03010230`을 사용하며, 응답에 다른 날짜 raw가 섞여도 요청한 `tradingDate` 분봉만 저장한다. 휴장일/주말/미래일은 동기화하지 않는다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
-- 수동 동기화도 스케줄러와 동일하게 정각/30분 단위까지만 `isFinal=true`로 저장한다.
-- 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:00`이다.
+- 수동 동기화도 스케줄러와 동일하게 요청 시각 기준 최근 2분을 제외한 분 단위 시각까지만 `isFinal=true`로 저장한다.
+- 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:18`이다.
 - 응답의 `kisRequestCount`로 실제 KIS 호출 횟수를 확인한다.
 - 차트 상태 확인 API는 Redis 미확정 분봉이 아니라 DB 확정 캔들의 범위와 건수를 검증한다.
 
@@ -285,7 +286,7 @@ POST /api/smoke/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCo
 - 같은 캔들은 unique key 기준 upsert한다.
 - 스케줄 실행 시각은 정각/30분 정각보다 정확히 2분 늦게 둔다. 예: `09:32`, `10:02`, `10:32`.
 - 장 마감 보정 스케줄은 `15:40`에 한 번 더 실행한다.
-- 저장 cutoff도 요청 시각 기준 최근 2분을 제외한다. 예: `14:32` 실행이면 `14:30`까지 확정 저장한다.
+- 저장 cutoff도 요청 시각 기준 최근 2분을 제외한다. 예: `14:32` 실행이면 `14:30`까지, `14:35` 수동 실행이면 `14:33`까지 확정 저장한다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
 
 부하 추정:
@@ -315,7 +316,7 @@ KIS 요청:
 
 | source        | mapping                                                                                                                                                                                           |
 |---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 30분봉 집계       | 같은 30분 버킷의 1분봉으로 OHLCV 집계. `15:00` 버킷은 synthetic `15:20~15:29` 분봉을 포함하고, `15:30`은 별도 단일가 체결 봉으로 저장                                                                                                  |
+| 30분봉 집계       | 같은 30분 버킷의 1분봉으로 OHLCV 집계. `15:00` 버킷은 synthetic `15:20~15:29` 분봉을 포함하고, `15:30`은 별도 단일가 체결 봉으로 저장                                                                                                |
 | KIS `output2` | `stck_bsop_date -> candle_time`, `stck_oprc -> open_price`, `stck_hgpr -> high_price`, `stck_lwpr -> low_price`, `stck_clpr -> close_price`, `acml_vol -> volume`, `acml_tr_pbmn -> trade_amount` |
 
 초기 backfill:

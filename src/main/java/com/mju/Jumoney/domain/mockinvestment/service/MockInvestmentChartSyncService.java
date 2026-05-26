@@ -510,8 +510,7 @@ public class MockInvestmentChartSyncService {
         if (bufferedTime.isAfter(marketClose)) {
             return marketClose;
         }
-        int flooredMinute = bufferedTime.getMinute() >= 30 ? 30 : 0;
-        return bufferedTime.withMinute(flooredMinute).withSecond(0).withNano(0);
+        return bufferedTime.withSecond(0).withNano(0);
     }
 
     private LocalDateTime resolveExpectedThirtyMinuteEndTime(LocalDate targetDate) {

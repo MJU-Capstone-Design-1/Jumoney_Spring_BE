@@ -212,12 +212,7 @@ public class StockMinuteCandleSyncService {
             return marketClose;
         }
 
-        int minute = bufferedTime.getMinute();
-        int flooredMinute = minute >= 30 ? 30 : 0;
-        return bufferedTime
-                .withMinute(flooredMinute)
-                .withSecond(0)
-                .withNano(0);
+        return bufferedTime.withSecond(0).withNano(0);
     }
 
     private LocalDateTime resolveFinalizationCutoffTime(LocalDate tradingDate, LocalDateTime requestedAt) {
