@@ -1,8 +1,8 @@
 package com.mju.Jumoney.domain.verifiedoperation.controller;
 
 import com.mju.Jumoney.domain.master.enums.MasterCode;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountDetailResponse;
 import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountSummaryResponse;
+import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationMasterAccountResponse;
 import com.mju.Jumoney.domain.verifiedoperation.service.VerifiedOperationQueryService;
 import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.jwt.UserPrincipal;
@@ -27,7 +27,7 @@ public class VerifiedOperationController {
 
     private final VerifiedOperationQueryService verifiedOperationQueryService;
 
-    @Operation(summary = "오늘의 호주머니 모의 운용 계정 목록 조회", description = "오늘의 호주머니 추천 검증용 모의 운용 계정 4개의 성과 요약을 조회합니다.")
+    @Operation(summary = "오늘의 호주머니 모의 운용 계정 목록 조회", description = "오늘의 호주머니 추천 검증용 모의 운용 계정 4개를 조회합니다.")
     @GetMapping("/hojumoney/accounts")
     public ResponseEntity<ApiResponse<VerifiedOperationAccountSummaryResponse>> getHojumoneyAccounts(
             @AuthenticationPrincipal UserPrincipal userPrincipal
@@ -39,9 +39,9 @@ public class VerifiedOperationController {
         ));
     }
 
-    @Operation(summary = "거장의 선택 모의 운용 계정 조회", description = "거장별 추천 검증용 모의 운용 계정의 보유 종목, 최근 주문 이력, 운용 조건을 조회합니다.")
+    @Operation(summary = "거장의 선택 모의 운용 계정 조회", description = "거장의 선택 추천 검증용 모의 운용 계정을 조회합니다.")
     @GetMapping("/master-choice/masters/{masterCode}/account")
-    public ResponseEntity<ApiResponse<VerifiedOperationAccountDetailResponse>> getMasterChoiceAccount(
+    public ResponseEntity<ApiResponse<VerifiedOperationMasterAccountResponse>> getMasterChoiceAccount(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @PathVariable MasterCode masterCode
     ) {

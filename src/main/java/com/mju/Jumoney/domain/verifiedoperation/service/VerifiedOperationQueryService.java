@@ -6,8 +6,6 @@ import com.mju.Jumoney.domain.master.enums.MasterOptionLogicCode;
 import com.mju.Jumoney.domain.mockinvestment.domain.Account;
 import com.mju.Jumoney.domain.mockinvestment.domain.Order;
 import com.mju.Jumoney.domain.mockinvestment.domain.Portfolio;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentOrderHistoryItemResponse;
-import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentPortfolioItemResponse;
 import com.mju.Jumoney.domain.mockinvestment.enums.OrderType;
 import com.mju.Jumoney.domain.mockinvestment.repository.AccountRepository;
 import com.mju.Jumoney.domain.mockinvestment.repository.OrderRepository;
@@ -18,11 +16,13 @@ import com.mju.Jumoney.domain.user.domain.User;
 import com.mju.Jumoney.domain.user.enums.AuthProvider;
 import com.mju.Jumoney.domain.user.repository.UserRepository;
 import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountConfig;
-import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountDetailResponse;
+import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountResponse;
 import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationAccountSummaryResponse;
+import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationConditionResponse;
+import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationHoldingResponse;
+import com.mju.Jumoney.domain.verifiedoperation.dto.VerifiedOperationMasterAccountResponse;
 import com.mju.Jumoney.domain.verifiedoperation.enums.VerifiedOperationAccountType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +41,6 @@ public class VerifiedOperationQueryService {
             "2026년 5월 26일부터 매일 추천 종목 1종목을 1주 매수하는 모의 운용 계정이에요. 추천 로직의 신뢰성을 확인해볼 수 있어요.";
     private static final int PROFIT_RATE_DIVIDE_SCALE = 6;
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
-    private static final int RECENT_ORDER_LIMIT = 20;
 
     private final VerifiedOperationAccountConfigService configService;
     private final UserRepository userRepository;
@@ -51,70 +50,46 @@ public class VerifiedOperationQueryService {
     private final StockCurrentPriceService stockCurrentPriceService;
 
     public VerifiedOperationAccountSummaryResponse getHojumoneyAccounts() {
-        List<VerifiedOperationAccountSummaryResponse.AccountSummary> accounts = configService.getAccounts().stream()
+        List<VerifiedOperationAccountResponse> accounts = configService.getAccounts().stream()
                 .filter(config -> config.type() == VerifiedOperationAccountType.HOJUMONEY)
-                .map(this::toSummary)
+                .map(this::toAccountResponse)
                 .toList();
         return new VerifiedOperationAccountSummaryResponse(OPERATION_DESCRIPTION, accounts);
     }
 
-    public VerifiedOperationAccountDetailResponse getMasterChoiceAccount(MasterCode masterCode) {
+    public VerifiedOperationMasterAccountResponse getMasterChoiceAccount(MasterCode masterCode) {
         VerifiedOperationAccountConfig config = configService.getAccounts().stream()
                 .filter(account -> account.type() == VerifiedOperationAccountType.MASTER_CHOICE)
                 .filter(account -> account.masterCode() == masterCode)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown master operation account: " + masterCode));
-        return toDetail(config);
+        return new VerifiedOperationMasterAccountResponse(OPERATION_DESCRIPTION, toAccountResponse(config));
     }
 
-    private VerifiedOperationAccountDetailResponse toDetail(VerifiedOperationAccountConfig config) {
+    private VerifiedOperationAccountResponse toAccountResponse(VerifiedOperationAccountConfig config) {
         Account account = findAccount(config);
         List<Portfolio> portfolios = portfolioRepository.findByAccountIdOrderByUpdatedAtDesc(account.getId());
         Map<String, StockCurrentPriceSnapshot> currentPrices = getCurrentPrices(portfolios);
         AccountEvaluation evaluation = evaluate(account, portfolios, currentPrices);
-        List<MockInvestmentPortfolioItemResponse> holdings = portfolios.stream()
+        List<VerifiedOperationHoldingResponse> holdings = portfolios.stream()
                 .map(portfolio -> toPortfolioItem(portfolio, currentPrices.get(portfolio.getStock().getStockCode())))
                 .toList();
-        List<MockInvestmentOrderHistoryItemResponse> recentOrders = orderRepository.findByAccountIdOrderByExecutedAtDesc(
-                        account.getId(),
-                        PageRequest.of(0, RECENT_ORDER_LIMIT)
-                )
-                .stream()
-                .map(this::toOrderHistoryItem)
-                .toList();
 
-        return new VerifiedOperationAccountDetailResponse(
-                OPERATION_DESCRIPTION,
+        return new VerifiedOperationAccountResponse(
                 config.accountCode(),
                 config.accountName(),
                 config.type(),
                 conditions(config),
                 account.getTotalPurchaseAmount(),
                 evaluation.totalEvaluationAmount(),
+                evaluation.investmentProfitAmount(),
+                evaluation.investmentProfitRate(),
+                evaluation.totalAsset(),
                 evaluation.totalProfitAmount(),
                 evaluation.totalProfitRate(),
                 portfolios.size(),
                 lastTradedAt(account),
-                holdings,
-                recentOrders
-        );
-    }
-
-    private VerifiedOperationAccountSummaryResponse.AccountSummary toSummary(VerifiedOperationAccountConfig config) {
-        Account account = findAccount(config);
-        List<Portfolio> portfolios = portfolioRepository.findByAccountId(account.getId());
-        AccountEvaluation evaluation = evaluate(account, portfolios, getCurrentPrices(portfolios));
-        return new VerifiedOperationAccountSummaryResponse.AccountSummary(
-                config.accountCode(),
-                config.accountName(),
-                config.type(),
-                conditions(config),
-                account.getTotalPurchaseAmount(),
-                evaluation.totalEvaluationAmount(),
-                evaluation.totalProfitAmount(),
-                evaluation.totalProfitRate(),
-                portfolios.size(),
-                lastTradedAt(account)
+                holdings
         );
     }
 
@@ -125,7 +100,7 @@ public class VerifiedOperationQueryService {
                 .orElseThrow(() -> new IllegalStateException("모의 운용 투자 계좌가 없습니다: " + config.accountCode()));
     }
 
-    private List<VerifiedOperationAccountSummaryResponse.ConditionResponse> conditions(VerifiedOperationAccountConfig config) {
+    private List<VerifiedOperationConditionResponse> conditions(VerifiedOperationAccountConfig config) {
         if (config.type() == VerifiedOperationAccountType.HOJUMONEY) {
             return config.hojumoneyConditions().stream()
                     .map(this::toCondition)
@@ -136,12 +111,12 @@ public class VerifiedOperationQueryService {
                 .toList();
     }
 
-    private VerifiedOperationAccountSummaryResponse.ConditionResponse toCondition(SurveyLogicCode logicCode) {
-        return new VerifiedOperationAccountSummaryResponse.ConditionResponse(logicCode.name(), logicCode.getLabel());
+    private VerifiedOperationConditionResponse toCondition(SurveyLogicCode logicCode) {
+        return new VerifiedOperationConditionResponse(logicCode.name(), logicCode.getLabel());
     }
 
-    private VerifiedOperationAccountSummaryResponse.ConditionResponse toCondition(MasterOptionLogicCode logicCode) {
-        return new VerifiedOperationAccountSummaryResponse.ConditionResponse(logicCode.name(), logicCode.getLabel());
+    private VerifiedOperationConditionResponse toCondition(MasterOptionLogicCode logicCode) {
+        return new VerifiedOperationConditionResponse(logicCode.name(), logicCode.getLabel());
     }
 
     private Map<String, StockCurrentPriceSnapshot> getCurrentPrices(List<Portfolio> portfolios) {
@@ -162,9 +137,19 @@ public class VerifiedOperationQueryService {
         BigDecimal totalEvaluationAmount = portfolios.stream()
                 .map(portfolio -> evaluationAmount(portfolio, currentPrices.get(portfolio.getStock().getStockCode())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalProfitAmount = totalEvaluationAmount.subtract(account.getTotalPurchaseAmount());
-        BigDecimal totalProfitRate = calculateProfitRate(totalProfitAmount, account.getTotalPurchaseAmount());
-        return new AccountEvaluation(totalEvaluationAmount, totalProfitAmount, totalProfitRate);
+        BigDecimal investmentProfitAmount = totalEvaluationAmount.subtract(account.getTotalPurchaseAmount());
+        BigDecimal investmentProfitRate = calculateProfitRate(investmentProfitAmount, account.getTotalPurchaseAmount());
+        BigDecimal totalAsset = account.getCashBalance().add(totalEvaluationAmount);
+        BigDecimal totalProfitAmount = totalAsset.subtract(account.getSeedMoney());
+        BigDecimal totalProfitRate = calculateProfitRate(totalProfitAmount, account.getSeedMoney());
+        return new AccountEvaluation(
+                totalEvaluationAmount,
+                investmentProfitAmount,
+                investmentProfitRate,
+                totalAsset,
+                totalProfitAmount,
+                totalProfitRate
+        );
     }
 
     private BigDecimal evaluationAmount(Portfolio portfolio, StockCurrentPriceSnapshot currentPriceSnapshot) {
@@ -174,12 +159,11 @@ public class VerifiedOperationQueryService {
                 : currentPrice.multiply(BigDecimal.valueOf(portfolio.getQuantity()));
     }
 
-    private MockInvestmentPortfolioItemResponse toPortfolioItem(
+    private VerifiedOperationHoldingResponse toPortfolioItem(
             Portfolio portfolio,
             StockCurrentPriceSnapshot currentPriceSnapshot
     ) {
         BigDecimal currentPrice = currentPriceSnapshot == null ? null : currentPriceSnapshot.currentPrice();
-        BigDecimal changeRate = currentPriceSnapshot == null ? null : currentPriceSnapshot.changeRate();
         BigDecimal evaluationAmount = currentPrice == null
                 ? BigDecimal.ZERO
                 : currentPrice.multiply(BigDecimal.valueOf(portfolio.getQuantity()));
@@ -190,7 +174,7 @@ public class VerifiedOperationQueryService {
                 ? BigDecimal.ZERO
                 : calculateProfitRate(profitAmount, portfolio.getTotalPurchaseAmount());
 
-        return new MockInvestmentPortfolioItemResponse(
+        return new VerifiedOperationHoldingResponse(
                 portfolio.getStock().getId(),
                 portfolio.getStock().getStockCode(),
                 portfolio.getStock().getName(),
@@ -200,21 +184,7 @@ public class VerifiedOperationQueryService {
                 currentPrice,
                 evaluationAmount,
                 profitAmount,
-                profitRate,
-                changeRate
-        );
-    }
-
-    private MockInvestmentOrderHistoryItemResponse toOrderHistoryItem(Order order) {
-        return new MockInvestmentOrderHistoryItemResponse(
-                order.getId(),
-                order.getOrderType().name(),
-                order.getStock() == null ? null : order.getStock().getStockCode(),
-                order.getStock() == null ? null : order.getStock().getName(),
-                order.getExecutionPrice(),
-                order.getQuantity(),
-                order.getTotalExecutionAmount(),
-                order.getExecutedAt()
+                profitRate
         );
     }
 
@@ -238,6 +208,9 @@ public class VerifiedOperationQueryService {
 
     private record AccountEvaluation(
             BigDecimal totalEvaluationAmount,
+            BigDecimal investmentProfitAmount,
+            BigDecimal investmentProfitRate,
+            BigDecimal totalAsset,
             BigDecimal totalProfitAmount,
             BigDecimal totalProfitRate
     ) {

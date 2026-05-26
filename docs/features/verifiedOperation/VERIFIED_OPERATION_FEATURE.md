@@ -180,10 +180,27 @@ GET /api/verified-operations/hojumoney/accounts
       ],
       "totalPurchaseAmount": 200000.0000,
       "totalEvaluationAmount": 210000.0000,
+      "investmentProfitAmount": 10000.0000,
+      "investmentProfitRate": 5.0000,
+      "totalAsset": 10010000.0000,
       "totalProfitAmount": 10000.0000,
-      "totalProfitRate": 5.0000,
+      "totalProfitRate": 0.1000,
       "holdingStockCount": 2,
-      "lastTradedAt": "2026-05-26T09:15:00"
+      "lastTradedAt": "2026-05-26T09:15:00",
+      "holdings": [
+        {
+          "stockId": 1,
+          "stockCode": "005930",
+          "stockName": "삼성전자",
+          "sectorName": "반도체",
+          "quantity": 1,
+          "averagePurchasePrice": 70000.0000,
+          "currentPrice": 72800.0000,
+          "evaluationAmount": 72800.0000,
+          "profitAmount": 2800.0000,
+          "profitRate": 4.0000
+        }
+      ]
     }
   ]
 }
@@ -202,41 +219,44 @@ GET /api/verified-operations/master-choice/masters/{masterCode}/account
 ```json
 {
   "operationDescription": "2026년 5월 26일부터 매일 추천 종목 1종목을 1주 매수하는 모의 운용 계정이에요. 추천 로직의 신뢰성을 확인해볼 수 있어요.",
-  "accountCode": "MASTER_WARREN_BUFFETT",
-  "accountName": "모의 운용 계정 (워런 버핏)",
-  "type": "MASTER_CHOICE",
-  "usedConditions": [
-    {
-      "code": "BUFFETT_ROE",
-      "label": "ROE 15% 이상"
-    },
-    {
-      "code": "BUFFETT_PER",
-      "label": "PER 0배 초과 15배 이하"
-    }
-  ],
-  "totalPurchaseAmount": 150000.0000,
-  "totalEvaluationAmount": 156000.0000,
-  "totalProfitAmount": 6000.0000,
-  "totalProfitRate": 4.0000,
-  "holdingStockCount": 2,
-  "lastTradedAt": "2026-05-26T09:15:00",
-  "holdings": [
-    {
-      "stockId": 1,
-      "stockCode": "005930",
-      "stockName": "삼성전자",
-      "sectorName": "반도체",
-      "quantity": 1,
-      "averagePurchasePrice": 70000.0000,
-      "currentPrice": 72800.0000,
-      "evaluationAmount": 72800.0000,
-      "profitAmount": 2800.0000,
-      "profitRate": 4.0000,
-      "changeRate": 1.2300
-    }
-  ],
-  "recentOrders": []
+  "account": {
+    "accountCode": "MASTER_WARREN_BUFFETT",
+    "accountName": "모의 운용 계정 (워런 버핏)",
+    "type": "MASTER_CHOICE",
+    "usedConditions": [
+      {
+        "code": "BUFFETT_ROE",
+        "label": "ROE 15% 이상"
+      },
+      {
+        "code": "BUFFETT_PER",
+        "label": "PER 0배 초과 15배 이하"
+      }
+    ],
+    "totalPurchaseAmount": 150000.0000,
+    "totalEvaluationAmount": 156000.0000,
+    "investmentProfitAmount": 6000.0000,
+    "investmentProfitRate": 4.0000,
+    "totalAsset": 10006000.0000,
+    "totalProfitAmount": 6000.0000,
+    "totalProfitRate": 0.0600,
+    "holdingStockCount": 2,
+    "lastTradedAt": "2026-05-26T09:15:00",
+    "holdings": [
+      {
+        "stockId": 1,
+        "stockCode": "005930",
+        "stockName": "삼성전자",
+        "sectorName": "반도체",
+        "quantity": 1,
+        "averagePurchasePrice": 70000.0000,
+        "currentPrice": 72800.0000,
+        "evaluationAmount": 72800.0000,
+        "profitAmount": 2800.0000,
+        "profitRate": 4.0000
+      }
+    ]
+  }
 }
 ```
 
@@ -244,13 +264,16 @@ GET /api/verified-operations/master-choice/masters/{masterCode}/account
 
 ## 9. 수익률 계산
 
-운용 계정 API의 계정 성과는 실제 투입된 총 매수 금액 대비 현재 평가 금액 기준으로 계산한다.
+운용 계정 API는 두 가지 성과 지표를 함께 제공한다.
 
 1. 보유 종목별 현재가를 `StockCurrentPriceService`로 조회한다.
 2. 현재가가 없는 종목의 평가 금액은 0으로 계산한다.
 3. 총 평가 금액 = 보유 종목별 `현재가 * 보유 수량` 합계
-4. 총 손익 = 총 평가 금액 - 총 매수 금액
-5. 총 수익률 = `총 손익 / 총 매수 금액 * 100`
-6. 총 매수 금액이 0이면 총 수익률은 0으로 반환한다.
+4. 투자 손익 = 총 평가 금액 - 총 매수 금액
+5. 투자 수익률 = `투자 손익 / 총 매수 금액 * 100`
+6. 총 자산 = 예수금 + 총 평가 금액
+7. 총 손익 = 총 자산 - 초기 자본금
+8. 총 수익률 = `총 손익 / 초기 자본금 * 100`
+9. 총 매수 금액이 0이면 투자 수익률은 0으로 반환한다.
 
 보유 종목별 수익률은 기존 모의투자 보유 종목 조회와 동일하게 해당 종목의 매수 금액 대비 평가 손익률로 계산한다.
