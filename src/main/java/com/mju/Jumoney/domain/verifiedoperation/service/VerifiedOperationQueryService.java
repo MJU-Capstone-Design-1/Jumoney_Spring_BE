@@ -1,6 +1,7 @@
 package com.mju.Jumoney.domain.verifiedoperation.service;
 
 import com.mju.Jumoney.domain.hojumoney.enums.SurveyLogicCode;
+import com.mju.Jumoney.domain.master.enums.MasterCode;
 import com.mju.Jumoney.domain.master.enums.MasterOptionLogicCode;
 import com.mju.Jumoney.domain.mockinvestment.domain.Account;
 import com.mju.Jumoney.domain.mockinvestment.domain.Order;
@@ -36,6 +37,8 @@ import java.util.Map;
 public class VerifiedOperationQueryService {
 
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    private static final String OPERATION_DESCRIPTION =
+            "2026년 5월 26일부터 매일 추천 종목 1종목을 1주 매수하는 모의 운용 계정이에요. 추천 로직의 신뢰성을 확인해볼 수 있어요.";
     private static final int PROFIT_RATE_DIVIDE_SCALE = 6;
     private static final int PROFIT_RATE_DISPLAY_SCALE = 4;
     private static final int RECENT_ORDER_LIMIT = 20;
@@ -47,15 +50,24 @@ public class VerifiedOperationQueryService {
     private final OrderRepository orderRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
 
-    public VerifiedOperationAccountSummaryResponse getAccounts() {
+    public VerifiedOperationAccountSummaryResponse getHojumoneyAccounts() {
         List<VerifiedOperationAccountSummaryResponse.AccountSummary> accounts = configService.getAccounts().stream()
+                .filter(config -> config.type() == VerifiedOperationAccountType.HOJUMONEY)
                 .map(this::toSummary)
                 .toList();
-        return new VerifiedOperationAccountSummaryResponse(accounts);
+        return new VerifiedOperationAccountSummaryResponse(OPERATION_DESCRIPTION, accounts);
     }
 
-    public VerifiedOperationAccountDetailResponse getAccount(String accountCode) {
-        VerifiedOperationAccountConfig config = configService.getAccount(accountCode);
+    public VerifiedOperationAccountDetailResponse getMasterChoiceAccount(MasterCode masterCode) {
+        VerifiedOperationAccountConfig config = configService.getAccounts().stream()
+                .filter(account -> account.type() == VerifiedOperationAccountType.MASTER_CHOICE)
+                .filter(account -> account.masterCode() == masterCode)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown master operation account: " + masterCode));
+        return toDetail(config);
+    }
+
+    private VerifiedOperationAccountDetailResponse toDetail(VerifiedOperationAccountConfig config) {
         Account account = findAccount(config);
         List<Portfolio> portfolios = portfolioRepository.findByAccountIdOrderByUpdatedAtDesc(account.getId());
         Map<String, StockCurrentPriceSnapshot> currentPrices = getCurrentPrices(portfolios);
@@ -72,15 +84,13 @@ public class VerifiedOperationQueryService {
                 .toList();
 
         return new VerifiedOperationAccountDetailResponse(
+                OPERATION_DESCRIPTION,
                 config.accountCode(),
                 config.accountName(),
                 config.type(),
                 conditions(config),
-                account.getSeedMoney(),
-                account.getCashBalance(),
                 account.getTotalPurchaseAmount(),
                 evaluation.totalEvaluationAmount(),
-                evaluation.totalAsset(),
                 evaluation.totalProfitAmount(),
                 evaluation.totalProfitRate(),
                 portfolios.size(),
@@ -99,7 +109,8 @@ public class VerifiedOperationQueryService {
                 config.accountName(),
                 config.type(),
                 conditions(config),
-                evaluation.totalAsset(),
+                account.getTotalPurchaseAmount(),
+                evaluation.totalEvaluationAmount(),
                 evaluation.totalProfitAmount(),
                 evaluation.totalProfitRate(),
                 portfolios.size(),
@@ -151,10 +162,9 @@ public class VerifiedOperationQueryService {
         BigDecimal totalEvaluationAmount = portfolios.stream()
                 .map(portfolio -> evaluationAmount(portfolio, currentPrices.get(portfolio.getStock().getStockCode())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalAsset = account.getCashBalance().add(totalEvaluationAmount);
-        BigDecimal totalProfitAmount = totalAsset.subtract(account.getSeedMoney());
-        BigDecimal totalProfitRate = calculateProfitRate(totalProfitAmount, account.getSeedMoney());
-        return new AccountEvaluation(totalEvaluationAmount, totalAsset, totalProfitAmount, totalProfitRate);
+        BigDecimal totalProfitAmount = totalEvaluationAmount.subtract(account.getTotalPurchaseAmount());
+        BigDecimal totalProfitRate = calculateProfitRate(totalProfitAmount, account.getTotalPurchaseAmount());
+        return new AccountEvaluation(totalEvaluationAmount, totalProfitAmount, totalProfitRate);
     }
 
     private BigDecimal evaluationAmount(Portfolio portfolio, StockCurrentPriceSnapshot currentPriceSnapshot) {
@@ -228,7 +238,6 @@ public class VerifiedOperationQueryService {
 
     private record AccountEvaluation(
             BigDecimal totalEvaluationAmount,
-            BigDecimal totalAsset,
             BigDecimal totalProfitAmount,
             BigDecimal totalProfitRate
     ) {

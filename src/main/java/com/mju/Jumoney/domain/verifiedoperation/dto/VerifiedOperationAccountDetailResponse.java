@@ -9,15 +9,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record VerifiedOperationAccountDetailResponse(
+        String operationDescription,
         String accountCode,
         String accountName,
         VerifiedOperationAccountType type,
-        List<VerifiedOperationAccountSummaryResponse.ConditionResponse> conditions,
-        BigDecimal seedMoney,
-        BigDecimal cashBalance,
+        List<VerifiedOperationAccountSummaryResponse.ConditionResponse> usedConditions,
         BigDecimal totalPurchaseAmount,
         BigDecimal totalEvaluationAmount,
-        BigDecimal totalAsset,
         BigDecimal totalProfitAmount,
         BigDecimal totalProfitRate,
         Integer holdingStockCount,

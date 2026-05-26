@@ -10,6 +10,7 @@
 - **운용 방식**: 배포 DB에 8개 시스템 계정을 자동 생성하고, 각 계정이 정해진 추천 조건으로 매 영업일 1주씩 거래한다.
 - **기반 기능**: 기존 모의투자 `Account`, `Portfolio`, `Order`를 그대로 사용한다.
 - **계정 소유자**: `provider = LOCAL`, `providerId = verified-operation:{accountCode}` 형식의 시스템 User를 사용한다.
+- **랭킹 제외 기준**: User의 `verifiedOperationAccount = true` 필드로 모의 운용 계정을 식별한다.
 
 ---
 
@@ -22,8 +23,9 @@
     2. `provider = LOCAL`, `providerId = verified-operation:{accountCode}` 기준으로 User를 조회한다.
     3. User가 없으면 새로 생성한다.
     4. User가 있으면 `nickname`, `serviceNickname`을 JSON의 계정명으로 갱신한다.
-    5. 해당 User의 모의투자 계좌가 없으면 기존 `MockInvestmentAccountService`와 동일하게 10,000,000원 계좌와 `DEPOSIT` 주문을 생성한다.
-    6. 이미 존재하는 계좌, 보유 종목, 주문 이력은 삭제하거나 초기화하지 않는다.
+    5. User의 `verifiedOperationAccount`를 `true`로 갱신한다.
+    6. 해당 User의 모의투자 계좌가 없으면 기존 `MockInvestmentAccountService`와 동일하게 10,000,000원 계좌와 `DEPOSIT` 주문을 생성한다.
+    7. 이미 존재하는 계좌, 보유 종목, 주문 이력은 삭제하거나 초기화하지 않는다.
 
 ---
 
@@ -129,26 +131,40 @@ verified-operation:
 
 ---
 
-## 7. API
+## 7. 개발자용 로그인
+
+모의 운용 계정은 일반 User로 생성되므로 개발자용 로그인 API로 토큰을 발급받을 수 있다.
+
+```http
+POST /api/auth/dev/login?nickname=모의 운용 계정 (워런 버핏)
+```
+
+- `nickname`은 `verified_operation_accounts.json`의 계정명을 사용한다.
+- 계정 초기화가 완료된 후 사용할 수 있다.
+
+---
+
+## 8. API
 
 모든 API는 로그인된 사용자만 호출할 수 있다.
 
-### 7.1. 계정 목록 조회
+### 8.1. 오늘의 호주머니 모의 운용 계정 목록 조회
 
 ```http
-GET /api/verified-operations/accounts
+GET /api/verified-operations/hojumoney/accounts
 ```
 
 #### Response Data
 
 ```json
 {
+  "operationDescription": "2026년 5월 26일부터 매일 추천 종목 1종목을 1주 매수하는 모의 운용 계정이에요. 추천 로직의 신뢰성을 확인해볼 수 있어요.",
   "accounts": [
     {
       "accountCode": "HOJUMONEY_CAPITAL_GAIN_AGGRESSIVE_SHORT",
       "accountName": "모의 운용 계정 (시세 차익 + 매우 높음 + 단기)",
       "type": "HOJUMONEY",
-      "conditions": [
+      "usedConditions": [
         {
           "code": "CAPITAL_GAIN",
           "label": "시세 차익"
@@ -162,30 +178,34 @@ GET /api/verified-operations/accounts
           "label": "단기(1주일)"
         }
       ],
-      "totalAsset": 10000000.0000,
-      "totalProfitAmount": 0.0000,
-      "totalProfitRate": 0.0000,
-      "holdingStockCount": 0,
-      "lastTradedAt": null
+      "totalPurchaseAmount": 200000.0000,
+      "totalEvaluationAmount": 210000.0000,
+      "totalProfitAmount": 10000.0000,
+      "totalProfitRate": 5.0000,
+      "holdingStockCount": 2,
+      "lastTradedAt": "2026-05-26T09:15:00"
     }
   ]
 }
 ```
 
-### 7.2. 단일 계정 상세 조회
+### 8.2. 거장의 선택 모의 운용 계정 조회
 
 ```http
-GET /api/verified-operations/accounts/{accountCode}
+GET /api/verified-operations/master-choice/masters/{masterCode}/account
 ```
+
+`masterCode`는 `WARREN_BUFFETT`, `PETER_LYNCH`, `RAY_DALIO`, `WILLIAM_ONEIL` 중 하나다.
 
 #### Response Data
 
 ```json
 {
+  "operationDescription": "2026년 5월 26일부터 매일 추천 종목 1종목을 1주 매수하는 모의 운용 계정이에요. 추천 로직의 신뢰성을 확인해볼 수 있어요.",
   "accountCode": "MASTER_WARREN_BUFFETT",
   "accountName": "모의 운용 계정 (워런 버핏)",
   "type": "MASTER_CHOICE",
-  "conditions": [
+  "usedConditions": [
     {
       "code": "BUFFETT_ROE",
       "label": "ROE 15% 이상"
@@ -195,29 +215,42 @@ GET /api/verified-operations/accounts/{accountCode}
       "label": "PER 0배 초과 15배 이하"
     }
   ],
-  "seedMoney": 10000000.0000,
-  "cashBalance": 10000000.0000,
-  "totalPurchaseAmount": 0.0000,
-  "totalEvaluationAmount": 0.0000,
-  "totalAsset": 10000000.0000,
-  "totalProfitAmount": 0.0000,
-  "totalProfitRate": 0.0000,
-  "holdingStockCount": 0,
-  "lastTradedAt": null,
-  "holdings": [],
+  "totalPurchaseAmount": 150000.0000,
+  "totalEvaluationAmount": 156000.0000,
+  "totalProfitAmount": 6000.0000,
+  "totalProfitRate": 4.0000,
+  "holdingStockCount": 2,
+  "lastTradedAt": "2026-05-26T09:15:00",
+  "holdings": [
+    {
+      "stockId": 1,
+      "stockCode": "005930",
+      "stockName": "삼성전자",
+      "sectorName": "반도체",
+      "quantity": 1,
+      "averagePurchasePrice": 70000.0000,
+      "currentPrice": 72800.0000,
+      "evaluationAmount": 72800.0000,
+      "profitAmount": 2800.0000,
+      "profitRate": 4.0000,
+      "changeRate": 1.2300
+    }
+  ],
   "recentOrders": []
 }
 ```
 
 ---
 
-## 8. 수익률 계산
+## 9. 수익률 계산
 
-운용 계정 API의 평가 방식은 기존 모의투자 조회 로직과 동일한 기준을 따른다.
+운용 계정 API의 계정 성과는 실제 투입된 총 매수 금액 대비 현재 평가 금액 기준으로 계산한다.
 
 1. 보유 종목별 현재가를 `StockCurrentPriceService`로 조회한다.
 2. 현재가가 없는 종목의 평가 금액은 0으로 계산한다.
 3. 총 평가 금액 = 보유 종목별 `현재가 * 보유 수량` 합계
-4. 총 자산 = 예수금 + 총 평가 금액
-5. 총 손익 = 총 자산 - 초기 자본금
-6. 총 수익률 = `총 손익 / 초기 자본금 * 100`
+4. 총 손익 = 총 평가 금액 - 총 매수 금액
+5. 총 수익률 = `총 손익 / 총 매수 금액 * 100`
+6. 총 매수 금액이 0이면 총 수익률은 0으로 반환한다.
+
+보유 종목별 수익률은 기존 모의투자 보유 종목 조회와 동일하게 해당 종목의 매수 금액 대비 평가 손익률로 계산한다.

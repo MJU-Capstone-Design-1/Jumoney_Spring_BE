@@ -51,6 +51,9 @@ public class User extends BaseSoftDeleteEntity {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    @Column(name = "verified_operation_account", nullable = false)
+    private boolean verifiedOperationAccount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "selected_master_id")
     private Master selectedMaster;
@@ -68,6 +71,10 @@ public class User extends BaseSoftDeleteEntity {
         this.selectedMaster = selectedMaster;
     }
 
+    public void markAsVerifiedOperationAccount() {
+        this.verifiedOperationAccount = true;
+    }
+
     // OAuth2 로그인용 정적 팩토리 메서드
     public static User of(AuthProvider provider, String providerId, String nickname) {
         return User.builder()
@@ -75,6 +82,7 @@ public class User extends BaseSoftDeleteEntity {
                 .providerId(providerId)
                 .nickname(nickname)
                 .role(Role.USER)
+                .verifiedOperationAccount(false)
                 .build();
     }
 }

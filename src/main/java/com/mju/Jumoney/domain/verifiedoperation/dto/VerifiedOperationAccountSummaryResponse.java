@@ -7,14 +7,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record VerifiedOperationAccountSummaryResponse(
+        String operationDescription,
         List<AccountSummary> accounts
 ) {
     public record AccountSummary(
             String accountCode,
             String accountName,
             VerifiedOperationAccountType type,
-            List<ConditionResponse> conditions,
-            BigDecimal totalAsset,
+            List<ConditionResponse> usedConditions,
+            BigDecimal totalPurchaseAmount,
+            BigDecimal totalEvaluationAmount,
             BigDecimal totalProfitAmount,
             BigDecimal totalProfitRate,
             Integer holdingStockCount,

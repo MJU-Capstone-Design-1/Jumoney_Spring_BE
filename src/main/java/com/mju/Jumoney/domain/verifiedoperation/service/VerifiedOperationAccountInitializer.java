@@ -35,11 +35,13 @@ public class VerifiedOperationAccountInitializer {
                 .map(user -> {
                     user.updateNickname(config.accountName());
                     user.updateServiceNickname(config.accountName());
+                    user.markAsVerifiedOperationAccount();
                     return user;
                 })
                 .orElseGet(() -> {
                     User user = User.of(AuthProvider.LOCAL, config.providerId(), config.accountName());
                     user.updateServiceNickname(config.accountName());
+                    user.markAsVerifiedOperationAccount();
                     return userRepository.save(user);
                 });
     }
