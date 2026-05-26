@@ -33,7 +33,7 @@ public class RealtimeRedisSmokeController {
                     사용 목적:
                     - SSH 터널/비밀번호/포트 설정이 정상인지 확인
                     - Node 서버가 최신 종목 스냅샷을 적재했는지 확인
-                    - 추천 API가 사용할 현재가, 등락률, 체결강도 원천값 확인
+                    - Spring 현재가 fallback 전에 사용할 Redis 현재가/등락률 원천값 확인
                     
                     대표 key:
                     - stock:latest:005930

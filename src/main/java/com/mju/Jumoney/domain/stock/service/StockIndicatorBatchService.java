@@ -3,6 +3,7 @@ package com.mju.Jumoney.domain.stock.service;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.exception.StockErrorCode;
 import com.mju.Jumoney.domain.stock.exception.StockIndicatorBatchException;
+import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.global.client.kis.core.KisApiClient;
 import com.mju.Jumoney.global.client.kis.dto.dividend.KisDividendMetrics;
@@ -15,18 +16,24 @@ import com.mju.Jumoney.global.client.kis.dto.trading.KisInvestorTradeDailyMetric
 import com.mju.Jumoney.global.client.kis.enums.KisFinancialPeriod;
 import com.mju.Jumoney.global.batch.BatchBaseDateResolver;
 import com.mju.Jumoney.global.exception.CustomException;
+import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
+import com.mju.Jumoney.global.realtime.StockRealtimeSnapshot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -37,11 +44,17 @@ public class StockIndicatorBatchService {
     private static final BigDecimal PERCENT = BigDecimal.valueOf(100);
     private static final int RATIO_SCALE = 4;
     private static final int INVESTOR_TRADE_DAYS = 20;
+    private static final String REALTIME_STOCK_LATEST_KEY_PREFIX = "stock:latest:";
 
     private final StockRepository stockRepository;
+    private final StockIndicatorRepository stockIndicatorRepository;
     private final KisApiClient kisApiClient;
     private final StockIndicatorPersistenceService stockIndicatorPersistenceService;
     private final BatchBaseDateResolver batchBaseDateResolver;
+    private final RealtimeRedisReader realtimeRedisReader;
+
+    @Value("${kis.batch.zone-id:Asia/Seoul}")
+    private String zoneId;
 
     // Stock 테이블의 전체 종목을 순회하며 StockIndicator를 적재합니다.
     // 한 종목이 실패해도 전체 배치를 중단하지 않고 다음 종목을 계속 처리합니다.
@@ -76,6 +89,76 @@ public class StockIndicatorBatchService {
         Stock stock = stockRepository.findById(stockId)
                 .orElseThrow(() -> new CustomException(StockErrorCode.STOCK_NOT_FOUND));
         sync(stock, baseDate, toBaseTime(baseDate));
+    }
+
+    public StockIndicatorExecutionStrengthSyncResult syncExecutionStrengths(LocalDate baseDate) {
+        batchBaseDateResolver.validateStockIndicatorManualBaseDate(baseDate);
+
+        String baseTime = stockIndicatorRepository.findLatestBaseTime()
+                .orElseThrow(() -> new IllegalStateException("체결강도 보정 대상 종목 지표 기준월이 없습니다."));
+        int successCount = 0;
+        int failureCount = 0;
+        int skippedCount = 0;
+
+        List<Stock> stocks = stockRepository.findAll();
+        for (Stock stock : stocks) {
+            try {
+                BigDecimal executionStrength = getCloseExecutionStrengthFromRedis(stock, baseDate)
+                        .orElse(null);
+                if (executionStrength == null) {
+                    skippedCount++;
+                    log.warn("[StockIndicatorBatch] 체결강도 보정 스킵: Redis 장마감 체결강도 없음. stockCode={}, stockName={}, baseDate={}",
+                            stock.getStockCode(), stock.getName(), baseDate);
+                    continue;
+                }
+
+                boolean updated = stockIndicatorPersistenceService.updateExecutionStrength(stock, baseTime, executionStrength);
+                if (updated) {
+                    successCount++;
+                } else {
+                    skippedCount++;
+                    log.warn("[StockIndicatorBatch] 체결강도 보정 스킵: 기존 지표 행 없음. stockCode={}, stockName={}, baseTime={}",
+                            stock.getStockCode(), stock.getName(), baseTime);
+                }
+            } catch (Exception e) {
+                failureCount++;
+                log.warn("[StockIndicatorBatch] 체결강도 보정 실패: stockCode={}, stockName={}, baseTime={}, error={}",
+                        stock.getStockCode(), stock.getName(), baseTime, e.getMessage());
+            }
+        }
+
+        log.info("[StockIndicatorBatch] 체결강도 보정 완료: baseDate={}, baseTime={}, totalCount={}, successCount={}, failureCount={}, skippedCount={}",
+                baseDate, baseTime, stocks.size(), successCount, failureCount, skippedCount);
+        return new StockIndicatorExecutionStrengthSyncResult(
+                baseDate,
+                baseTime,
+                stocks.size(),
+                successCount,
+                failureCount,
+                skippedCount
+        );
+    }
+
+    private Optional<BigDecimal> getCloseExecutionStrengthFromRedis(Stock stock, LocalDate baseDate) {
+        return realtimeRedisReader.get(realtimeKey(stock.getStockCode()), StockRealtimeSnapshot.class)
+                .filter(snapshot -> isSameTradingDate(snapshot, baseDate))
+                .map(StockRealtimeSnapshot::strength)
+                .filter(Objects::nonNull);
+    }
+
+    private boolean isSameTradingDate(StockRealtimeSnapshot snapshot, LocalDate baseDate) {
+        if (snapshot.minuteTs() == null) {
+            return false;
+        }
+
+        LocalDate snapshotDate = Instant.ofEpochMilli(snapshot.minuteTs())
+                .atZone(ZoneId.of(zoneId))
+                .toLocalDate();
+        return baseDate.equals(snapshotDate);
+    }
+
+    private String realtimeKey(String stockCode) {
+        return REALTIME_STOCK_LATEST_KEY_PREFIX + stockCode;
     }
 
     // 한 종목에 대해 KIS API를 호출합니다.
@@ -314,6 +397,16 @@ public class StockIndicatorBatchService {
             int totalCount,
             int successCount,
             int failureCount
+    ) {
+    }
+
+    public record StockIndicatorExecutionStrengthSyncResult(
+            LocalDate baseDate,
+            String baseTime,
+            int totalCount,
+            int successCount,
+            int failureCount,
+            int skippedCount
     ) {
     }
 }

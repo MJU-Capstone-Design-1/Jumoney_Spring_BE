@@ -35,6 +35,8 @@ kis:
       enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}
       today-available-after: "15:40"
       cron: "0 0 6 * * TUE-SAT"
+      execution-strength-close-enabled: ${KIS_EXECUTION_STRENGTH_CLOSE_SCHEDULER_ENABLED:${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}}
+      execution-strength-close-cron: "0 45 15 * * MON-FRI"
     hts-condition:
       enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:false}
       cron: "0 30 6 * * TUE-SAT"

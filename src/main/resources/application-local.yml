@@ -36,6 +36,7 @@ kis:
   batch:
     stock-indicator:
       enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}
+      execution-strength-close-enabled: ${KIS_EXECUTION_STRENGTH_CLOSE_SCHEDULER_ENABLED:false}
     hts-condition:
       enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:false}
     minute-candle:

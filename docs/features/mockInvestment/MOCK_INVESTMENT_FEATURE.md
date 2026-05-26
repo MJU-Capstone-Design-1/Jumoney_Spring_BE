@@ -181,7 +181,7 @@ GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
       "lowPrice": 73600,
       "closePrice": 73800,
       "volume": 32000,
-      "tradeAmount": null,
+      "tradeAmount": 2361600000,
       "isFinal": false
     }
   ]

@@ -71,6 +71,18 @@ public class StockIndicatorPersistenceService {
         );
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean updateExecutionStrength(Stock stock, String baseTime, BigDecimal executionStrength) {
+        StockIndicator existing = stockIndicatorRepository.findByStockAndBaseTime(stock, baseTime)
+                .orElse(null);
+        if (existing == null) {
+            return false;
+        }
+
+        existing.updateExecutionStrength(executionStrength);
+        return true;
+    }
+
     public record StockIndicatorMetrics(
             Stock stock,
             String baseTime,

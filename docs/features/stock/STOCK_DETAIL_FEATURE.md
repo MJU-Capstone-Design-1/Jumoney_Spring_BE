@@ -77,7 +77,7 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
       "lowPrice": 73600,
       "closePrice": 73800,
       "volume": 32000,
-      "tradeAmount": null,
+      "tradeAmount": 2361600000,
       "isFinal": false
     }
   ]
@@ -94,7 +94,7 @@ Spring 차트 API는 호출 시점까지의 초기 차트 스냅샷을 반환한
 | `lowPrice`    | 저가                                                |
 | `closePrice`  | 종가                                                |
 | `volume`      | 거래량                                               |
-| `tradeAmount` | 거래대금. KIS 응답에 없거나 초기 구현에서 제외하면 `null` 허용          |
+| `tradeAmount` | 거래대금. Redis/KIS 원천에 값이 없던 과거 데이터는 `null` 허용          |
 | `isFinal`     | DB/KIS 확정 캔들은 `true`, Redis 기반 미확정 분봉은 `false`    |
 
 ---
@@ -166,7 +166,7 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
     "lowPrice": 73600,
     "closePrice": 73800,
     "volume": 32000,
-    "tradeAmount": null,
+    "tradeAmount": 2361600000,
     "isFinal": false
   }
 }
@@ -202,6 +202,7 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
   "low": 70850,
   "close": 71000,
   "volume": 12500,
+  "tradeAmount": 8875000000,
   "change": 500,
   "rate": 0.71,
   "strength": 105.3
@@ -212,6 +213,8 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 
 - Redis raw payload는 DB/API 캔들 DTO의 `candleTime`, `openPrice`, `closePrice`, `isFinal` 구조와 다르다.
 - Spring 차트 병합 시 `minuteTs -> candleTime`, `open -> openPrice`, `close -> closePrice` 등 별도 매핑이 필요하다.
+- Redis raw `tradeAmount`는 Spring 차트 응답의 `tradeAmount`로 전달한다. `ONE_WEEK`의 장중 진행 30분봉은 Redis 1분봉들의 `tradeAmount`를 합산한다.
+- Redis raw `strength`는 오늘의 호주머니 초단기 추천 정렬에서 freshness 조건을 만족할 때 우선 사용한다. 모의투자 상세의 공개 체결강도(`investmentMetrics.executionStrength`)는 DB `StockIndicator.executionStrength`를 사용한다.
 - Redis 분봉은 미확정 실시간용이므로 `isFinal=false`는 저장값으로 존재하지 않고, 병합 단계에서 애플리케이션이 부여하는 개념으로 본다.
 
 ---
