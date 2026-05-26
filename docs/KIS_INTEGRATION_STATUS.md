@@ -11,7 +11,7 @@
 - `global.client.kis.dto.dividend`: 배당일정 DTO
 - `global.client.kis.dto.trading`: 신용잔고, 투자자매매동향 DTO
 - `global.client.kis.enums`: KIS 요청 옵션 enum
-- `global.client.kis.smoke`: local 프로필 전용 KIS 연동 검증 API
+- `global.client.kis.smoke`: KIS 연동 검증 및 운영 수동 관리 API
 
 ## Active REST APIs
 
@@ -143,8 +143,8 @@
 
 ## Realtime Integration Contract
 
-| Source                                   | Usage                                           |
-|------------------------------------------|-------------------------------------------------|
+| Source                                   | Usage                                                                   |
+|------------------------------------------|-------------------------------------------------------------------------|
 | Node Redis `stock:latest:{code}`         | 현재 진행 중인 최신 1분 분봉 1개 조회. 현재가/등락률 표시, 초단기 추천 체결강도, 장마감 DB 보정, 초기 스냅샷에 사용 |
-| Node Redis `stock:minute-candles:{code}` | 최근 40분 미확정 1분봉 조회. 분봉 차트 병합에 사용                 |
-| Spring REST `FHKST01010300`              | 06:00 전체 지표 배치의 초기 체결강도 저장에 사용. 사용자 요청/장마감 보정 중 직접 fallback 호출 없음 |
+| Node Redis `stock:minute-candles:{code}` | 최근 40분 미확정 1분봉 조회. 분봉 차트 병합에 사용                                         |
+| Spring REST `FHKST01010300`              | 06:00 전체 지표 배치의 초기 체결강도 저장에 사용. 사용자 요청/장마감 보정 중 직접 fallback 호출 없음       |

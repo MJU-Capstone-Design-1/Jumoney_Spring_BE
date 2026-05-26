@@ -143,6 +143,8 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 - KIS가 제공하는 당일 분봉을 `stock_candles(interval_type=MINUTE)`에 upsert한다.
 - 요청 시각 기준 최근 2분은 확정 저장 대상에서 제외하고, 그 값을 정각/30분 단위로 내린 시각까지만 저장한다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
+- KRX 장마감 동시호가 구간인 `15:20~15:29`는 체결이 없으므로, DB 확정 분봉 저장 시 `15:19` 종가를 기준으로 `volume=0` 1분봉을 보강한다.
+- `15:30`은 장마감 단일가 체결 봉으로 별도 저장한다.
 - `ONE_DAY` 차트 API는 DB 확정 분봉에 오늘 날짜일 때만 Redis 미확정 분봉을 병합한다.
 - `1주` 차트를 위해 확정 30분봉을 1분봉 동기화 시 함께 집계 저장한다.
 - 장중 `1주` 차트의 마지막 진행 중 30분봉은 Redis 실시간 분봉에서 즉석 집계해 응답에 병합한다.
@@ -228,15 +230,15 @@ KIS REST로 다시 받은 같은 캔들은 upsert한다. KIS 값을 확정 데�
 차트 기간 기준 수동 적재 API:
 
 ```http
-POST /api/local/kis/chart/sync
-POST /api/local/kis/chart/sync?period=ONE_DAY
-POST /api/local/kis/chart/sync?period=ONE_WEEK
-POST /api/local/kis/chart/sync?period=THREE_MONTHS
-POST /api/local/kis/chart/sync?period=ONE_YEAR
-POST /api/local/kis/chart/sync?period=FIVE_YEARS
-POST /api/local/kis/chart/sync?stockCode=005930
-GET /api/local/kis/chart/sync/status?stockCode=005930
-GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
+POST /api/smoke/kis/chart/sync
+POST /api/smoke/kis/chart/sync?period=ONE_DAY
+POST /api/smoke/kis/chart/sync?period=ONE_WEEK
+POST /api/smoke/kis/chart/sync?period=THREE_MONTHS
+POST /api/smoke/kis/chart/sync?period=ONE_YEAR
+POST /api/smoke/kis/chart/sync?period=FIVE_YEARS
+POST /api/smoke/kis/chart/sync?stockCode=005930
+GET /api/smoke/kis/chart/sync/status?stockCode=005930
+GET /api/smoke/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
 ```
 
 `period`를 생략하면 오늘 또는 직전 개장일 기준으로 1일/1주/3달/1년/5년 차트에 필요한 데이터를 모두 동기화한다. `ONE_YEAR`는 `THREE_MONTHS`의 일봉 범위를 포함하므로 전체
@@ -251,11 +253,10 @@ GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
 수동 API:
 
 ```http
-POST /api/local/kis/chart/minute/sync
-POST /api/local/kis/chart/minute/sync?stockCode=005930
-POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22
-POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCode=005930
-GET /api/local/kis/chart/minute/sync/status?stockCode=005930
+POST /api/smoke/kis/chart/minute/sync
+POST /api/smoke/kis/chart/minute/sync?stockCode=005930
+POST /api/smoke/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22
+POST /api/smoke/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCode=005930
 ```
 
 용도:
@@ -269,15 +270,12 @@ GET /api/local/kis/chart/minute/sync/status?stockCode=005930
 - `stockCode`를 지정하면 해당 종목만 실행한다.
 - `stockCode`를 생략하면 등록된 전체 종목을 대상으로 실행한다.
 - KIS `FHKST03010200`은 한 번에 최대 30건만 반환하므로, 수동 동기화는 필요한 정각/30분 입력 시각만 여러 번 호출한다.
-- 과거 영업일은 KIS `FHKST03010230`을 사용하며, 휴장일/주말/미래일은 동기화하지 않는다.
+- 과거 영업일은 KIS `FHKST03010230`을 사용하며, 응답에 다른 날짜 raw가 섞여도 요청한 `tradingDate` 분봉만 저장한다. 휴장일/주말/미래일은 동기화하지 않는다.
 - 종목별로 오늘 저장된 마지막 분봉 다음 시각부터만 증분 동기화한다.
 - 수동 동기화도 스케줄러와 동일하게 정각/30분 단위까지만 `isFinal=true`로 저장한다.
 - 예: `14:20` 실행이면 DB 확정 저장 대상은 `09:00~14:00`이다.
 - 응답의 `kisRequestCount`로 실제 KIS 호출 횟수를 확인한다.
-- 상태 확인 API의 `firstCandleTime`, `lastCandleTime`, `dbExpectedCandleCount`, `candleCount`, `hasExpectedCandleCount`,
-  `coversExpectedRange`로 DB 적재 범위를 검증한다.
-- 상태 확인 API는 `realtimeExpectedStartTime`, `realtimeExpectedEndTime`, `realtimeCheckRequired`를 내려주지만, 현재 Spring은 Redis
-  미확정 분봉을 실제 검증하지 않는다.
+- 차트 상태 확인 API는 Redis 미확정 분봉이 아니라 DB 확정 캔들의 범위와 건수를 검증한다.
 
 ### 장중 분봉 동기화
 
@@ -317,12 +315,12 @@ KIS 요청:
 
 | source        | mapping                                                                                                                                                                                           |
 |---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 30분봉 집계       | 같은 30분 버킷의 1분봉으로 OHLCV 집계                                                                                                                                                                         |
+| 30분봉 집계       | 같은 30분 버킷의 1분봉으로 OHLCV 집계. `15:00` 버킷은 synthetic `15:20~15:29` 분봉을 포함하고, `15:30`은 별도 단일가 체결 봉으로 저장                                                                                                  |
 | KIS `output2` | `stck_bsop_date -> candle_time`, `stck_oprc -> open_price`, `stck_hgpr -> high_price`, `stck_lwpr -> low_price`, `stck_clpr -> close_price`, `acml_vol -> volume`, `acml_tr_pbmn -> trade_amount` |
 
 초기 backfill:
 
-- `POST /api/local/kis/chart/sync`로 전체 차트 기간 또는 특정 차트 기간을 기준으로 전체 종목/단일 종목을 적재한다.
+- `POST /api/smoke/kis/chart/sync`로 전체 차트 기간 또는 특정 차트 기간을 기준으로 전체 종목/단일 종목을 적재한다.
 - `THIRTY_MINUTE`: 1주 차트 제공 범위를 커버할 만큼 최근 영업일 데이터를 집계 저장한다.
 - `DAY`: 최근 1년 이상을 우선 적재한다.
 - `WEEK`: 최근 5년 이상을 우선 적재한다.
@@ -331,10 +329,10 @@ KIS 요청:
 수동 API:
 
 ```http
-POST /api/local/kis/chart/sync
-POST /api/local/kis/chart/sync?period=ONE_WEEK
-POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22
-GET /api/local/kis/chart/sync/status?stockCode=005930
+POST /api/smoke/kis/chart/sync
+POST /api/smoke/kis/chart/sync?period=ONE_WEEK
+POST /api/smoke/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22
+GET /api/smoke/kis/chart/sync/status?stockCode=005930
 ```
 
 정기 동기화:
@@ -355,6 +353,7 @@ GET /api/local/kis/chart/sync/status?stockCode=005930
 ## 6. 정합성 정책
 
 - DB 확정 캔들의 기준은 KIS REST 응답이다.
+- `15:20~15:29` 장마감 동시호가 구간은 체결이 없으므로, Spring이 `15:19` 종가 기준 synthetic 확정 1분봉으로 보강한다.
 - Redis/SSE 미확정 캔들은 표시용이며 DB 확정 캔들을 대체하지 않는다.
 - WebSocket 장애로 Redis/SSE 구간이 비어도 다음 KIS 분봉 동기화에서 DB 확정 캔들이 복구된다.
 - Spring 차트 API와 Node SSE는 `candleTime` 기준을 동일하게 사용한다.

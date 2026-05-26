@@ -51,7 +51,7 @@ public class MockInvestmentController {
         ));
     }
 
-    @Operation(summary = "시장가 매수", description = "호출 시점의 현재가로 주식을 즉시 매수합니다. 장 중(9:00 ~ 15:30)에만 거래가 가능합니다.")
+    @Operation(summary = "시장가 매수", description = "호출 시점의 현재가로 주식을 즉시 매수합니다. 장 중(9:00 ~ 15:20)에만 거래가 가능합니다. 15:20~15:29는 한국 거래소의 장마감 동시호가 제도에 따라 매매가 불가하도록 처리했습니다.")
     @PostMapping("/orders/buy")
     public ResponseEntity<ApiResponse<MockInvestmentOrderResponse>> buy(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
@@ -63,7 +63,7 @@ public class MockInvestmentController {
         ));
     }
 
-    @Operation(summary = "시장가 매도", description = "호출 시점의 현재가로 주식을 즉시 매도합니다. 장 중(9:00 ~ 15:30)에만 거래가 가능합니다.")
+    @Operation(summary = "시장가 매도", description = "호출 시점의 현재가로 주식을 즉시 매도합니다. 장 중(9:00 ~ 15:20)에만 거래가 가능합니다. 15:20~15:29는 한국 거래소의 장마감 동시호가 제도에 따라 매매가 불가하도록 처리했습니다. ")
     @PostMapping("/orders/sell")
     public ResponseEntity<ApiResponse<MockInvestmentOrderResponse>> sell(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
