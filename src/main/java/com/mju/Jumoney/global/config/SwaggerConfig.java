@@ -40,12 +40,12 @@ public class SwaggerConfig {
             LocalDate today = LocalDate.now();
             LocalDate yesterday = today.minusDays(1);
 
-            applyQueryParameterExample(openApi, "/api/local/kis/smoke", HttpMethod.GET, "baseDate", yesterday);
-            applyQueryParameterExample(openApi, "/api/local/kis/smoke", HttpMethod.GET, "dividendFrom", today.minusYears(1));
-            applyQueryParameterExample(openApi, "/api/local/kis/smoke", HttpMethod.GET, "dividendTo", today);
-            applyQueryParameterExample(openApi, "/api/local/kis/batch/hts-conditions", HttpMethod.POST, "baseDate", yesterday);
-            applyQueryParameterExample(openApi, "/api/local/kis/batch/stock-indicators", HttpMethod.POST, "baseDate", yesterday);
-            applyQueryParameterExample(openApi, "/api/local/kis/batch/stock-indicators/status", HttpMethod.GET, "baseDate", yesterday);
+            applyQueryParameterExample(openApi, "/api/smoke/kis/smoke", HttpMethod.GET, "baseDate", yesterday);
+            applyQueryParameterExample(openApi, "/api/smoke/kis/smoke", HttpMethod.GET, "dividendFrom", today.minusYears(1));
+            applyQueryParameterExample(openApi, "/api/smoke/kis/smoke", HttpMethod.GET, "dividendTo", today);
+            applyQueryParameterExample(openApi, "/api/smoke/kis/batch/hts-conditions", HttpMethod.POST, "baseDate", yesterday);
+            applyQueryParameterExample(openApi, "/api/smoke/kis/batch/stock-indicators", HttpMethod.POST, "baseDate", yesterday);
+            applyQueryParameterExample(openApi, "/api/smoke/kis/batch/stock-indicators/status", HttpMethod.GET, "baseDate", yesterday);
         };
     }
 

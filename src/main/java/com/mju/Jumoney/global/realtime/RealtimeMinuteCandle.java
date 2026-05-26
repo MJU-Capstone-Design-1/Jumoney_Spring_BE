@@ -28,7 +28,7 @@ public record RealtimeMinuteCandle(
                 snapshot.low(),
                 snapshot.close(),
                 snapshot.volume(),
-                null,
+                snapshot.tradeAmount(),
                 false
         );
     }

@@ -39,6 +39,9 @@ Node WebSocket 서버는 `src/websocket.ts`에서 실시간 체결을 받아 1�
 - KIS WebSocket 틱(`H0STCNT0`)을 같은 분(`minuteTs`) 기준으로 1분 OHLCV로 집계한다.
 - 동일 분 데이터는 member를 `ZREM` 후 `ZADD`로 교체해 최신 OHLC/volume으로 갱신한다.
 - `volume`은 누적거래량(`vol`)의 분 내 델타 합계다.
+- `tradeAmount`는 해당 분 거래대금이다.
+- `strength`는 숫자 체결강도다. Spring은 오늘의 호주머니 초단기 추천 정렬에서 freshness 조건을 만족하는 Redis raw `strength`를 우선 사용하고, 없으면 DB
+  `StockIndicator.executionStrength`로 fallback한다. 장마감 후에는 같은 거래일의 Redis raw `strength`로 최신 기존 지표 행의 DB fallback 값을 보정한다.
 
 ```json
 {
@@ -49,6 +52,7 @@ Node WebSocket 서버는 `src/websocket.ts`에서 실시간 체결을 받아 1�
   "low": 70850,
   "close": 71000,
   "volume": 12500,
+  "tradeAmount": 8875000000,
   "change": 500,
   "rate": 0.71,
   "strength": 105.3
@@ -64,6 +68,7 @@ Node WebSocket 서버는 `src/websocket.ts`에서 실시간 체결을 받아 1�
 | `low`      | number | 해당 분 최저가         |
 | `close`    | number | 해당 분 최신 체결가      |
 | `volume`   | number | 해당 분 체결량         |
+| `tradeAmount` | number | 해당 분 거래대금        |
 | `change`   | number | 전일 대비            |
 | `rate`     | number | 등락률(%)           |
 | `strength` | number | 체결강도             |

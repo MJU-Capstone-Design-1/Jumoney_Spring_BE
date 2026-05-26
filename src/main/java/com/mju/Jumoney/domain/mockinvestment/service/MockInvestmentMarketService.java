@@ -21,7 +21,7 @@ public class MockInvestmentMarketService {
     public MockInvestmentMarketService(
             @Value("${mock-investment.market.zone-id:Asia/Seoul}") String zoneId,
             @Value("${mock-investment.market.order-start-time:09:00}") String orderStartTime,
-            @Value("${mock-investment.market.order-end-time:15:30}") String orderEndTime,
+            @Value("${mock-investment.market.order-end-time:15:20}") String orderEndTime,
             MarketCalendarService marketCalendarService
     ) {
         this.zoneId = ZoneId.of(zoneId);

@@ -20,13 +20,17 @@ import com.mju.Jumoney.domain.stock.repository.HtsStockRepository;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.service.StockCurrentPriceService;
 import com.mju.Jumoney.global.exception.CustomException;
+import com.mju.Jumoney.global.realtime.RealtimeRedisReader;
+import com.mju.Jumoney.global.realtime.StockRealtimeSnapshot;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,6 +38,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -44,6 +50,7 @@ public class HojumoneyService {
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 10;
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
     private static final int RATIO_SCALE = 4;
+    private static final String REALTIME_STOCK_LATEST_KEY_PREFIX = "stock:latest:";
 
     private static final int CAPITAL_PROTECTION_MARKET_CAP_LIMIT = 50;
     private static final BigDecimal CAPITAL_PROTECTION_MAX_DEBT_RATIO = BigDecimal.valueOf(100);
@@ -62,6 +69,10 @@ public class HojumoneyService {
     private final StockIndicatorRepository stockIndicatorRepository;
     private final StockCurrentPriceService stockCurrentPriceService;
     private final GoodSectorService goodSectorService;
+    private final RealtimeRedisReader realtimeRedisReader;
+
+    @Value("${stock.current-price.realtime-freshness-seconds:180}")
+    private long realtimeFreshnessSeconds;
 
     public HojumoneyRecommendationResponse recommend(HojumoneyRecommendationRequest request) {
         HojumoneySurveySelection selection = hojumoneySurveySelectionService.validateAndClassify(request.selectedOptionIds());
@@ -242,9 +253,17 @@ public class HojumoneyService {
             Collection<HojumoneyRecommendationCandidate> candidates,
             SurveyLogicCode investmentHorizon
     ) {
+        Map<String, BigDecimal> realtimeExecutionStrengths = investmentHorizon == SurveyLogicCode.ULTRA_SHORT
+                ? getRealtimeExecutionStrengths(candidates)
+                : Map.of();
+
         candidates.stream()
                 .filter(candidate -> candidate.getIndicator() != null)
-                .forEach(candidate -> candidate.setSortMetricValue(sortMetricValue(candidate, investmentHorizon)));
+                .forEach(candidate -> candidate.setSortMetricValue(sortMetricValue(
+                        candidate,
+                        investmentHorizon,
+                        realtimeExecutionStrengths.get(candidate.getStock().getStockCode())
+                )));
     }
 
     private Comparator<HojumoneyRecommendationCandidate> candidateComparator(
@@ -269,15 +288,21 @@ public class HojumoneyService {
         };
     }
 
-    private BigDecimal sortMetricValue(HojumoneyRecommendationCandidate candidate, SurveyLogicCode investmentHorizon) {
+    private BigDecimal sortMetricValue(
+            HojumoneyRecommendationCandidate candidate,
+            SurveyLogicCode investmentHorizon,
+            BigDecimal realtimeExecutionStrength
+    ) {
         StockIndicator indicator = candidate.getIndicator();
         return switch (investmentHorizon) {
-            case ULTRA_SHORT -> requiredIndicatorMetric(
-                    indicator,
-                    candidate.getStock(),
-                    "executionStrength",
-                    indicator.getExecutionStrength()
-            );
+            case ULTRA_SHORT -> realtimeExecutionStrength != null
+                    ? realtimeExecutionStrength
+                    : requiredIndicatorMetric(
+                            indicator,
+                            candidate.getStock(),
+                            "executionStrength",
+                            indicator.getExecutionStrength()
+                    );
             case SHORT -> BigDecimal.valueOf(requiredLongIndicatorMetric(
                     indicator,
                     candidate.getStock(),
@@ -287,6 +312,41 @@ public class HojumoneyService {
             case LONG -> requiredIndicatorMetric(indicator, candidate.getStock(), "roe", indicator.getRoe());
             default -> throw new CustomException(HojumoneyErrorCode.INVALID_HOJUMONEY_LOGIC_CODE);
         };
+    }
+
+    private Map<String, BigDecimal> getRealtimeExecutionStrengths(Collection<HojumoneyRecommendationCandidate> candidates) {
+        Map<String, BigDecimal> result = new LinkedHashMap<>();
+        candidates.stream()
+                .map(candidate -> candidate.getStock().getStockCode())
+                .distinct()
+                .forEach(stockCode -> getRealtimeExecutionStrength(stockCode)
+                        .ifPresent(strength -> result.put(stockCode, strength)));
+        return result;
+    }
+
+    private Optional<BigDecimal> getRealtimeExecutionStrength(String stockCode) {
+        try {
+            return realtimeRedisReader.get(realtimeKey(stockCode), StockRealtimeSnapshot.class)
+                    .filter(this::isFreshRealtimeSnapshot)
+                    .map(StockRealtimeSnapshot::strength)
+                    .filter(Objects::nonNull);
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
+    private boolean isFreshRealtimeSnapshot(StockRealtimeSnapshot snapshot) {
+        if (snapshot.minuteTs() == null || realtimeFreshnessSeconds <= 0) {
+            return false;
+        }
+
+        long freshnessThresholdMillis = Duration.ofSeconds(realtimeFreshnessSeconds).toMillis();
+        long ageMillis = System.currentTimeMillis() - snapshot.minuteTs();
+        return ageMillis >= 0 && ageMillis <= freshnessThresholdMillis;
+    }
+
+    private String realtimeKey(String stockCode) {
+        return REALTIME_STOCK_LATEST_KEY_PREFIX + stockCode;
     }
 
     private Long requiredLongIndicatorMetric(StockIndicator indicator, Stock stock, String fieldName) {

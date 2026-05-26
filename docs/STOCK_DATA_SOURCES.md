@@ -35,27 +35,31 @@
 
 `StockIndicatorBatchService`가 전체 종목을 순회하며 KIS REST API 결과를 조립하고 `stock + baseTime(yyyyMM)` 기준으로 upsert한다.
 
-| Field      | Entity Field                    | KIS Source                     | Notes            |
-|------------|---------------------------------|--------------------------------|------------------|
-| 시가총액       | `marketCap`                     | 주식현재가 시세 `FHKST01010100`       | 검색/추천 시가총액 정렬 기준 |
-| 누적 거래대금    | `accumulatedTradeAmount`        | 주식현재가 시세 `FHKST01010100`       | 거래 활발도 정렬 후보     |
-| 체결강도       | `executionStrength`             | 주식현재가 체결 `FHKST01010300`       | 배치 실행 시점의 확정 저장값 |
-| PER        | `per`                           | 주식현재가 시세 `FHKST01010100`       | 가치 지표            |
-| PBR        | `pbr`                           | 주식현재가 시세 `FHKST01010100`       | 가치 지표            |
-| 52주 고가 대비율 | `high52WeekRate`                | 주식현재가 시세 `FHKST01010100`       | 모멘텀/리스크 지표       |
-| 부채비율       | `debtRatio`                     | 국내주식 재무비율 `FHKST66430300`      | 안정성 지표           |
-| 영업이익증가율    | `operatingProfitGrowthRate`     | 국내주식 재무비율 `FHKST66430300`      | 성장성 지표           |
-| ROE        | `roe`                           | 국내주식 재무비율 `FHKST66430300`      | 수익성 지표           |
-| EPS        | `currentEps`, `lastYearEps`     | 국내주식 재무비율 `FHKST66430300`      | 성장성 계산           |
-| 매출액        | `currentSales`, `lastYearSales` | 국내주식 손익계산서 `FHKST66430200`     | 성장성 계산           |
-| 영업이익       | `operatingProfit`               | 국내주식 손익계산서 `FHKST66430200`     | 수익성/안정성 필터       |
-| DPS        | `dps`                           | 예탁원정보 배당일정 `HHKDB669102C0`     | 최근 1년 DPS 합계     |
-| 배당수익률      | `dividendYield`                 | DPS + 현재가                      | 배치에서 계산          |
-| 배당성향       | `payoutRatio`                   | DPS + EPS                      | 배치에서 계산          |
-| 신용잔고율      | `marginDebtRate`                | 국내주식 신용잔고 일별추이 `FHPST04760000` | 과열/리스크 지표        |
-| 기관 순매수     | `instNetBuy20Days`              | 종목별 투자자매매동향 일별 `FHPTJ04160001` | 최근 최대 20개 행 합산   |
+| Field      | Entity Field                    | KIS Source                                                               | Notes                                                        |
+|------------|---------------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------|
+| 시가총액       | `marketCap`                     | 주식현재가 시세 `FHKST01010100`                                                 | 검색/추천 시가총액 정렬 기준                                             |
+| 누적 거래대금    | `accumulatedTradeAmount`        | 주식현재가 시세 `FHKST01010100`                                                 | 거래 활발도 정렬 후보                                                 |
+| 체결강도       | `executionStrength`             | Redis `stock:latest:{code}.strength`, fallback: 주식현재가 체결 `FHKST01010300` | 초단기 추천은 장중 Redis 값을 우선 사용하고, 장마감 후 Redis 값으로 DB fallback을 보정 |
+| PER        | `per`                           | 주식현재가 시세 `FHKST01010100`                                                 | 가치 지표                                                        |
+| PBR        | `pbr`                           | 주식현재가 시세 `FHKST01010100`                                                 | 가치 지표                                                        |
+| 52주 고가 대비율 | `high52WeekRate`                | 주식현재가 시세 `FHKST01010100`                                                 | 모멘텀/리스크 지표                                                   |
+| 부채비율       | `debtRatio`                     | 국내주식 재무비율 `FHKST66430300`                                                | 안정성 지표                                                       |
+| 영업이익증가율    | `operatingProfitGrowthRate`     | 국내주식 재무비율 `FHKST66430300`                                                | 성장성 지표                                                       |
+| ROE        | `roe`                           | 국내주식 재무비율 `FHKST66430300`                                                | 수익성 지표                                                       |
+| EPS        | `currentEps`, `lastYearEps`     | 국내주식 재무비율 `FHKST66430300`                                                | 성장성 계산                                                       |
+| 매출액        | `currentSales`, `lastYearSales` | 국내주식 손익계산서 `FHKST66430200`                                               | 성장성 계산                                                       |
+| 영업이익       | `operatingProfit`               | 국내주식 손익계산서 `FHKST66430200`                                               | 수익성/안정성 필터                                                   |
+| DPS        | `dps`                           | 예탁원정보 배당일정 `HHKDB669102C0`                                               | 최근 1년 DPS 합계                                                 |
+| 배당수익률      | `dividendYield`                 | DPS + 현재가                                                                | 배치에서 계산                                                      |
+| 배당성향       | `payoutRatio`                   | DPS + EPS                                                                | 배치에서 계산                                                      |
+| 신용잔고율      | `marginDebtRate`                | 국내주식 신용잔고 일별추이 `FHPST04760000`                                           | 과열/리스크 지표                                                    |
+| 기관 순매수     | `instNetBuy20Days`              | 종목별 투자자매매동향 일별 `FHPTJ04160001`                                           | 최근 최대 20개 행 합산                                               |
 
-체결강도는 이름만 보면 실시간 데이터처럼 보일 수 있지만, API 응답을 배치에서 읽어 DB에 저장하는 값이다. 검색/추천 정렬에서 이 값을 사용하면 사용자 요청 중 KIS REST 호출이 발생하지 않는다.
+체결강도는 장중 초단기 추천 정렬에서 Redis `stock:latest:{code}.strength`를 우선 사용한다. Redis 값이 없거나 freshness 조건을 만족하지 않으면 DB
+`StockIndicator.executionStrength`로 fallback한다. 장마감 후 `15:45` 스케줄은 같은 거래일의 Redis `stock:latest:{code}.strength`로 추천
+fallback이 읽는 최신 기존
+`StockIndicator.baseTime` 행의 DB fallback 값을 보정한다.
+사용자 요청 중 KIS REST fallback은 호출하지 않는다.
 
 ### `hts_stocks`
 
@@ -78,6 +82,9 @@
 
 `StockCurrentPriceService`는 `stock:latest:{code}`를 먼저 조회하고, freshness 조건을 만족하는 경우 현재가/등락률로 사용한다.
 `stock:minute-candles:{code}`는 차트 전용이며 현재가/등락률 최신 스냅샷 역할을 대체하지 않는다.
+Redis raw `strength`는 오늘의 호주머니 초단기 추천 정렬에서 freshness 조건을 만족할 때 우선 사용한다. 모의투자 상세의 `investmentMetrics.executionStrength`는
+DB
+`StockIndicator.executionStrength`를 사용한다.
 
 최신 Redis 계약 기준으로 두 key의 payload는 동일하며, 구조는 다음 분봉 raw 포맷을 사용한다.
 
@@ -90,6 +97,7 @@
   "low": 70850,
   "close": 71000,
   "volume": 12500,
+  "tradeAmount": 8875000000,
   "change": 500,
   "rate": 0.71,
   "strength": 105.3
@@ -137,17 +145,20 @@ fallback 순서로 값을 찾는다. 검색에서 KIS REST fallback을 제거하
 
 현재 Spring 단일 차트 API의 `ONE_DAY`는 DB의 `isFinal=true` 확정 분봉에 Redis 기반 `isFinal=false` 미확정 분봉을 병합해 반환한다. `ONE_WEEK`는 DB 확정
 30분봉에 Redis 1분봉으로 집계한 마지막 진행 중 30분봉 1개를 병합한다. `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`는 실시간 보강 없이 DB 확정 일봉/주봉만 반환한다.
-Redis 원본은 DB `StockCandle`과 필드명이 다르므로, Spring은 `minuteTs/open/high/low/close/volume`을 API 캔들 모델로 변환해 병합한다.
+Redis 원본은 DB `StockCandle`과 필드명이 다르므로, Spring은 `minuteTs/open/high/low/close/volume/tradeAmount`를 API 캔들 모델로 변환해 병합한다.
+`ONE_WEEK`의 마지막 진행 중 30분봉은 Redis 1분봉들의 `volume`과 `tradeAmount`를 합산해 만든다.
 
 차트 기간 매핑은 `1일 -> 1분봉`, `1주 -> 30분봉`, `3달 -> 일봉`, `1년 -> 일봉`, `5년 -> 주봉`을 기준으로 한다. `1주` 차트는 확정 30분봉을 기본으로 사용하고, 장중 마지막 진행
 중 30분봉 1개만 1분봉 또는 Redis 실시간 분봉에서 보강한다.
 
-KIS 분봉 동기화는 정각/30분 기준 2분 뒤에 실행하고, 요청 시각 기준 최근 2분을 제외한 정각/30분 단위까지만 DB 확정 저장 대상으로 삼는다. 정규 스케줄은 `09:02`, `09:32`,
-`10:02` ... `15:32`에 실행되고, `15:40`에 장 마감 보정 스케줄이 한 번 더 실행된다.
+KIS 분봉 동기화는 정각/30분 기준 2분 뒤에 실행하고, 요청 시각 기준 최근 2분을 제외한 분 단위 시각까지 DB 확정 저장 대상으로 삼는다. 정규 스케줄은 `09:02`, `09:32`,
+`10:02` ... `15:32`에 실행되고, `15:40`에 장 마감 보정 스케줄이 한 번 더 실행된다. 30분봉은 해당 30분 버킷의 확정 1분봉이 모두 준비된 뒤 집계 저장한다.
+KRX 장마감 동시호가 구간인 `15:20~15:29`는 KIS REST 분봉에 체결 분봉이 없을 수 있으므로, Spring은 DB 확정 분봉 저장 시 `15:19` 종가를 기준으로
+`15:20~15:29` 1분봉을 `volume=0`으로 보강한다. `15:30`은 장마감 단일가 체결 봉으로 별도 저장한다. 과거 영업일 분봉 API(`FHKST03010230`) 응답에 다른 날짜 raw가
+섞여 내려올 수 있으므로, 저장 대상은 요청한 `tradingDate`의 분봉으로 제한한다.
 
-차트 기준 수동 동기화는 `POST /api/local/kis/chart/sync?stockCode=005930`를 사용한다. `period`를 생략하면 오늘 또는 직전 개장일 기준으로 `ONE_DAY`,
+차트 기준 수동 동기화는 `POST /api/smoke/kis/chart/sync?stockCode=005930`를 사용한다. `period`를 생략하면 오늘 또는 직전 개장일 기준으로 `ONE_DAY`,
 `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`에 필요한 데이터를 모두 채운다.
-차트 기준 DB 적재 범위 확인은 `GET /api/local/kis/chart/sync/status?stockCode=005930`를 사용한다. `period`를 생략하면 전체 차트 기간 상태를 반환한다.
-저수준 검증 API는 `POST /api/local/kis/chart/minute/sync?stockCode=005930`, 특정 영업일 보정은
-`POST /api/local/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCode=005930`, 기존 분봉 전용 범위 확인은
-`GET /api/local/kis/chart/minute/sync/status?stockCode=005930`를 사용한다.
+차트 기준 DB 적재 범위 확인은 `GET /api/smoke/kis/chart/sync/status?stockCode=005930`를 사용한다. `period`를 생략하면 전체 차트 기간 상태를 반환한다.
+저수준 검증 API는 `POST /api/smoke/kis/chart/minute/sync?stockCode=005930`, 특정 영업일 보정은
+`POST /api/smoke/kis/chart/minute/sync/trading-day?tradingDate=2026-05-22&stockCode=005930`를 사용한다.

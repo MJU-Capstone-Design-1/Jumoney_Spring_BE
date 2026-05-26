@@ -5,7 +5,6 @@ import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncSt
 import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentChartSyncService;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
-import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.stock.repository.StockIndicatorRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.domain.stock.service.StockMinuteCandleSyncService;
@@ -21,7 +20,6 @@ import org.springframework.batch.core.job.parameters.JobParameters;
 import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,7 +30,6 @@ import java.util.List;
 import java.util.function.Supplier;
 
 @Service
-@Profile({"local", "prod"})
 public class KisSmokeService {
 
     private static final DateTimeFormatter BASE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
@@ -171,10 +168,6 @@ public class KisSmokeService {
 
     public MinuteCandleSyncResponse syncMinuteCandles(String stockCode, LocalDate tradingDate) {
         return stockMinuteCandleSyncService.syncMinuteCandles(stockCode, tradingDate);
-    }
-
-    public MinuteCandleSyncStatusResponse getTodayMinuteCandleSyncStatus(String stockCode, LocalDate date) {
-        return stockMinuteCandleSyncService.getTodayMinuteCandleSyncStatus(stockCode, date);
     }
 
     public MockInvestmentChartCandleSyncResponse syncChartCandles(String stockCode,

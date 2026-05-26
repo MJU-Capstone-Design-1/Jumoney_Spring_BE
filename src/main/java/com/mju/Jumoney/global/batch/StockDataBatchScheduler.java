@@ -3,6 +3,7 @@ package com.mju.Jumoney.global.batch;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncResponse;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentChartSyncService;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
+import com.mju.Jumoney.domain.stock.service.StockIndicatorBatchService;
 import com.mju.Jumoney.domain.stock.service.StockMinuteCandleSyncService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.job.Job;
@@ -29,11 +30,13 @@ public class StockDataBatchScheduler {
     private final JobOperator jobOperator;
     private final BatchBaseDateResolver batchBaseDateResolver;
     private final MarketCalendarService marketCalendarService;
+    private final StockIndicatorBatchService stockIndicatorBatchService;
     private final StockMinuteCandleSyncService stockMinuteCandleSyncService;
     private final MockInvestmentChartSyncService mockInvestmentChartSyncService;
     private final Job stockIndicatorBatchJob;
     private final Job htsConditionBatchJob;
     private final boolean stockIndicatorEnabled;
+    private final boolean stockIndicatorExecutionStrengthCloseEnabled;
     private final boolean htsConditionEnabled;
     private final boolean minuteCandleEnabled;
     private final ZoneId zoneId;
@@ -42,11 +45,13 @@ public class StockDataBatchScheduler {
             JobOperator jobOperator,
             BatchBaseDateResolver batchBaseDateResolver,
             MarketCalendarService marketCalendarService,
+            StockIndicatorBatchService stockIndicatorBatchService,
             StockMinuteCandleSyncService stockMinuteCandleSyncService,
             MockInvestmentChartSyncService mockInvestmentChartSyncService,
             @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME) Job stockIndicatorBatchJob,
             @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob,
             @Value("${kis.batch.stock-indicator.enabled:true}") boolean stockIndicatorEnabled,
+            @Value("${kis.batch.stock-indicator.execution-strength-close-enabled:${kis.batch.stock-indicator.enabled:true}}") boolean stockIndicatorExecutionStrengthCloseEnabled,
             @Value("${kis.batch.hts-condition.enabled:true}") boolean htsConditionEnabled,
             @Value("${kis.batch.minute-candle.enabled:true}") boolean minuteCandleEnabled,
             @Value("${kis.batch.zone-id:Asia/Seoul}") String zoneId
@@ -54,11 +59,13 @@ public class StockDataBatchScheduler {
         this.jobOperator = jobOperator;
         this.batchBaseDateResolver = batchBaseDateResolver;
         this.marketCalendarService = marketCalendarService;
+        this.stockIndicatorBatchService = stockIndicatorBatchService;
         this.stockMinuteCandleSyncService = stockMinuteCandleSyncService;
         this.mockInvestmentChartSyncService = mockInvestmentChartSyncService;
         this.stockIndicatorBatchJob = stockIndicatorBatchJob;
         this.htsConditionBatchJob = htsConditionBatchJob;
         this.stockIndicatorEnabled = stockIndicatorEnabled;
+        this.stockIndicatorExecutionStrengthCloseEnabled = stockIndicatorExecutionStrengthCloseEnabled;
         this.htsConditionEnabled = htsConditionEnabled;
         this.minuteCandleEnabled = minuteCandleEnabled;
         this.zoneId = ZoneId.of(zoneId);
@@ -86,6 +93,38 @@ public class StockDataBatchScheduler {
                 htsConditionBatchJob,
                 StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME
         );
+    }
+
+    @Scheduled(
+            cron = "${kis.batch.stock-indicator.execution-strength-close-cron:0 45 15 * * MON-FRI}",
+            zone = "${kis.batch.zone-id:Asia/Seoul}"
+    )
+    public void runStockIndicatorExecutionStrengthCloseSync() {
+        if (!stockIndicatorExecutionStrengthCloseEnabled) {
+            log.info("[StockDataBatchScheduler] 체결강도 장마감 보정 스케줄 비활성화");
+            return;
+        }
+
+        LocalDate today = LocalDate.now(zoneId);
+        if (!marketCalendarService.isOpenDay(today, zoneId)) {
+            log.info("[StockDataBatchScheduler] 휴장일 체결강도 장마감 보정 스킵: date={}", today);
+            return;
+        }
+
+        log.info("[StockDataBatchScheduler] 체결강도 장마감 보정 시작: date={}", today);
+        try {
+            StockIndicatorBatchService.StockIndicatorExecutionStrengthSyncResult result =
+                    stockIndicatorBatchService.syncExecutionStrengths(today);
+            log.info("[StockDataBatchScheduler] 체결강도 장마감 보정 완료: date={}, baseTime={}, totalCount={}, successCount={}, failureCount={}, skippedCount={}",
+                    result.baseDate(),
+                    result.baseTime(),
+                    result.totalCount(),
+                    result.successCount(),
+                    result.failureCount(),
+                    result.skippedCount());
+        } catch (Exception e) {
+            log.error("[StockDataBatchScheduler] 체결강도 장마감 보정 실패: date={}", today, e);
+        }
     }
 
     @Scheduled(

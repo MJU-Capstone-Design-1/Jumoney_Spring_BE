@@ -4,7 +4,6 @@ import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.domain.StockCandle;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncFailureResponse;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
-import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.stock.enums.StockCandleIntervalType;
 import com.mju.Jumoney.domain.stock.repository.StockCandleRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
@@ -23,6 +22,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +32,9 @@ public class StockMinuteCandleSyncService {
     private static final int FINALIZATION_BUFFER_MINUTES = 2;
     private static final LocalTime MARKET_OPEN_TIME = LocalTime.of(9, 0);
     private static final LocalTime MARKET_CLOSE_TIME = LocalTime.of(15, 30);
+    private static final LocalTime CLOSING_AUCTION_START_TIME = LocalTime.of(15, 20);
+    private static final LocalTime CLOSING_AUCTION_LAST_CONTINUOUS_TIME = LocalTime.of(15, 19);
+    private static final LocalTime CLOSING_AUCTION_LAST_SYNTHETIC_TIME = LocalTime.of(15, 29);
     private static final int KIS_MINUTE_CHART_MAX_COUNT = 30;
     private static final int KIS_DAILY_MINUTE_CHART_MAX_COUNT = 120;
 
@@ -88,74 +91,6 @@ public class StockMinuteCandleSyncService {
         );
     }
 
-    public MinuteCandleSyncStatusResponse getTodayMinuteCandleSyncStatus(String stockCode, LocalDate date) {
-        String normalizedStockCode = StringUtils.hasText(stockCode) ? stockCode.trim() : null;
-        if (!StringUtils.hasText(normalizedStockCode)) {
-            throw new IllegalArgumentException("종목 코드가 필요합니다.");
-        }
-
-        Stock stock = stockRepository.findByStockCode(normalizedStockCode)
-                .orElseThrow(() -> new IllegalArgumentException("등록되지 않은 종목 코드입니다. stockCode=" + normalizedStockCode));
-        LocalDate targetDate = date == null ? LocalDate.now(KOREA_ZONE) : date;
-        LocalDateTime dbExpectedStartTime = LocalDateTime.of(targetDate, MARKET_OPEN_TIME);
-        LocalDateTime dbExpectedEndTime = resolveExpectedDbEndTime(targetDate);
-        long dbExpectedCandleCount = calculateExpectedCandleCount(dbExpectedStartTime, dbExpectedEndTime);
-
-        long candleCount = stockCandleRepository.countByStockIdAndIntervalTypeAndCandleTimeBetween(
-                stock.getId(),
-                StockCandleIntervalType.MINUTE,
-                dbExpectedStartTime,
-                dbExpectedEndTime
-        );
-        LocalDateTime firstCandleTime = stockCandleRepository.findFirstByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeAsc(
-                        stock.getId(),
-                        StockCandleIntervalType.MINUTE,
-                        dbExpectedStartTime,
-                        dbExpectedEndTime
-                )
-                .map(StockCandle::getCandleTime)
-                .orElse(null);
-        LocalDateTime lastCandleTime = stockCandleRepository.findFirstByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeDesc(
-                        stock.getId(),
-                        StockCandleIntervalType.MINUTE,
-                        dbExpectedStartTime,
-                        dbExpectedEndTime
-                )
-                .map(StockCandle::getCandleTime)
-                .orElse(null);
-
-        boolean hasAnyCandle = candleCount > 0;
-        boolean hasExpectedCandleCount = candleCount >= dbExpectedCandleCount;
-        boolean coversExpectedRange = hasAnyCandle
-                && firstCandleTime != null && !firstCandleTime.isAfter(dbExpectedStartTime)
-                && lastCandleTime != null && !lastCandleTime.isBefore(dbExpectedEndTime);
-        LocalDateTime realtimeExpectedStartTime = resolveRealtimeExpectedStartTime(targetDate, dbExpectedEndTime);
-        LocalDateTime realtimeExpectedEndTime = resolveRealtimeExpectedEndTime(targetDate);
-        boolean realtimeCheckRequired = realtimeExpectedStartTime != null
-                && realtimeExpectedEndTime != null
-                && !realtimeExpectedStartTime.isAfter(realtimeExpectedEndTime);
-
-        return new MinuteCandleSyncStatusResponse(
-                stock.getStockCode(),
-                stock.getName(),
-                targetDate,
-                dbExpectedStartTime,
-                dbExpectedEndTime,
-                dbExpectedCandleCount,
-                candleCount,
-                firstCandleTime,
-                lastCandleTime,
-                hasAnyCandle,
-                hasExpectedCandleCount,
-                coversExpectedRange,
-                realtimeCheckRequired,
-                realtimeExpectedStartTime,
-                realtimeExpectedEndTime,
-                false,
-                "실시간 분봉 Redis key 규격이 아직 정해지지 않아 Spring에서는 DB 확정 구간만 검증합니다."
-        );
-    }
-
     private List<Stock> resolveTargetStocks(String stockCode) {
         if (StringUtils.hasText(stockCode)) {
             Stock stock = stockRepository.findByStockCode(stockCode)
@@ -169,13 +104,15 @@ public class StockMinuteCandleSyncService {
         int savedCount = 0;
         int skippedRecentCount = 0;
         int kisRequestCount = 0;
-        LocalDateTime syncStartTime = resolveSyncStartTime(stock.getId(), finalizationCutoffTime);
+        LocalDateTime syncStartTime = resolveSyncStartTime(stock.getId(), tradingDate, finalizationCutoffTime);
         boolean isTodaySync = tradingDate.equals(LocalDate.now(KOREA_ZONE));
         Set<LocalDateTime> affectedThirtyMinuteBuckets = new HashSet<>();
 
         for (LocalTime inputTime : resolveInputTimes(syncStartTime, finalizationCutoffTime, isTodaySync ? KIS_MINUTE_CHART_MAX_COUNT : KIS_DAILY_MINUTE_CHART_MAX_COUNT)) {
             kisRequestCount++;
-            List<KisMinuteCandleMetrics> candles = loadMinuteCandles(stock.getStockCode(), tradingDate, inputTime, isTodaySync)
+            List<KisMinuteCandleMetrics> rawCandles = loadMinuteCandles(stock.getStockCode(), tradingDate, inputTime, isTodaySync);
+
+            List<KisMinuteCandleMetrics> candles = rawCandles
                     .stream()
                     .filter(this::isValidCandle)
                     .sorted(Comparator.comparing(KisMinuteCandleMetrics::candleTime))
@@ -183,6 +120,9 @@ public class StockMinuteCandleSyncService {
 
             List<KisMinuteCandleMetrics> candlesToSave = new ArrayList<>();
             for (KisMinuteCandleMetrics candle : candles) {
+                if (!candle.candleTime().toLocalDate().equals(tradingDate)) {
+                    continue;
+                }
                 if (candle.candleTime().isAfter(finalizationCutoffTime)) {
                     skippedRecentCount++;
                     continue;
@@ -196,6 +136,7 @@ public class StockMinuteCandleSyncService {
 
                 candlesToSave.add(candle);
             }
+            addClosingAuctionSyntheticCandles(stock, tradingDate, finalizationCutoffTime, syncStartTime, candlesToSave);
 
             if (candlesToSave.isEmpty()) {
                 continue;
@@ -210,12 +151,16 @@ public class StockMinuteCandleSyncService {
         }
 
         affectedThirtyMinuteBuckets.addAll(resolveThirtyMinuteBucketStartTimes(tradingDate));
-        upsertThirtyMinuteCandles(stock, affectedThirtyMinuteBuckets, finalizationCutoffTime);
+        upsertThirtyMinuteCandles(stock, tradingDate, affectedThirtyMinuteBuckets, finalizationCutoffTime);
         return new SyncStockResult(savedCount, skippedRecentCount, kisRequestCount);
     }
 
-    private LocalDateTime resolveSyncStartTime(Long stockId, LocalDateTime finalizationCutoffTime) {
+    private LocalDateTime resolveSyncStartTime(Long stockId, LocalDate tradingDate, LocalDateTime finalizationCutoffTime) {
         LocalDateTime marketOpenTime = LocalDateTime.of(finalizationCutoffTime.toLocalDate(), MARKET_OPEN_TIME);
+        if (tradingDate.isBefore(LocalDate.now(KOREA_ZONE))) {
+            return marketOpenTime;
+        }
+
         return stockCandleRepository.findFirstByStockIdAndIntervalTypeAndCandleTimeBetweenOrderByCandleTimeDesc(
                         stockId,
                         StockCandleIntervalType.MINUTE,
@@ -256,18 +201,6 @@ public class StockMinuteCandleSyncService {
         return kisApiClient.getDailyMinuteCandles(stockCode, tradingDate, inputTime);
     }
 
-    private LocalDateTime resolveExpectedDbEndTime(LocalDate targetDate) {
-        LocalDate today = LocalDate.now(KOREA_ZONE);
-        if (targetDate.isBefore(today)) {
-            return LocalDateTime.of(targetDate, MARKET_CLOSE_TIME);
-        }
-        if (targetDate.isAfter(today)) {
-            return LocalDateTime.of(targetDate, MARKET_OPEN_TIME);
-        }
-
-        return resolveDbSyncEndTime(LocalDateTime.now(KOREA_ZONE));
-    }
-
     private LocalDateTime resolveDbSyncEndTime(LocalDateTime requestedAt) {
         LocalDateTime bufferedTime = requestedAt.minusMinutes(FINALIZATION_BUFFER_MINUTES);
         LocalDateTime marketOpen = LocalDateTime.of(bufferedTime.toLocalDate(), MARKET_OPEN_TIME);
@@ -279,12 +212,7 @@ public class StockMinuteCandleSyncService {
             return marketClose;
         }
 
-        int minute = bufferedTime.getMinute();
-        int flooredMinute = minute >= 30 ? 30 : 0;
-        return bufferedTime
-                .withMinute(flooredMinute)
-                .withSecond(0)
-                .withNano(0);
+        return bufferedTime.withSecond(0).withNano(0);
     }
 
     private LocalDateTime resolveFinalizationCutoffTime(LocalDate tradingDate, LocalDateTime requestedAt) {
@@ -302,29 +230,6 @@ public class StockMinuteCandleSyncService {
         if (!marketCalendarService.isOpenDay(tradingDate, KOREA_ZONE)) {
             throw new IllegalArgumentException("휴장일 또는 주말은 동기화할 수 없습니다. tradingDate=" + tradingDate);
         }
-    }
-
-    private LocalDateTime resolveRealtimeExpectedStartTime(LocalDate targetDate, LocalDateTime dbExpectedEndTime) {
-        if (!targetDate.equals(LocalDate.now(KOREA_ZONE))) {
-            return null;
-        }
-        if (!dbExpectedEndTime.toLocalTime().isBefore(MARKET_CLOSE_TIME)) {
-            return null;
-        }
-        return dbExpectedEndTime.plusMinutes(1);
-    }
-
-    private LocalDateTime resolveRealtimeExpectedEndTime(LocalDate targetDate) {
-        if (!targetDate.equals(LocalDate.now(KOREA_ZONE))) {
-            return null;
-        }
-        LocalDateTime now = LocalDateTime.now(KOREA_ZONE).truncatedTo(ChronoUnit.MINUTES);
-        LocalDateTime marketOpen = LocalDateTime.of(targetDate, MARKET_OPEN_TIME);
-        LocalDateTime marketClose = LocalDateTime.of(targetDate, MARKET_CLOSE_TIME);
-        if (now.isBefore(marketOpen)) {
-            return null;
-        }
-        return now.isAfter(marketClose) ? marketClose : now;
     }
 
     private long calculateExpectedCandleCount(LocalDateTime startTime, LocalDateTime endTime) {
@@ -385,12 +290,12 @@ public class StockMinuteCandleSyncService {
         ));
     }
 
-    private void upsertThirtyMinuteCandles(Stock stock, Set<LocalDateTime> bucketStartTimes, LocalDateTime finalizationCutoffTime) {
+    private void upsertThirtyMinuteCandles(Stock stock,
+                                           LocalDate tradingDate,
+                                           Set<LocalDateTime> bucketStartTimes,
+                                           LocalDateTime finalizationCutoffTime) {
         for (LocalDateTime bucketStartTime : bucketStartTimes) {
-            LocalDateTime marketCloseTime = LocalDateTime.of(bucketStartTime.toLocalDate(), MARKET_CLOSE_TIME);
-            LocalDateTime bucketEndTime = bucketStartTime.plusMinutes(29).isAfter(marketCloseTime)
-                    ? marketCloseTime
-                    : bucketStartTime.plusMinutes(29);
+            LocalDateTime bucketEndTime = resolveThirtyMinuteBucketEndTime(bucketStartTime);
             if (bucketEndTime.isAfter(finalizationCutoffTime)) {
                 continue;
             }
@@ -449,6 +354,92 @@ public class StockMinuteCandleSyncService {
                     tradeAmount
             ));
         }
+    }
+
+    private void addClosingAuctionSyntheticCandles(Stock stock,
+                                                   LocalDate tradingDate,
+                                                   LocalDateTime finalizationCutoffTime,
+                                                   LocalDateTime syncStartTime,
+                                                   List<KisMinuteCandleMetrics> candlesToSave) {
+        LocalDateTime firstSyntheticTime = LocalDateTime.of(tradingDate, CLOSING_AUCTION_START_TIME);
+        LocalDateTime lastSyntheticTime = LocalDateTime.of(tradingDate, CLOSING_AUCTION_LAST_SYNTHETIC_TIME);
+        if (finalizationCutoffTime.isBefore(firstSyntheticTime) || syncStartTime.isAfter(lastSyntheticTime)) {
+            return;
+        }
+
+        LocalDateTime baseTime = LocalDateTime.of(tradingDate, CLOSING_AUCTION_LAST_CONTINUOUS_TIME);
+        KisMinuteCandleMetrics baseCandle = findCandle(candlesToSave, baseTime)
+                .or(() -> stockCandleRepository.findByStockIdAndIntervalTypeAndCandleTime(
+                        stock.getId(),
+                        StockCandleIntervalType.MINUTE,
+                        baseTime
+                ).map(this::toMinuteCandleMetrics))
+                .orElse(null);
+        if (baseCandle == null) {
+            return;
+        }
+
+        Map<LocalDateTime, KisMinuteCandleMetrics> candleMap = candlesToSave.stream()
+                .collect(Collectors.toMap(KisMinuteCandleMetrics::candleTime, candle -> candle, (existing, replacement) -> replacement, LinkedHashMap::new));
+        LocalDateTime cursor = firstSyntheticTime;
+        while (!cursor.isAfter(lastSyntheticTime) && !cursor.isAfter(finalizationCutoffTime)) {
+            if (!cursor.isBefore(syncStartTime)) {
+                candleMap.putIfAbsent(cursor, createClosingAuctionSyntheticCandle(baseCandle, cursor));
+            }
+            cursor = cursor.plusMinutes(1);
+        }
+
+        candlesToSave.clear();
+        candlesToSave.addAll(candleMap.values().stream()
+                .sorted(Comparator.comparing(KisMinuteCandleMetrics::candleTime))
+                .toList());
+    }
+
+    private Optional<KisMinuteCandleMetrics> findCandle(List<KisMinuteCandleMetrics> candles, LocalDateTime candleTime) {
+        return candles.stream()
+                .filter(candle -> candleTime.equals(candle.candleTime()))
+                .findFirst();
+    }
+
+    private KisMinuteCandleMetrics toMinuteCandleMetrics(StockCandle candle) {
+        return new KisMinuteCandleMetrics(
+                candle.getCandleTime(),
+                candle.getOpenPrice(),
+                candle.getHighPrice(),
+                candle.getLowPrice(),
+                candle.getClosePrice(),
+                candle.getVolume(),
+                candle.getTradeAmount()
+        );
+    }
+
+    private KisMinuteCandleMetrics createClosingAuctionSyntheticCandle(KisMinuteCandleMetrics baseCandle, LocalDateTime candleTime) {
+        BigDecimal price = baseCandle.closePrice();
+        return new KisMinuteCandleMetrics(
+                candleTime,
+                price,
+                price,
+                price,
+                price,
+                0L,
+                baseCandle.tradeAmount()
+        );
+    }
+
+    private LocalDateTime resolveThirtyMinuteBucketEndTime(LocalDateTime bucketStartTime) {
+        LocalDateTime marketCloseTime = LocalDateTime.of(bucketStartTime.toLocalDate(), MARKET_CLOSE_TIME);
+        LocalTime bucketStartLocalTime = bucketStartTime.toLocalTime();
+
+        if (bucketStartLocalTime.equals(LocalTime.of(15, 0))) {
+            return LocalDateTime.of(bucketStartTime.toLocalDate(), CLOSING_AUCTION_LAST_SYNTHETIC_TIME);
+        }
+        if (bucketStartLocalTime.equals(MARKET_CLOSE_TIME)) {
+            return marketCloseTime;
+        }
+
+        return bucketStartTime.plusMinutes(29).isAfter(marketCloseTime)
+                ? marketCloseTime
+                : bucketStartTime.plusMinutes(29);
     }
 
     private Set<LocalDateTime> resolveThirtyMinuteBucketStartTimes(LocalDate tradingDate) {
