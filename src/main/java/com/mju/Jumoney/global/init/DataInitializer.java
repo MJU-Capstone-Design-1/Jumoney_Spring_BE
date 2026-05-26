@@ -27,6 +27,7 @@ import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.domain.stockterm.domain.StockTerm;
 import com.mju.Jumoney.domain.stockterm.dto.StockTermInitDto;
 import com.mju.Jumoney.domain.stockterm.repository.StockTermRepository;
+import com.mju.Jumoney.domain.verifiedoperation.service.VerifiedOperationAccountInitializer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -56,6 +57,7 @@ public class DataInitializer implements ApplicationRunner {
     private final MasterCaseRepository masterCaseRepository;
     private final MasterPortfolioStockRepository masterPortfolioStockRepository;
     private final StockTermRepository stockTermRepository;
+    private final VerifiedOperationAccountInitializer verifiedOperationAccountInitializer;
     private final ObjectMapper objectMapper;
     private Map<MasterCode, Master> masterCache = Map.of();
 
@@ -74,6 +76,7 @@ public class DataInitializer implements ApplicationRunner {
         initMasterCaseData();
         initMasterPortfolioStockData();
         initMasterOptionData();
+        verifiedOperationAccountInitializer.initializeAccounts();
 
         log.info("[DataInitializer] 애플리케이션 초기 데이터 세팅 완료");
     }

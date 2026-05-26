@@ -185,4 +185,8 @@ public class StockIndicator {
         this.high52WeekRate = high52WeekRate;
         this.instNetBuy20Days = instNetBuy20Days;
     }
+
+    public void updateExecutionStrength(BigDecimal executionStrength) {
+        this.executionStrength = executionStrength;
+    }
 }

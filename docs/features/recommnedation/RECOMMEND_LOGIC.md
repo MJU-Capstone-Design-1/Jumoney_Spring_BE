@@ -43,8 +43,8 @@
 **설문 3. 선호하는 투자 호흡(기간)은 어떻게 되나요?**
 
 - **초단기(1일)** 선택 시:
-    - **체결강도** 상위순 정렬 → 배치가 `FHKST01010300`의 `tday_rltv`를 `StockIndicator.executionStrength`에 저장하고, 추천 API는 DB 확정값으로
-      정렬한다.
+    - **체결강도** 상위순 정렬 → 장중 freshness 조건을 만족하는 Redis `stock:latest:{code}.strength`를 우선 사용하고, 값이 없거나 오래됐으면 배치가
+      저장한 `StockIndicator.executionStrength`로 fallback한다. 장마감 후에는 같은 거래일의 Redis `strength`로 최신 기존 지표 행의 DB fallback 값을 보정한다.
 - **단기(1주일)** 선택 시:
     - **거래대금** 상위순 정렬 → `FHKST01010100`(주식현재가 시세)의 `acml_tr_pbmn`(누적 거래 대금)
 - **중기(3달)** 선택 시:

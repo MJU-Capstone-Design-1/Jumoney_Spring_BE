@@ -137,16 +137,17 @@
 #### 수동 동기화 API
 
 ```http
-POST /api/local/kis/chart/sync
-POST /api/local/kis/chart/sync?period=ONE_WEEK
-POST /api/local/kis/chart/sync?stockCode=005930
-POST /api/local/kis/chart/sync/range?period=ONE_WEEK&fromDate=2026-05-18&toDate=2026-05-22&stockCode=005930
-GET /api/local/kis/chart/sync/status?stockCode=005930
-GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
+POST /api/smoke/kis/chart/sync
+POST /api/smoke/kis/chart/sync?period=ONE_WEEK
+POST /api/smoke/kis/chart/sync?stockCode=005930
+POST /api/smoke/kis/chart/sync/range?period=ONE_WEEK&fromDate=2026-05-18&toDate=2026-05-22&stockCode=005930
+GET /api/smoke/kis/chart/sync/status?stockCode=005930
+GET /api/smoke/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
 ```
 
 - `period` 생략 시 `ONE_DAY`, `ONE_WEEK`, `THREE_MONTHS`, `ONE_YEAR`, `FIVE_YEARS`에 필요한 원천 캔들을 한 번에 동기화한다.
-- `ONE_DAY`/`ONE_WEEK`는 1분봉 동기화를 실행하고, 완성된 1분봉 버킷으로 30분봉을 함께 집계한다.
+- `ONE_DAY`/`ONE_WEEK`는 1분봉 동기화를 실행하고, 완성된 1분봉 버킷으로 30분봉을 함께 집계한다. KRX 장마감 동시호가 구간 `15:20~15:29`는 `15:19`
+  종가 기준 `volume=0` 확정 1분봉으로 보강하고, `15:30`은 별도 장마감 단일가 체결 봉으로 저장한다.
 - `THREE_MONTHS`/`ONE_YEAR`는 `DAY`, `FIVE_YEARS`는 `WEEK` 기간봉을 동기화한다.
 - 특정 기간만 보정할 때는 `/chart/sync/range`에 `period`, `fromDate`, `toDate`, `stockCode`를 지정한다.
 - `date` 생략 시 KST 기준 오늘이 개장일이면 오늘, 아니면 직전 개장일을 기준으로 한다.
@@ -181,7 +182,7 @@ GET /api/local/kis/chart/sync/status?stockCode=005930&period=ONE_WEEK
       "lowPrice": 73600,
       "closePrice": 73800,
       "volume": 32000,
-      "tradeAmount": null,
+      "tradeAmount": 2361600000,
       "isFinal": false
     }
   ]

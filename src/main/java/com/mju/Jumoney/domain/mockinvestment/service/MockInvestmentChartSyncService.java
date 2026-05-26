@@ -436,7 +436,7 @@ public class MockInvestmentChartSyncService {
                 yield new ChartStatusRange(
                         StockCandleIntervalType.THIRTY_MINUTE,
                         LocalDateTime.of(expectedStartDate, MARKET_OPEN_TIME),
-                        resolveExpectedThirtyMinuteEndTime(targetDate),
+                        resolveExpectedThirtyMinuteRangeEndTime(openDays, targetDate),
                         calculateExpectedThirtyMinuteCount(openDays, targetDate),
                         0
                 );
@@ -491,9 +491,9 @@ public class MockInvestmentChartSyncService {
             return "차트 조회에 필요한 DB 확정 캔들 범위를 충족합니다.";
         }
         if (expectedCandleCount == null) {
-            return "DB 확정 캔들의 시작/종료 범위가 부족합니다. /api/local/kis/chart/sync로 보정하세요.";
+            return "DB 확정 캔들의 시작/종료 범위가 부족합니다. /api/smoke/kis/chart/sync로 보정하세요.";
         }
-        return "DB 확정 캔들 개수 또는 범위가 부족합니다. /api/local/kis/chart/sync로 보정하세요.";
+        return "DB 확정 캔들 개수 또는 범위가 부족합니다. /api/smoke/kis/chart/sync로 보정하세요.";
     }
 
     private LocalDateTime resolveExpectedMinuteEndTime(LocalDate targetDate) {
@@ -510,7 +510,7 @@ public class MockInvestmentChartSyncService {
         if (bufferedTime.isAfter(marketClose)) {
             return marketClose;
         }
-        return bufferedTime;
+        return bufferedTime.withSecond(0).withNano(0);
     }
 
     private LocalDateTime resolveExpectedThirtyMinuteEndTime(LocalDate targetDate) {
@@ -522,6 +522,9 @@ public class MockInvestmentChartSyncService {
         LocalDateTime marketOpen = LocalDateTime.of(targetDate, MARKET_OPEN_TIME);
         if (minuteEndTime.isBefore(marketOpen.plusMinutes(29))) {
             return marketOpen;
+        }
+        if (!minuteEndTime.toLocalTime().isBefore(MARKET_CLOSE_TIME)) {
+            return LocalDateTime.of(targetDate, MARKET_CLOSE_TIME);
         }
 
         int flooredMinute = minuteEndTime.getMinute() >= 30 ? 30 : 0;
@@ -540,10 +543,34 @@ public class MockInvestmentChartSyncService {
         long completedOpenDaysBeforeTarget = openDays.stream()
                 .filter(openDay -> openDay.isBefore(targetDate))
                 .count();
-        long targetDateBucketCount = openDays.contains(targetDate)
-                ? ChronoUnit.MINUTES.between(MARKET_OPEN_TIME, resolveExpectedThirtyMinuteEndTime(targetDate).toLocalTime()) / 30 + 1
-                : 0;
+        long targetDateBucketCount = calculateTargetDateThirtyMinuteCount(openDays, targetDate);
         return completedOpenDaysBeforeTarget * THIRTY_MINUTE_BUCKET_COUNT_PER_OPEN_DAY + targetDateBucketCount;
+    }
+
+    private LocalDateTime resolveExpectedThirtyMinuteRangeEndTime(List<LocalDate> openDays, LocalDate targetDate) {
+        if (calculateTargetDateThirtyMinuteCount(openDays, targetDate) > 0) {
+            return resolveExpectedThirtyMinuteEndTime(targetDate);
+        }
+
+        return openDays.stream()
+                .filter(openDay -> openDay.isBefore(targetDate))
+                .max(LocalDate::compareTo)
+                .map(openDay -> LocalDateTime.of(openDay, MARKET_CLOSE_TIME))
+                .orElse(LocalDateTime.of(targetDate, MARKET_OPEN_TIME));
+    }
+
+    private long calculateTargetDateThirtyMinuteCount(List<LocalDate> openDays, LocalDate targetDate) {
+        if (!openDays.contains(targetDate)) {
+            return 0;
+        }
+        if (targetDate.equals(LocalDate.now(KST_ZONE_ID))) {
+            LocalTime minuteEndTime = resolveExpectedMinuteEndTime(targetDate).toLocalTime();
+            if (minuteEndTime.isBefore(MARKET_OPEN_TIME.plusMinutes(29))) {
+                return 0;
+            }
+        }
+
+        return ChronoUnit.MINUTES.between(MARKET_OPEN_TIME, resolveExpectedThirtyMinuteEndTime(targetDate).toLocalTime()) / 30 + 1;
     }
 
     private record ChartStatusRange(

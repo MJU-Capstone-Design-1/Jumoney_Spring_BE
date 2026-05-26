@@ -503,6 +503,11 @@ public class MockInvestmentQueryService {
                 .map(RealtimeMinuteCandle::volume)
                 .filter(Objects::nonNull)
                 .reduce(0L, Long::sum);
+        Long tradeAmount = bucketCandles.stream()
+                .map(RealtimeMinuteCandle::tradeAmount)
+                .filter(Objects::nonNull)
+                .reduce(Long::sum)
+                .orElse(null);
         RealtimeMinuteCandle firstCandle = bucketCandles.get(0);
         RealtimeMinuteCandle lastCandle = bucketCandles.get(bucketCandles.size() - 1);
 
@@ -513,7 +518,7 @@ public class MockInvestmentQueryService {
                 lowPrice,
                 lastCandle.closePrice(),
                 volume,
-                lastCandle.tradeAmount(),
+                tradeAmount,
                 false
         ));
     }

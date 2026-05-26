@@ -11,7 +11,7 @@
 - `global.client.kis.dto.dividend`: 배당일정 DTO
 - `global.client.kis.dto.trading`: 신용잔고, 투자자매매동향 DTO
 - `global.client.kis.enums`: KIS 요청 옵션 enum
-- `global.client.kis.smoke`: local 프로필 전용 KIS 연동 검증 API
+- `global.client.kis.smoke`: KIS 연동 검증 및 운영 수동 관리 API
 
 ## Active REST APIs
 
@@ -37,8 +37,11 @@
 - 이 제한은 `KisApiClient`의 모든 REST API 호출에 공통 적용한다. 개별 서비스나 배치가 별도 병렬 호출을 추가하더라도 같은 계정/app key 제한을 공유해야 한다.
 - 여러 실전 계정/app key를 연결하면 REST 처리량을 늘릴 수 있지만, 토큰 캐시/RateLimiter/호출 라우팅을 credential별로 분리해야 하므로 현재는 구현하지 않는다. 필요 시
   `KisCredentialProvider`와 credential별 `KisTokenManager`, `KisRateLimiter`로 확장한다.
-- 초단기 추천 체결강도는 종목 지표 배치가 `FHKST01010300`의 `tday_rltv`를 읽어 `StockIndicator.executionStrength`에 직전 확정값으로 저장한다.
-- 추천 API는 체결강도 정렬 시 DB 확정값을 사용하며, 사용자 요청 중 Spring REST `FHKST01010300` fallback을 호출하지 않는다.
+- 초단기 추천 체결강도는 장중 Redis `stock:latest:{code}.strength`가 freshness 조건을 만족하면 이 값을 우선 사용한다.
+- Redis 값이 없거나 오래됐으면 `StockIndicator.executionStrength`로 fallback한다.
+- 장마감 후 `15:45` 스케줄은 KIS를 다시 호출하지 않고, 같은 거래일의 Redis `stock:latest:{code}.strength`로 최신 기존 `StockIndicator.baseTime` 행의
+  `executionStrength`를 보정한다.
+- 추천 API는 사용자 요청 중 Spring REST `FHKST01010300` fallback을 호출하지 않는다.
 
 ## Realtime WebSocket Data
 
@@ -140,8 +143,8 @@
 
 ## Realtime Integration Contract
 
-| Source                                   | Usage                                           |
-|------------------------------------------|-------------------------------------------------|
-| Node Redis `stock:latest:{code}`         | 현재 진행 중인 최신 1분 분봉 1개 조회. 현재가/등락률 표시와 초기 스냅샷에 사용 |
-| Node Redis `stock:minute-candles:{code}` | 최근 40분 미확정 1분봉 조회. 분봉 차트 병합에 사용                 |
-| Spring REST `FHKST01010300`              | Redis 부재 또는 운영 보정이 필요한 경우의 제한적 fallback         |
+| Source                                   | Usage                                                                   |
+|------------------------------------------|-------------------------------------------------------------------------|
+| Node Redis `stock:latest:{code}`         | 현재 진행 중인 최신 1분 분봉 1개 조회. 현재가/등락률 표시, 초단기 추천 체결강도, 장마감 DB 보정, 초기 스냅샷에 사용 |
+| Node Redis `stock:minute-candles:{code}` | 최근 40분 미확정 1분봉 조회. 분봉 차트 병합에 사용                                         |
+| Spring REST `FHKST01010300`              | 06:00 전체 지표 배치의 초기 체결강도 저장에 사용. 사용자 요청/장마감 보정 중 직접 fallback 호출 없음       |

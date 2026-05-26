@@ -2,11 +2,11 @@ package com.mju.Jumoney.global.realtime;
 
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
+import com.mju.Jumoney.global.smoke.SmokeAdminKeyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.DataType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,14 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Set;
 
-@Tag(name = "Local Realtime Redis Smoke", description = "local 프로필 전용 Redis 읽기 검증")
+@Tag(name = "Realtime Redis Smoke", description = "실시간 Redis 읽기 검증")
 @RestController
-@Profile("local")
 @RequiredArgsConstructor
-@RequestMapping("/api/local/realtime-redis")
+@RequestMapping("/api/smoke/realtime-redis")
 public class RealtimeRedisSmokeController {
 
     private final RealtimeRedisReader realtimeRedisReader;
+    private final SmokeAdminKeyValidator smokeAdminKeyValidator;
 
     @Operation(
             summary = "실시간 Redis String 조회",
@@ -33,7 +33,7 @@ public class RealtimeRedisSmokeController {
                     사용 목적:
                     - SSH 터널/비밀번호/포트 설정이 정상인지 확인
                     - Node 서버가 최신 종목 스냅샷을 적재했는지 확인
-                    - 추천 API가 사용할 현재가, 등락률, 체결강도 원천값 확인
+                    - Spring 현재가 fallback 전에 사용할 Redis 현재가/등락률 원천값 확인
                     
                     대표 key:
                     - stock:latest:005930
@@ -45,9 +45,13 @@ public class RealtimeRedisSmokeController {
     )
     @GetMapping("/value")
     public ResponseEntity<ApiResponse<RealtimeRedisValueSmokeResponse>> getValue(
+            @Parameter(description = "운영 환경 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "조회할 Redis String key", example = "stock:latest:005930")
             @RequestParam String key
     ) {
+        smokeAdminKeyValidator.validate(adminKey);
         DataType type = realtimeRedisReader.type(key);
         String value = realtimeRedisReader.getRaw(key).orElse(null);
 
@@ -78,12 +82,16 @@ public class RealtimeRedisSmokeController {
     )
     @GetMapping("/hash")
     public ResponseEntity<ApiResponse<RealtimeRedisHashSmokeResponse>> getHash(
+            @Parameter(description = "운영 환경 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "조회할 Redis Hash key", example = "news:analysis:today")
             @RequestParam String key,
 
             @Parameter(description = "조회할 Hash field", example = "summary")
             @RequestParam String field
     ) {
+        smokeAdminKeyValidator.validate(adminKey);
         DataType type = realtimeRedisReader.type(key);
         String value = realtimeRedisReader.hashGetRaw(key, field).orElse(null);
 
@@ -118,6 +126,9 @@ public class RealtimeRedisSmokeController {
     )
     @GetMapping("/zset")
     public ResponseEntity<ApiResponse<RealtimeRedisZSetSmokeResponse>> getZSet(
+            @Parameter(description = "운영 환경 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
             @Parameter(description = "조회할 Redis ZSET key", example = "stock:minute-candles:005930")
             @RequestParam String key,
 
@@ -130,6 +141,7 @@ public class RealtimeRedisSmokeController {
             @Parameter(description = "true면 score가 큰 member부터 조회합니다.", example = "true")
             @RequestParam(defaultValue = "true") boolean reverse
     ) {
+        smokeAdminKeyValidator.validate(adminKey);
         DataType type = realtimeRedisReader.type(key);
         Set<String> values = reverse
                 ? realtimeRedisReader.zSetReverseRangeRaw(key, start, end)

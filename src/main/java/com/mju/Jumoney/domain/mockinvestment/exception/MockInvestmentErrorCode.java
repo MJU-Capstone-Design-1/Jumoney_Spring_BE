@@ -14,7 +14,7 @@ public enum MockInvestmentErrorCode implements BaseErrorCode {
     CURRENT_PRICE_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "MOCK_INVESTMENT400_PRICE", "현재가를 조회할 수 없습니다."),
     INSUFFICIENT_CASH_BALANCE(HttpStatus.BAD_REQUEST, "MOCK_INVESTMENT400_CASH", "예수금이 부족합니다."),
     INSUFFICIENT_STOCK_QUANTITY(HttpStatus.BAD_REQUEST, "MOCK_INVESTMENT400_STOCK_QUANTITY", "보유 수량이 부족합니다."),
-    MARKET_CLOSED(HttpStatus.BAD_REQUEST, "MOCK_INVESTMENT400_MARKET_CLOSED", "장 중(9:00 ~ 15:30)에만 주문할 수 있습니다.");
+    MARKET_CLOSED(HttpStatus.BAD_REQUEST, "MOCK_INVESTMENT400_MARKET_CLOSED", "장 중(9:00 ~ 15:20)에만 주문할 수 있습니다.");
 
     private final HttpStatus status;
     private final String code;

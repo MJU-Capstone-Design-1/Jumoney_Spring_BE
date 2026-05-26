@@ -36,10 +36,15 @@ kis:
   batch:
     stock-indicator:
       enabled: ${KIS_STOCK_INDICATOR_SCHEDULER_ENABLED:false}
+      execution-strength-close-enabled: ${KIS_EXECUTION_STRENGTH_CLOSE_SCHEDULER_ENABLED:false}
     hts-condition:
       enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:false}
     minute-candle:
       enabled: ${KIS_MINUTE_CANDLE_SCHEDULER_ENABLED:false}
+
+verified-operation:
+  scheduler:
+    enabled: ${VERIFIED_OPERATION_SCHEDULER_ENABLED:false}
 
 # 운영 서버에서 Nginx 리버스 프록시를 사용할 때 HTTPS 도메인을 자동으로 인식
 server:

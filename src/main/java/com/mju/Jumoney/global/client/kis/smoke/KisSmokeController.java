@@ -4,7 +4,6 @@ import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncRe
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
-import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncStatusResponse;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionResultOutput;
 import com.mju.Jumoney.global.client.kis.dto.condition.KisHtsConditionTitleOutput;
 import com.mju.Jumoney.global.client.kis.smoke.dto.BatchJobRunResponse;
@@ -12,47 +11,39 @@ import com.mju.Jumoney.global.client.kis.smoke.dto.KisSmokeResponse;
 import com.mju.Jumoney.global.client.kis.smoke.dto.StockIndicatorBatchStatusResponse;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
+import com.mju.Jumoney.global.smoke.SmokeAdminKeyValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Tag(name = "KIS Smoke", description = "KIS API 호출 검증 및 배치 수동 실행")
 @RestController
-@Profile({"local", "prod"})
 @RequiredArgsConstructor
-@RequestMapping("/api/local/kis")
+@RequestMapping("/api/smoke/kis")
 public class KisSmokeController {
 
     private final KisSmokeService kisSmokeService;
-    private final Environment environment;
+    private final SmokeAdminKeyValidator smokeAdminKeyValidator;
 
     @Value("${kis.hts.user-id:}")
     private String configuredHtsUserId;
 
-    @Value("${kis.smoke.admin-key:}")
-    private String configuredAdminKey;
-
     @Operation(
             summary = "KIS API 호출 검증",
-            description = "입력 종목 코드로 현재까지 연동된 KIS REST API를 순차 호출하고 각 API의 성공 여부와 샘플 응답을 반환합니다. prod 프로필에서는 adminKey가 필요합니다."
+            description = "입력 종목 코드로 현재까지 연동된 KIS REST API를 순차 호출하고 각 API의 성공 여부와 샘플 응답을 반환합니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @GetMapping("/smoke")
     public ResponseEntity<ApiResponse<KisSmokeResponse>> smoke(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "종목 코드", example = "005930")
@@ -88,11 +79,11 @@ public class KisSmokeController {
 
     @Operation(
             summary = "HTS 조건검색 목록조회 검증",
-            description = "HTS에 서버저장된 조건명과 seq 목록을 조회합니다. prod 프로필에서는 adminKey가 필요합니다."
+            description = "HTS에 서버저장된 조건명과 seq 목록을 조회합니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @GetMapping("/hts/titles")
     public ResponseEntity<ApiResponse<List<KisHtsConditionTitleOutput>>> htsConditionTitles(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "HTS ID. 생략 시 kis.hts.user-id 설정값 사용")
@@ -107,11 +98,11 @@ public class KisSmokeController {
 
     @Operation(
             summary = "HTS 조건검색 결과조회 검증",
-            description = "HTS 조건 seq로 종목검색 결과를 조회합니다. DB에는 저장하지 않습니다. prod 프로필에서는 adminKey가 필요합니다."
+            description = "HTS 조건 seq로 종목검색 결과를 조회합니다. DB에는 저장하지 않습니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @GetMapping("/hts/results")
     public ResponseEntity<ApiResponse<List<KisHtsConditionResultOutput>>> htsConditionResults(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "조건 seq", example = "0")
@@ -129,12 +120,12 @@ public class KisSmokeController {
 
     @Operation(
             summary = "HTS 조건검색 배치 수동 실행",
-            description = "설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다. prod 프로필에서는 adminKey가 필요합니다. "
+            description = "설정된 4개 HTS 조건검색 결과를 KIS에서 조회해 hts_stocks 테이블에 저장합니다. 운영 환경에서는 adminKey가 필요합니다. "
                     + "수동 실행은 요청한 baseDate를 그대로 사용하며, 생략 시 오늘 날짜를 사용합니다. 정기 스케줄은 직전 평일 기준으로 실행됩니다."
     )
     @PostMapping("/batch/hts-conditions")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runHtsConditionBatch(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "저장 기준일. 생략 시 오늘 날짜. 예시는 문서 생성일 기준 전날로 표시됩니다.")
@@ -149,14 +140,14 @@ public class KisSmokeController {
 
     @Operation(
             summary = "종목 지표 배치 수동 실행",
-            description = "Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다. prod 프로필에서는 adminKey가 필요합니다. "
+            description = "Stock 테이블 전체 종목을 순회하며 KIS 지표를 조회해 stock_indicators 테이블에 upsert합니다. 운영 환경에서는 adminKey가 필요합니다. "
                     + "수동 실행은 요청한 baseDate를 그대로 사용하며, 정기 스케줄처럼 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다. "
                     + "단, 오늘 기준 실행은 KIS 투자자매매동향 일별 API 제한 때문에 15:40 이후에만 가능합니다. "
                     + "정기 스케줄은 직전 평일 기준으로 실행됩니다."
     )
     @PostMapping("/batch/stock-indicators")
     public ResponseEntity<ApiResponse<BatchJobRunResponse>> runStockIndicatorBatch(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "지표 기준일. 직전 개장일 기준 배치는 다음 장 시작 전에 실행해야 합니다. 예시는 문서 생성일 기준 전날로 표시됩니다.")
@@ -172,11 +163,11 @@ public class KisSmokeController {
     @Operation(
             summary = "종목 지표 배치 적재 상태 확인",
             description = "기준일이 속한 기준월(baseTime=yyyyMM)의 stock_indicators 적재 건수, "
-                    + "누락 종목, 필수 컬럼 null 건수를 조회합니다. baseDate 생략 시 오늘 날짜 기준월을 사용합니다. prod 프로필에서는 adminKey가 필요합니다."
+                    + "누락 종목, 필수 컬럼 null 건수를 조회합니다. baseDate 생략 시 오늘 날짜 기준월을 사용합니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @GetMapping("/batch/stock-indicators/status")
     public ResponseEntity<ApiResponse<StockIndicatorBatchStatusResponse>> getStockIndicatorBatchStatus(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "확인 기준일. 생략 시 오늘 날짜. 예시는 문서 생성일 기준 전날로 표시됩니다.")
@@ -194,11 +185,12 @@ public class KisSmokeController {
             description = "KIS 주식당일분봉조회(FHKST03010200)를 30분 단위 입력 시각으로 여러 번 호출해 당일 1분봉을 stock_candles 테이블에 upsert합니다. "
                     + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. "
                     + "KIS 응답의 최근 분봉은 아직 확정되지 않았을 수 있어 요청 시각 기준 최근 2분은 저장하지 않습니다. "
-                    + "prod 프로필에서는 adminKey가 필요합니다."
+                    + "15:20~15:29 장마감 동시호가 구간은 15:19 종가 기준 volume=0 분봉으로 보강하고, 15:30은 별도 장마감 단일가 체결 봉으로 저장합니다. "
+                    + "운영 환경에서는 adminKey가 필요합니다."
     )
     @PostMapping("/chart/minute/sync")
     public ResponseEntity<ApiResponse<MinuteCandleSyncResponse>> syncTodayMinuteCandles(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "종목 코드. 생략 시 전체 종목 대상", example = "005930")
@@ -215,11 +207,12 @@ public class KisSmokeController {
             description = "KIS 주식일별분봉조회(FHKST03010230)를 이용해 특정 영업일의 1분봉을 stock_candles 테이블에 upsert합니다. "
                     + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. "
                     + "오늘 날짜를 넣으면 당일 분봉과 동일하게 최근 2분은 저장하지 않고, 과거 영업일을 넣으면 장 마감 15:30까지 전량 확정 분봉을 저장합니다. "
-                    + "휴장일이나 주말은 허용하지 않습니다. prod 프로필에서는 adminKey가 필요합니다."
+                    + "과거 영업일 응답에 다른 날짜 raw가 섞여도 요청한 tradingDate 분봉만 저장하며, 15:20~15:29는 15:19 종가 기준 volume=0 분봉으로 보강합니다. "
+                    + "휴장일이나 주말은 허용하지 않습니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @PostMapping("/chart/minute/sync/trading-day")
     public ResponseEntity<ApiResponse<MinuteCandleSyncResponse>> syncMinuteCandlesByTradingDay(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "동기화할 영업일", example = "2026-05-22")
@@ -236,40 +229,15 @@ public class KisSmokeController {
     }
 
     @Operation(
-            summary = "당일 분봉 동기화 상태 확인",
-            description = "stock_candles 테이블에 저장된 특정 종목의 당일 1분봉 범위와 건수를 확인합니다. "
-                    + "동기화 직후 firstCandleTime, lastCandleTime, dbExpectedCandleCount, candleCount로 저장 여부를 검증할 수 있습니다. "
-                    + "realtimeExpectedStartTime과 realtimeExpectedEndTime은 Redis 미확정 분봉으로 확인해야 하는 구간입니다. "
-                    + "prod 프로필에서는 adminKey가 필요합니다."
-    )
-    @GetMapping("/chart/minute/sync/status")
-    public ResponseEntity<ApiResponse<MinuteCandleSyncStatusResponse>> getTodayMinuteCandleSyncStatus(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
-            @RequestParam(required = false) String adminKey,
-
-            @Parameter(description = "종목 코드", example = "005930")
-            @RequestParam String stockCode,
-
-            @Parameter(description = "확인할 날짜. 생략 시 오늘 날짜")
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
-        validateAdminKey(adminKey);
-        MinuteCandleSyncStatusResponse response = kisSmokeService.getTodayMinuteCandleSyncStatus(stockCode, date);
-
-        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
-    }
-
-    @Operation(
             summary = "차트 기간 기준 수동 동기화",
             description = "차트 period 기준으로 필요한 캔들을 동기화합니다. "
                     + "period 생략 시 ONE_DAY, ONE_WEEK, THREE_MONTHS, ONE_YEAR, FIVE_YEARS를 오늘 또는 직전 개장일 기준으로 모두 채웁니다. "
                     + "ONE_DAY/ONE_WEEK는 분봉 동기화와 30분봉 집계를 사용하고, THREE_MONTHS/ONE_YEAR는 DAY, FIVE_YEARS는 WEEK 기간봉을 사용합니다. "
-                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. prod 프로필에서는 adminKey가 필요합니다."
+                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @PostMapping("/chart/sync")
     public ResponseEntity<ApiResponse<MockInvestmentChartCandleSyncResponse>> syncChartCandles(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "차트 기간. 생략 시 전체 기간 동기화", example = "ONE_DAY")
@@ -293,11 +261,11 @@ public class KisSmokeController {
             description = "지정한 기간만 차트 원천 캔들로 보정합니다. "
                     + "ONE_DAY/ONE_WEEK는 해당 기간의 영업일 분봉을 동기화하고 30분봉을 재집계합니다. "
                     + "THREE_MONTHS/ONE_YEAR는 DAY 기간봉, FIVE_YEARS는 WEEK 기간봉을 지정 기간만 upsert합니다. "
-                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. prod 프로필에서는 adminKey가 필요합니다."
+                    + "stockCode를 생략하면 등록된 전체 종목을 대상으로 실행합니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @PostMapping("/chart/sync/range")
     public ResponseEntity<ApiResponse<MockInvestmentChartCandleSyncResponse>> syncChartCandlesInRange(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "차트 기간", example = "ONE_WEEK")
@@ -324,11 +292,11 @@ public class KisSmokeController {
             summary = "차트 기간 기준 동기화 상태 확인",
             description = "stock_candles 테이블에 저장된 특정 종목의 차트 period별 원천 캔들 범위와 건수를 확인합니다. "
                     + "period를 생략하면 ONE_DAY, ONE_WEEK, THREE_MONTHS, ONE_YEAR, FIVE_YEARS 상태를 모두 반환합니다. "
-                    + "부족하면 /api/local/kis/chart/sync로 보정합니다. prod 프로필에서는 adminKey가 필요합니다."
+                    + "부족하면 /api/smoke/kis/chart/sync로 보정합니다. 운영 환경에서는 adminKey가 필요합니다."
     )
     @GetMapping("/chart/sync/status")
     public ResponseEntity<ApiResponse<MockInvestmentChartCandleSyncStatusResponse>> getChartCandleSyncStatus(
-            @Parameter(description = "prod 프로필 전용 관리자 키")
+            @Parameter(description = "운영 환경 전용 관리자 키")
             @RequestParam(required = false) String adminKey,
 
             @Parameter(description = "종목 코드", example = "005930")
@@ -362,15 +330,7 @@ public class KisSmokeController {
     }
 
     private void validateAdminKey(String adminKey) {
-        if (!environment.acceptsProfiles(Profiles.of("prod"))) {
-            return;
-        }
-        if (!StringUtils.hasText(configuredAdminKey)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "KIS smoke admin key is not configured.");
-        }
-        if (!configuredAdminKey.equals(adminKey)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid KIS smoke admin key.");
-        }
+        smokeAdminKeyValidator.validate(adminKey);
     }
 
 }

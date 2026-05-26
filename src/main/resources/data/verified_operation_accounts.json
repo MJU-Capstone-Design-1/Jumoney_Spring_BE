@@ -1,0 +1,82 @@
+[
+  {
+    "accountCode": "HOJUMONEY_CAPITAL_PROTECTION_STABILITY_LONG",
+    "accountName": "모의 운용 계정 (안정적인 자산 보호 + 매우 낮음 + 장기)",
+    "type": "HOJUMONEY",
+    "hojumoneyConditions": [
+      "CAPITAL_PROTECTION",
+      "STABILITY",
+      "LONG"
+    ]
+  },
+  {
+    "accountCode": "HOJUMONEY_DIVIDEND_INCOME_SAFE_PURSUIT_LONG",
+    "accountName": "모의 운용 계정 (배당 수익 + 낮음 + 장기)",
+    "type": "HOJUMONEY",
+    "hojumoneyConditions": [
+      "DIVIDEND_INCOME",
+      "SAFE_PURSUIT",
+      "LONG"
+    ]
+  },
+  {
+    "accountCode": "HOJUMONEY_STEADY_GROWTH_PROFIT_PURSUIT_MID",
+    "accountName": "모의 운용 계정 (자산의 꾸준한 성장 + 높음 + 중기)",
+    "type": "HOJUMONEY",
+    "hojumoneyConditions": [
+      "STEADY_GROWTH",
+      "PROFIT_PURSUIT",
+      "MID"
+    ]
+  },
+  {
+    "accountCode": "HOJUMONEY_CAPITAL_GAIN_AGGRESSIVE_SHORT",
+    "accountName": "모의 운용 계정 (시세 차익 + 매우 높음 + 단기)",
+    "type": "HOJUMONEY",
+    "hojumoneyConditions": [
+      "CAPITAL_GAIN",
+      "AGGRESSIVE",
+      "SHORT"
+    ]
+  },
+  {
+    "accountCode": "MASTER_WARREN_BUFFETT",
+    "accountName": "모의 운용 계정 (워런 버핏)",
+    "type": "MASTER_CHOICE",
+    "masterCode": "WARREN_BUFFETT",
+    "masterConditions": [
+      "BUFFETT_ROE",
+      "BUFFETT_PER"
+    ]
+  },
+  {
+    "accountCode": "MASTER_PETER_LYNCH",
+    "accountName": "모의 운용 계정 (피터 린치)",
+    "type": "MASTER_CHOICE",
+    "masterCode": "PETER_LYNCH",
+    "masterConditions": [
+      "LYNCH_PEG",
+      "LYNCH_EPS_GROWTH"
+    ]
+  },
+  {
+    "accountCode": "MASTER_RAY_DALIO",
+    "accountName": "모의 운용 계정 (레이 달리오)",
+    "type": "MASTER_CHOICE",
+    "masterCode": "RAY_DALIO",
+    "masterConditions": [
+      "DALIO_DEBT_RATIO",
+      "DALIO_EARNINGS_YIELD"
+    ]
+  },
+  {
+    "accountCode": "MASTER_WILLIAM_ONEIL",
+    "accountName": "모의 운용 계정 (윌리엄 오닐)",
+    "type": "MASTER_CHOICE",
+    "masterCode": "WILLIAM_ONEIL",
+    "masterConditions": [
+      "ONEIL_EPS_GROWTH",
+      "ONEIL_INST_NET_BUY"
+    ]
+  }
+]
