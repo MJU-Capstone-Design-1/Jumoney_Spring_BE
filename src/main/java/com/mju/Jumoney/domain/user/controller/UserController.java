@@ -47,7 +47,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
 
-    @Operation(summary = "회원 탈퇴", description = "로그인 사용자를 탈퇴 처리하고 Refresh Token을 무효화합니다.")
+    @Operation(summary = "회원 탈퇴", description = "로그인 사용자를 탈퇴 처리하고 Refresh Token을 무효화합니다. 카카오 회원은 탈퇴 후 7일 내 재로그인하면 기존 계정이 복구되며, 7일이 지나면 관련 데이터와 함께 영구 삭제됩니다. 개발자용 임시 로그인 계정은 탈퇴 즉시 영구 삭제됩니다.")
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<Void>> withdraw(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {

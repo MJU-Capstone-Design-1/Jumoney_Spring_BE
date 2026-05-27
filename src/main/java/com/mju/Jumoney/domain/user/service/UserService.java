@@ -9,8 +9,11 @@ import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.utils.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private static final String REFRESH_TOKEN_KEY_PREFIX = "RT:";
+    private static final long WITHDRAWAL_GRACE_PERIOD_DAYS = 7L;
 
     private final UserRepository userRepository;
     private final RedisUtil redisUtil;
@@ -57,10 +61,27 @@ public class UserService {
     @Transactional
     public void withdraw(Long userId) {
         User user = findUserById(userId);
-        user.softDelete();
         redisUtil.delete(getRefreshTokenKey(userId));
 
-        log.info("[UserService] 회원 탈퇴 완료 - User ID: {}", userId);
+        if (user.isDevAccount()) {
+            userRepository.hardDeleteById(userId);
+            log.info("[UserService] 개발자 임시 계정 영구 탈퇴 완료 - User ID: {}", userId);
+            return;
+        }
+
+        user.softDelete();
+
+        log.info("[UserService] 회원 탈퇴 완료 - User ID: {}, permanentDeletionAfterDays: {}", userId, WITHDRAWAL_GRACE_PERIOD_DAYS);
+    }
+
+    @Scheduled(cron = "${user.withdrawal.cleanup.cron:0 0 * * * *}", zone = "${user.withdrawal.cleanup.zone-id:Asia/Seoul}")
+    @Transactional
+    public void cleanupWithdrawnUsers() {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(WITHDRAWAL_GRACE_PERIOD_DAYS);
+        int deletedCount = userRepository.hardDeleteWithdrawnKakaoUsersBefore(cutoff);
+        if (deletedCount > 0) {
+            log.info("[UserService] 탈퇴 유예기간 경과 회원 영구 삭제 완료 - count: {}, cutoff: {}", deletedCount, cutoff);
+        }
     }
 
     // ========== 검증 메서드 ==========
