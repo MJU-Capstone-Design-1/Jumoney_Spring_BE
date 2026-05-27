@@ -33,4 +33,7 @@ public interface StockCandleRepository extends JpaRepository<StockCandle, Long> 
                                                                                                      StockCandleIntervalType intervalType,
                                                                                                      LocalDateTime startTime,
                                                                                                      LocalDateTime endTime);
+
+    Optional<StockCandle> findFirstByStockIdAndIntervalTypeOrderByCandleTimeDesc(Long stockId,
+                                                                                 StockCandleIntervalType intervalType);
 }
