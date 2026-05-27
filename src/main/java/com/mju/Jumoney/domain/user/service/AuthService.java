@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -29,6 +30,8 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 // 인증 로직을 총괄하는 서비스 (카카오 API 통신, 유저 가입 및 복구 처리, JWT 생성 및 Redis 저장 등)
 public class AuthService {
+
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "RT:";
 
     private final KakaoClient kakaoClient;
     private final UserRepository userRepository;
@@ -76,7 +79,7 @@ public class AuthService {
 
         // 4. Refresh Token을 DB가 아닌 Redis에 저장 (성능 최적화)
         long refreshTokenValidity = jwtProperties.getRefreshTokenValidity();
-        redisUtil.save("RT:" + user.getId(), refreshToken, java.time.Duration.ofMillis(refreshTokenValidity));
+        redisUtil.save(getRefreshTokenKey(user.getId()), refreshToken, java.time.Duration.ofMillis(refreshTokenValidity));
 
         // 5. 컨트롤러에 전달할 응답 결과 생성
         AuthLoginResponse responseDto = new AuthLoginResponse(accessToken, user.getId(), user.getNickname(), isNewMember);
@@ -93,7 +96,7 @@ public class AuthService {
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
 
         // Redis에 저장된 RT와 일치하는지 확인 (탈취 방지)
-        String redisToken = redisUtil.get("RT:" + userId, String.class).orElse(null);
+        String redisToken = redisUtil.get(getRefreshTokenKey(userId), String.class).orElse(null);
         if (redisToken == null || !redisToken.equals(refreshToken)) {
             throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
@@ -107,12 +110,43 @@ public class AuthService {
         String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role);
 
         // Redis 업데이트
-        redisUtil.save("RT:" + user.getId(), newRefreshToken, java.time.Duration.ofMillis(jwtProperties.getRefreshTokenValidity()));
+        redisUtil.save(getRefreshTokenKey(user.getId()), newRefreshToken, java.time.Duration.ofMillis(jwtProperties.getRefreshTokenValidity()));
 
         return Map.of(
                 "accessToken", newAccessToken,
                 "refreshToken", newRefreshToken
         );
+    }
+
+    @Transactional
+    public void logout(Long userId, String refreshToken) {
+        if (userId != null) {
+            redisUtil.delete(getRefreshTokenKey(userId));
+            log.info("[AuthService] 로그아웃 완료 - User ID: {}", userId);
+            return;
+        }
+
+        if (!StringUtils.hasText(refreshToken)) {
+            log.info("[AuthService] 로그아웃 요청 처리 - 인증 정보 없음");
+            return;
+        }
+
+        try {
+            jwtTokenProvider.validateToken(refreshToken);
+
+            Long refreshTokenUserId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+            String redisToken = redisUtil.get(getRefreshTokenKey(refreshTokenUserId), String.class).orElse(null);
+
+            if (refreshToken.equals(redisToken)) {
+                redisUtil.delete(getRefreshTokenKey(refreshTokenUserId));
+                log.info("[AuthService] Refresh Token 기반 로그아웃 완료 - User ID: {}", refreshTokenUserId);
+                return;
+            }
+
+            log.info("[AuthService] 로그아웃 요청 무시 - 저장된 Refresh Token과 불일치");
+        } catch (CustomException e) {
+            log.info("[AuthService] 로그아웃 요청 처리 - 유효하지 않거나 만료된 Refresh Token");
+        }
     }
 
     // 프론트 없이 백엔드 혼자 테스트하기 위한 임시 발급 API (테스트용)
@@ -133,7 +167,7 @@ public class AuthService {
         String accessToken = jwtTokenProvider.createAccessToken(user.getId(), role);
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role);
 
-        redisUtil.save("RT:" + user.getId(), refreshToken, java.time.Duration.ofMillis(jwtProperties.getRefreshTokenValidity()));
+        redisUtil.save(getRefreshTokenKey(user.getId()), refreshToken, java.time.Duration.ofMillis(jwtProperties.getRefreshTokenValidity()));
 
         return Map.of(
                 "accessToken", accessToken,
@@ -147,5 +181,9 @@ public class AuthService {
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    }
+
+    private String getRefreshTokenKey(Long userId) {
+        return REFRESH_TOKEN_KEY_PREFIX + userId;
     }
 }

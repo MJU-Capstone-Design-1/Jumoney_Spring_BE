@@ -6,6 +6,7 @@ import com.mju.Jumoney.domain.user.dto.UserUpdateDTO;
 import com.mju.Jumoney.domain.user.exception.UserErrorCode;
 import com.mju.Jumoney.domain.user.repository.UserRepository;
 import com.mju.Jumoney.global.exception.CustomException;
+import com.mju.Jumoney.global.utils.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class UserService {
 
+    private static final String REFRESH_TOKEN_KEY_PREFIX = "RT:";
+
     private final UserRepository userRepository;
+    private final RedisUtil redisUtil;
 
     @Transactional
     public UserUpdateDTO.Response updateServiceNickname(Long userId, UserUpdateDTO.Request request) {
@@ -50,6 +54,15 @@ public class UserService {
                 .build();
     }
 
+    @Transactional
+    public void withdraw(Long userId) {
+        User user = findUserById(userId);
+        user.softDelete();
+        redisUtil.delete(getRefreshTokenKey(userId));
+
+        log.info("[UserService] 회원 탈퇴 완료 - User ID: {}", userId);
+    }
+
     // ========== 검증 메서드 ==========
     private void validateDuplicateNickname(String serviceNickname, Long userId) {
         if (userRepository.existsByServiceNicknameAndIdNot(serviceNickname, userId)) {
@@ -61,5 +74,9 @@ public class UserService {
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+    }
+
+    private String getRefreshTokenKey(Long userId) {
+        return REFRESH_TOKEN_KEY_PREFIX + userId;
     }
 }

@@ -4,6 +4,7 @@ import com.mju.Jumoney.domain.user.dto.UserInfoDTO;
 import com.mju.Jumoney.domain.user.dto.UserUpdateDTO;
 import com.mju.Jumoney.domain.user.service.UserService;
 import com.mju.Jumoney.global.exception.CustomException;
+import com.mju.Jumoney.global.jwt.JwtProperties;
 import com.mju.Jumoney.global.jwt.UserPrincipal;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.ErrorCode;
@@ -12,6 +13,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final JwtProperties jwtProperties;
 
     @Operation(summary = "서비스 닉네임 수정", description = "로그인 사용자가 앱 내에서 사용할 닉네임을 수정합니다.")
     @PatchMapping("/me/nickname")
@@ -43,11 +47,33 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
 
+    @Operation(summary = "회원 탈퇴", description = "로그인 사용자를 탈퇴 처리하고 Refresh Token을 무효화합니다.")
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> withdraw(
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+
+        userService.withdraw(getAuthenticatedUserId(userPrincipal));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, createDeleteRefreshTokenCookie().toString())
+                .body(ApiResponse.success(SuccessCode.OK));
+    }
+
     // ========== 인증 메서드 ==========
     private Long getAuthenticatedUserId(UserPrincipal userPrincipal) {
         if (userPrincipal == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
         }
         return userPrincipal.userId();
+    }
+
+    private ResponseCookie createDeleteRefreshTokenCookie() {
+        return ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(jwtProperties.isCookieSecure())
+                .sameSite(jwtProperties.getCookieSameSite())
+                .path("/")
+                .maxAge(0)
+                .build();
     }
 }
