@@ -41,14 +41,18 @@
 - **`UserRanking`: 사용자 랭킹 테이블**
     - 관계
         - **`User`**(1:1)
-        - **`Master`**(N:1)
+        - **`Master`**(N:1, NULL 허용)
+    - 갱신 정책
+        - 기본적으로 1시간마다 스케줄러가 전체 스냅샷을 재계산한다.
+        - 스냅샷이 비어 있는 최초 조회 시에는 API가 1회 즉시 재계산을 수행할 수 있다.
     - 필드
-        - **랭킹 ID / rankingId / BIGINT / NOT NULL (PK)**
+        - **랭킹 ID / userRankingId / BIGINT / NOT NULL (PK)**
         - **사용자 ID / userId / BIGINT / NOT NULL (FK)**
-        - **거장 ID / masterId / BIGINT / NOT NULL (FK)**
-        - 현재 수익률 / profitRate / DECIMAL / NOT NULL
+        - **거장 ID / masterId / BIGINT / NULL (FK)**
+        - 총 자산 / totalAsset / DECIMAL / NOT NULL
+        - 총 수익률 / totalProfitRate / DECIMAL / NOT NULL
         - 전체 순위 / overallRank / INTEGER / NOT NULL
-        - 팀 내 순위 / groupRank / INTEGER / NOT NULL
+        - 거장 내 순위 / masterRank / INTEGER / NULL
         - 랭킹 기준 일자 / rankingDate / DATE / NOT NULL
 
 ### **주식 용어 (Stock Terms)**

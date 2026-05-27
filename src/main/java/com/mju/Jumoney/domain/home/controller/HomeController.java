@@ -1,8 +1,10 @@
 package com.mju.Jumoney.domain.home.controller;
 
 import com.mju.Jumoney.domain.home.dto.HomeMockInvestmentChartResponse;
+import com.mju.Jumoney.domain.home.dto.HomeMockInvestmentRankingsResponse;
 import com.mju.Jumoney.domain.home.dto.HomeMockInvestmentSummaryResponse;
 import com.mju.Jumoney.domain.home.service.HomeMockInvestmentQueryService;
+import com.mju.Jumoney.domain.home.service.HomeMockInvestmentRankingQueryService;
 import com.mju.Jumoney.domain.stockterm.dto.TodayStockTermResponse;
 import com.mju.Jumoney.domain.stockterm.service.StockTermQueryService;
 import com.mju.Jumoney.global.exception.CustomException;
@@ -27,6 +29,7 @@ public class HomeController {
 
     private final StockTermQueryService stockTermQueryService;
     private final HomeMockInvestmentQueryService homeMockInvestmentQueryService;
+    private final HomeMockInvestmentRankingQueryService homeMockInvestmentRankingQueryService;
 
     @Operation(summary = "오늘의 주식 용어 조회", description = "오늘 자정 기준으로 선정된 오늘의 주식 용어 1건을 조회합니다.")
     @GetMapping("/stock-term/today")
@@ -53,6 +56,18 @@ public class HomeController {
         return ResponseEntity.ok(ApiResponse.success(
                 SuccessCode.OK,
                 homeMockInvestmentQueryService.getSummaryChart(getAuthenticatedUserId(userPrincipal))
+        ));
+    }
+
+    @Operation(
+            summary = "홈 모의투자 랭킹 조회",
+            description = "전체 Top 5와 거장별 Top 5 랭킹을 함께 조회합니다. 랭킹 스냅샷은 1시간마다 갱신됩니다. 총 자산 내림차순으로 랭킹을 매기고 동률이면 총 수익률 순으로 정렬합니다. 대표 투자 기업 3개는 총 매수 금액 내림차순으로 선정합니다."
+    )
+    @GetMapping("/mock-investment-rankings")
+    public ResponseEntity<ApiResponse<HomeMockInvestmentRankingsResponse>> getMockInvestmentRankings() {
+        return ResponseEntity.ok(ApiResponse.success(
+                SuccessCode.OK,
+                homeMockInvestmentRankingQueryService.getRankings()
         ));
     }
 
