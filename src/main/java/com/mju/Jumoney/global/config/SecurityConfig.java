@@ -70,7 +70,8 @@ public class SecurityConfig {
                                 "/api/master/masters/*/portfolio/description",
                                 "/api/stock-terms/categories",
                                 "/api/stock-terms/categories/*/terms",
-                                "/api/stock-terms/terms/*"
+                                "/api/stock-terms/terms/*",
+                                "/api/home/*"
                         ).permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()

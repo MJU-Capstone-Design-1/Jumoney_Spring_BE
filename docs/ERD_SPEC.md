@@ -63,7 +63,6 @@
         - 용어 이름 / termName / VARCHAR(50) / NOT NULL
         - 한 줄 설명 / subtitle / VARCHAR(100) / NOT NULL
         - 용어 설명 / description / TEXT / NOT NULL
-        - 이미지 파일 명 / imageFileName / VARCHAR(100) / NOT NULL
 
 - **`StockTermScrap`: 용어 스크랩 테이블 (주식 용어 - 사용자 매핑 테이블)**
     - 관계
