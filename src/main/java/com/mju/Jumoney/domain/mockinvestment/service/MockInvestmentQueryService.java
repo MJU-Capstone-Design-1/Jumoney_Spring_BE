@@ -558,7 +558,8 @@ public class MockInvestmentQueryService {
         }
 
         LocalDate today = LocalDate.now(KST_ZONE_ID);
-        if (marketCalendarService.isOpenDay(today, KST_ZONE_ID)) {
+        LocalTime now = LocalTime.now(KST_ZONE_ID);
+        if (marketCalendarService.isOpenDay(today, KST_ZONE_ID) && !now.isBefore(MARKET_OPEN_TIME)) {
             return today;
         }
 

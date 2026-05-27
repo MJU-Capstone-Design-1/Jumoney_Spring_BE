@@ -1,10 +1,12 @@
 package com.mju.Jumoney.domain.user.repository;
 
 import com.mju.Jumoney.domain.user.domain.User;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -18,4 +20,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 서비스 닉네임 중복 여부 확인
     boolean existsByServiceNickname(String serviceNickname);
+
+    boolean existsByServiceNicknameAndIdNot(String serviceNickname, Long id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM users WHERE user_id = :userId", nativeQuery = true)
+    int hardDeleteById(@Param("userId") Long userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            DELETE FROM users
+            WHERE deleted_at IS NOT NULL
+              AND deleted_at < :cutoff
+              AND provider = 'KAKAO'
+              AND provider_id NOT LIKE 'DEV_%'
+            """, nativeQuery = true)
+    int hardDeleteWithdrawnKakaoUsersBefore(@Param("cutoff") LocalDateTime cutoff);
 }

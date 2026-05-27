@@ -75,6 +75,10 @@ public class User extends BaseSoftDeleteEntity {
         this.verifiedOperationAccount = true;
     }
 
+    public boolean isDevAccount() {
+        return provider == AuthProvider.KAKAO && providerId != null && providerId.startsWith("DEV_");
+    }
+
     // OAuth2 로그인용 정적 팩토리 메서드
     public static User of(AuthProvider provider, String providerId, String nickname) {
         return User.builder()

@@ -17,5 +17,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findFirstByAccountIdAndOrderTypeInOrderByExecutedAtDesc(Long accountId, Collection<OrderType> orderTypes);
 
+    List<Order> findByAccountIdAndOrderTypeOrderByExecutedAtAsc(Long accountId, OrderType orderType);
+
+    List<Order> findByAccountIdInAndOrderTypeOrderByExecutedAtAsc(Collection<Long> accountIds, OrderType orderType);
+
     void deleteByAccountId(Long accountId);
 }

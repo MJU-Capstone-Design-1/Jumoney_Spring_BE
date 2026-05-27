@@ -1,6 +1,7 @@
 package com.mju.Jumoney.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mju.Jumoney.domain.user.repository.UserRepository;
 import com.mju.Jumoney.global.jwt.JwtAuthenticationFilter;
 import com.mju.Jumoney.global.jwt.JwtExceptionFilter;
 import com.mju.Jumoney.global.jwt.JwtTokenProvider;
@@ -25,6 +26,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
 
     // Spring Security 메인 필터 체인
@@ -32,7 +34,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         // JWT 인증 및 예외 필터 직접 생성 (이중 등록 방지)
-        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtTokenProvider);
+        JwtAuthenticationFilter jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
         JwtExceptionFilter jwtExceptionFilter = new JwtExceptionFilter(objectMapper);
 
         // Stateless(JWT)를 위한 기본 설정
@@ -57,20 +59,23 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         // 최신 보안 표준: ignoring() 대신 permitAll() 사용
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/favicon.ico", "/error").permitAll()
-                        // 기타 모든 요청 임시 허용
+                        .requestMatchers(
+                                "/api/auth/kakao/login",
+                                "/api/auth/refresh",
+                                "/api/auth/dev/login",
+                                "/api/auth/logout",
+                                "/api/master/masters",
+                                "/api/master/masters/*/detail",
+                                "/api/master/masters/*/portfolio/chart",
+                                "/api/master/masters/*/portfolio/description",
+                                "/api/stock-terms/categories",
+                                "/api/stock-terms/categories/*/terms",
+                                "/api/stock-terms/terms/*",
+                                "/api/home/*"
+                        ).permitAll()
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 );
-        /*
-        // TODO: 추후 인증된 사용자만 허용되도록 코드 교체
-        http
-            .authorizeHttpRequests(authz -> authz
-                    // 로그인, 회원가입 등 인증 API는 누구나 허용
-                    .requestMatchers("/api/auth/**", "/oauth2/**").permitAll()
-                    // 그 외는 인증된 사용자만 허용
-                    .requestMatchers("/api/**").authenticated()
-                    .anyRequest().authenticated()
-            );
-        */
 
         // 커스텀 필터 체인 순서 배치
         // 예외 처리 필터 -> JWT 인증 필터 -> 기본 인증 필터 순서로 등록
