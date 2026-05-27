@@ -3,6 +3,7 @@ package com.mju.Jumoney.domain.stockterm.service;
 import com.mju.Jumoney.domain.stockterm.domain.StockTerm;
 import com.mju.Jumoney.domain.stockterm.domain.StockTermLearning;
 import com.mju.Jumoney.domain.stockterm.domain.StockTermScrap;
+import com.mju.Jumoney.domain.stockterm.domain.TodayStockTerm;
 import com.mju.Jumoney.domain.stockterm.dto.*;
 import com.mju.Jumoney.domain.stockterm.enums.StockTermCategory;
 import com.mju.Jumoney.domain.stockterm.exception.StockTermErrorCode;
@@ -12,16 +13,23 @@ import com.mju.Jumoney.domain.stockterm.repository.StockTermScrapRepository;
 import com.mju.Jumoney.domain.user.domain.User;
 import com.mju.Jumoney.domain.user.repository.UserRepository;
 import com.mju.Jumoney.global.exception.CustomException;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -31,6 +39,10 @@ public class StockTermQueryService {
     private final StockTermScrapRepository stockTermScrapRepository;
     private final StockTermLearningRepository stockTermLearningRepository;
     private final UserRepository userRepository;
+    private final EntityManager entityManager;
+
+    @Value("${home.stock-term.zone-id:Asia/Seoul}")
+    private String zoneIdProperty;
 
     public List<StockTermCategoryResponse> getCategories() {
         return Arrays.stream(StockTermCategory.values())
@@ -72,6 +84,12 @@ public class StockTermQueryService {
     }
 
     @Transactional
+    public TodayStockTermResponse getTodayStockTerm() {
+        TodayStockTerm todayStockTerm = getOrCreateTodayStockTerm(resolveToday());
+        return toTodayStockTermResponse(todayStockTerm.getStockTerm());
+    }
+
+    @Transactional
     public StockTermDetailResponse getTermDetail(Long userId, Long termId) {
         StockTerm stockTerm = findStockTermById(termId);
         boolean isScrapped = userId != null && stockTermScrapRepository.existsByUserIdAndStockTermId(userId, termId);
@@ -80,7 +98,21 @@ public class StockTermQueryService {
         return toDetailResponse(stockTerm, isScrapped, isLearned);
     }
 
-    // ========== 조회 메서드 ==========
+    @Scheduled(
+            cron = "${home.stock-term.cron:0 0 0 * * *}",
+            zone = "${home.stock-term.zone-id:Asia/Seoul}"
+    )
+    @Transactional
+    public void selectTodayStockTerm() {
+        LocalDate today = resolveToday();
+        TodayStockTerm todayStockTerm = getOrCreateTodayStockTerm(today);
+        log.info("[StockTermQueryService] 오늘의 주식 용어 선정 완료: date={}, termId={}, termName={}",
+                today,
+                todayStockTerm.getStockTerm().getId(),
+                todayStockTerm.getStockTerm().getTermName());
+    }
+
+    // ========== 검증 메서드 ==========
     private StockTermCategory resolveCategory(int categoryId) {
         try {
             return StockTermCategory.fromCategoryId(categoryId);
@@ -89,6 +121,7 @@ public class StockTermQueryService {
         }
     }
 
+    // ========== 조회 메서드 ==========
     private List<StockTerm> findStockTermsByCategory(StockTermCategory category) {
         return stockTermRepository.findByCategoryOrderByIdAsc(category);
     }
@@ -96,6 +129,19 @@ public class StockTermQueryService {
     private StockTerm findStockTermById(Long termId) {
         return stockTermRepository.findById(termId)
                 .orElseThrow(() -> new CustomException(StockTermErrorCode.STOCK_TERM_NOT_FOUND));
+    }
+
+    private TodayStockTerm findTodayStockTermByTargetDate(LocalDate targetDate) {
+        List<TodayStockTerm> result = entityManager.createQuery(
+                        "select todayStockTerm from TodayStockTerm todayStockTerm " +
+                                "join fetch todayStockTerm.stockTerm " +
+                                "where todayStockTerm.targetDate = :targetDate",
+                        TodayStockTerm.class
+                )
+                .setParameter("targetDate", targetDate)
+                .setMaxResults(1)
+                .getResultList();
+        return result.isEmpty() ? null : result.get(0);
     }
 
     private List<Long> extractTermIds(List<StockTerm> stockTerms) {
@@ -126,7 +172,36 @@ public class StockTermQueryService {
         return stockTermScrapRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
+    private LocalDate resolveToday() {
+        return LocalDate.now(ZoneId.of(zoneIdProperty));
+    }
+
+    private StockTerm findRandomStockTerm() {
+        return stockTermRepository.findRandomStockTerm()
+                .orElseThrow(() -> new CustomException(StockTermErrorCode.STOCK_TERM_NOT_FOUND));
+    }
+
     // ========== 비즈니스 메서드 ==========
+    private TodayStockTerm getOrCreateTodayStockTerm(LocalDate targetDate) {
+        TodayStockTerm todayStockTerm = findTodayStockTermByTargetDate(targetDate);
+        if (todayStockTerm != null) {
+            return todayStockTerm;
+        }
+
+        try {
+            TodayStockTerm created = TodayStockTerm.create(findRandomStockTerm(), targetDate);
+            entityManager.persist(created);
+            entityManager.flush();
+            return created;
+        } catch (RuntimeException e) {
+            TodayStockTerm existing = findTodayStockTermByTargetDate(targetDate);
+            if (existing != null) {
+                return existing;
+            }
+            throw e;
+        }
+    }
+
     private void trackLearningIfNeeded(Long userId, Long termId, StockTerm stockTerm) {
         if (userId == null) {
             return;
@@ -143,6 +218,7 @@ public class StockTermQueryService {
         }
     }
 
+    // ========== 응답 변환 메서드 ==========
     private StockTermCategoryTermsResponse toCategoryTermsResponse(
             StockTermCategory category,
             List<StockTerm> stockTerms,
@@ -174,6 +250,14 @@ public class StockTermQueryService {
                 stockTerm.getDescription(),
                 isScrapped,
                 isLearned
+        );
+    }
+
+    private TodayStockTermResponse toTodayStockTermResponse(StockTerm stockTerm) {
+        return new TodayStockTermResponse(
+                stockTerm.getId(),
+                stockTerm.getTermName(),
+                stockTerm.getDescription()
         );
     }
 

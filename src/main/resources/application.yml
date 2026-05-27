@@ -70,3 +70,10 @@ verified-operation:
     enabled: ${VERIFIED_OPERATION_SCHEDULER_ENABLED:false}
     cron: "0 15 9 * * MON-FRI"
     zone-id: Asia/Seoul
+
+mock-investment:
+  ranking:
+    scheduler:
+      enabled: ${MOCK_INVESTMENT_RANKING_SCHEDULER_ENABLED:true}
+      cron: "0 0 * * * *"
+      zone-id: Asia/Seoul
