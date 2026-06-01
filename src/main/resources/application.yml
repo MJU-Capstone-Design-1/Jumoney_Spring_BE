@@ -44,6 +44,10 @@ kis:
       enabled: ${KIS_MINUTE_CANDLE_SCHEDULER_ENABLED:false}
       cron: "0 2,32 9-15 * * MON-FRI"
       close-cron: "0 40 15 * * MON-FRI"
+    master-choice-backtest:
+      enabled: ${KIS_MASTER_CHOICE_BACKTEST_SCHEDULER_ENABLED:false}
+      daily-indicator-cron: "0 0 7 * * TUE-SAT"
+      financial-cron: "0 10 7 1 * *"
   client:
     connect-timeout-millis: 5000  # 5초
     read-timeout-seconds: 10      # 10초
