@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -46,8 +47,8 @@ public class MasterChoiceBacktestDataSyncService {
     private final MasterChoiceBacktestFinancialRepository financialRepository;
     private final MasterChoiceBacktestDailyIndicatorRepository dailyIndicatorRepository;
     private final KisApiClient kisApiClient;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public MasterChoiceBacktestDataSyncResponse syncFinancials(List<String> stockCodes) {
         List<Stock> stocks = resolveStocks(stockCodes);
         List<MasterChoiceBacktestDataSyncResponse.Item> items = new ArrayList<>();
@@ -66,7 +67,6 @@ public class MasterChoiceBacktestDataSyncService {
         return toResponse("FINANCIALS", null, null, items);
     }
 
-    @Transactional
     public MasterChoiceBacktestDataSyncResponse syncDailyIndicators(List<String> stockCodes,
                                                                     LocalDate fromDate,
                                                                     LocalDate toDate) {
@@ -122,7 +122,7 @@ public class MasterChoiceBacktestDataSyncService {
                         (left, right) -> left
                 ));
 
-        int savedCount = 0;
+        List<MasterChoiceBacktestFinancial.BacktestFinancialMetrics> backtestMetrics = new ArrayList<>();
         for (int i = 0; i < ratios.size(); i++) {
             KisFinancialRatioMetrics currentRatio = ratios.get(i);
             KisFinancialRatioMetrics previousRatio = i + 1 < ratios.size() ? ratios.get(i + 1) : null;
@@ -144,11 +144,13 @@ public class MasterChoiceBacktestDataSyncService {
                             toLong(previousStatement == null ? null : previousStatement.sales()),
                             toLong(currentStatement == null ? null : currentStatement.operatingProfit())
                     );
-            upsertFinancial(metrics);
-            savedCount++;
+            backtestMetrics.add(metrics);
         }
 
-        return savedCount;
+        return transactionTemplate.execute(status -> {
+            backtestMetrics.forEach(this::upsertFinancial);
+            return backtestMetrics.size();
+        });
     }
 
     protected int syncDailyIndicators(Stock stock, LocalDate fromDate, LocalDate toDate) {
@@ -159,16 +161,17 @@ public class MasterChoiceBacktestDataSyncService {
         tradeDates.addAll(marginDebtRates.keySet());
         tradeDates.addAll(institutionNetBuyQuantities.keySet());
 
-        for (LocalDate tradeDate : tradeDates) {
-            upsertDailyIndicator(
-                    stock,
-                    tradeDate,
-                    marginDebtRates.get(tradeDate),
-                    institutionNetBuyQuantities.get(tradeDate)
-            );
-        }
-
-        return tradeDates.size();
+        return transactionTemplate.execute(status -> {
+            for (LocalDate tradeDate : tradeDates) {
+                upsertDailyIndicator(
+                        stock,
+                        tradeDate,
+                        marginDebtRates.get(tradeDate),
+                        institutionNetBuyQuantities.get(tradeDate)
+                );
+            }
+            return tradeDates.size();
+        });
     }
 
     private void upsertFinancial(MasterChoiceBacktestFinancial.BacktestFinancialMetrics metrics) {

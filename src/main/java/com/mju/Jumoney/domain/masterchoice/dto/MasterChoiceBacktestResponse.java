@@ -32,7 +32,9 @@ public record MasterChoiceBacktestResponse(
         @Schema(description = "조건 만족 구간 목록")
         List<MatchedRange> matchedRanges,
         @Schema(description = "거래일별 조건 평가 결과")
-        List<DailyEvaluation> dailyEvaluations
+        List<DailyEvaluation> dailyEvaluations,
+        @Schema(description = "백테스트 원천 데이터 부족 경고 목록")
+        List<DataWarning> dataWarnings
 ) {
 
     public record Candle(
@@ -56,9 +58,40 @@ public record MasterChoiceBacktestResponse(
             LocalDate date,
             boolean matched,
             List<MasterOptionLogicCode> matchedLogicCodes,
+            List<ConditionEvaluation> conditionEvaluations,
             int matchedConditionCount,
             int totalConditionCount,
-            String financialBaseYearMonth
+            String financialBaseYearMonth,
+            Metrics metrics
+    ) {
+    }
+
+    public record ConditionEvaluation(
+            MasterOptionLogicCode logicCode,
+            boolean matched
+    ) {
+    }
+
+    public record Metrics(
+            BigDecimal roe,
+            BigDecimal per,
+            BigDecimal epsGrowthRate,
+            BigDecimal debtRatio,
+            BigDecimal operatingMargin,
+            BigDecimal peg,
+            BigDecimal salesGrowthRate,
+            BigDecimal marginDebtRate,
+            BigDecimal earningsYield,
+            BigDecimal high52WeekRate,
+            Long instNetBuy20Days,
+            boolean marketLeader
+    ) {
+    }
+
+    public record DataWarning(
+            LocalDate date,
+            String code,
+            String message
     ) {
     }
 }

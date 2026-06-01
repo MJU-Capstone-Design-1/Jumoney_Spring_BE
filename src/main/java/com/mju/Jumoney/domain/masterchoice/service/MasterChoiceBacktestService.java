@@ -22,12 +22,14 @@ import com.mju.Jumoney.domain.stock.repository.StockCandleRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -70,6 +72,9 @@ public class MasterChoiceBacktestService {
     private final MasterChoiceBacktestFinancialRepository financialRepository;
     private final MasterChoiceBacktestDailyIndicatorRepository dailyIndicatorRepository;
 
+    @Value("${kis.batch.zone-id:Asia/Seoul}")
+    private String zoneId;
+
     public MasterChoiceBacktestResponse backtest(Long masterId, String stockCode, MasterChoiceRequest request) {
         Master master = masterRepository.findById(masterId)
                 .orElseThrow(() -> new CustomException(MasterErrorCode.MASTER_NOT_FOUND));
@@ -85,15 +90,23 @@ public class MasterChoiceBacktestService {
                 ? Set.of()
                 : EnumSet.copyOf(request.sectorTypes());
 
-        LocalDate toDate = LocalDate.now();
+        LocalDate toDate = LocalDate.now(ZoneId.of(zoneId));
         LocalDate fromDate = toDate.minusYears(BACKTEST_YEARS);
         List<StockCandle> candles = getDailyCandles(stock, fromDate, toDate);
         List<StockCandle> high52WeekCandles = getDailyCandles(stock, fromDate.minusYears(1), toDate);
-        List<MasterChoiceBacktestFinancial> financials = getFinancials(stock);
+        List<MasterChoiceBacktestFinancial> financials = needsFinancialData(logicCodes)
+                ? getFinancials(stock)
+                : List.of();
         Map<LocalDate, MasterChoiceBacktestDailyIndicator> dailyIndicatorByDate = getDailyIndicatorByDate(stock, fromDate, toDate);
-        Map<LocalDate, Long> institutionNetBuy20DaysByDate = calculateInstitutionNetBuy20Days(stock, fromDate, toDate);
+        Map<LocalDate, Long> institutionNetBuy20DaysByDate = calculateInstitutionNetBuy20Days(
+                stock,
+                fromDate,
+                toDate,
+                high52WeekCandles
+        );
 
         List<MasterChoiceBacktestResponse.DailyEvaluation> dailyEvaluations = new ArrayList<>();
+        List<MasterChoiceBacktestResponse.DataWarning> dataWarnings = new ArrayList<>();
         for (StockCandle candle : candles) {
             LocalDate tradingDate = candle.getCandleTime().toLocalDate();
             MasterChoiceBacktestFinancial financial = latestAvailableFinancial(financials, tradingDate).orElse(null);
@@ -107,16 +120,26 @@ public class MasterChoiceBacktestService {
                     institutionNetBuy20DaysByDate.get(tradingDate)
             );
 
-            List<MasterOptionLogicCode> matchedCodes = logicCodes.stream()
-                    .filter(logicCode -> matches(indicator, logicCode, sectorTypes))
+            List<MasterChoiceBacktestResponse.ConditionEvaluation> conditionEvaluations = logicCodes.stream()
+                    .map(logicCode -> new MasterChoiceBacktestResponse.ConditionEvaluation(
+                            logicCode,
+                            matches(indicator, logicCode, sectorTypes)
+                    ))
                     .toList();
+            List<MasterOptionLogicCode> matchedCodes = conditionEvaluations.stream()
+                    .filter(MasterChoiceBacktestResponse.ConditionEvaluation::matched)
+                    .map(MasterChoiceBacktestResponse.ConditionEvaluation::logicCode)
+                    .toList();
+            dataWarnings.addAll(dataWarnings(tradingDate, logicCodes, financial, dailyIndicator, indicator));
             dailyEvaluations.add(new MasterChoiceBacktestResponse.DailyEvaluation(
                     tradingDate,
                     matchedCodes.size() == logicCodes.size(),
                     matchedCodes,
+                    conditionEvaluations,
                     matchedCodes.size(),
                     logicCodes.size(),
-                    financial == null ? null : financial.getSettlementYearMonth()
+                    financial == null ? null : financial.getSettlementYearMonth(),
+                    toMetrics(indicator)
             ));
         }
 
@@ -132,7 +155,8 @@ public class MasterChoiceBacktestService {
                 logicCodes,
                 candles.stream().map(this::toCandleResponse).toList(),
                 toMatchedRanges(dailyEvaluations),
-                dailyEvaluations
+                dailyEvaluations,
+                dataWarnings
         );
     }
 
@@ -169,32 +193,50 @@ public class MasterChoiceBacktestService {
                 ));
     }
 
-    private Map<LocalDate, Long> calculateInstitutionNetBuy20Days(Stock stock, LocalDate fromDate, LocalDate toDate) {
-        List<MasterChoiceBacktestDailyIndicator> indicators = dailyIndicatorRepository
-                .findByStockAndTradeDateBetweenOrderByTradeDateAsc(stock, fromDate.minusDays(60), toDate)
+    private Map<LocalDate, Long> calculateInstitutionNetBuy20Days(Stock stock,
+                                                                  LocalDate fromDate,
+                                                                  LocalDate toDate,
+                                                                  List<StockCandle> tradingCandles) {
+        Map<LocalDate, MasterChoiceBacktestDailyIndicator> indicatorByDate = dailyIndicatorRepository
+                .findByStockAndTradeDateBetweenOrderByTradeDateAsc(stock, fromDate.minusDays(90), toDate)
                 .stream()
-                .filter(indicator -> indicator.getInstitutionNetBuyQuantity() != null)
+                .collect(Collectors.toMap(
+                        MasterChoiceBacktestDailyIndicator::getTradeDate,
+                        Function.identity(),
+                        (left, right) -> left
+                ));
+        List<LocalDate> tradingDates = tradingCandles.stream()
+                .map(candle -> candle.getCandleTime().toLocalDate())
+                .filter(date -> !date.isAfter(toDate))
+                .sorted()
                 .toList();
 
-        ArrayDeque<MasterChoiceBacktestDailyIndicator> window = new ArrayDeque<>();
-        return indicators.stream()
-                .map(indicator -> {
-                    window.addLast(indicator);
-                    while (window.size() > INVESTOR_TRADE_DAYS) {
-                        window.removeFirst();
-                    }
-                    if (window.size() < INVESTOR_TRADE_DAYS || indicator.getTradeDate().isBefore(fromDate)) {
-                        return null;
-                    }
-                    long total = window.stream()
-                            .map(MasterChoiceBacktestDailyIndicator::getInstitutionNetBuyQuantity)
-                            .filter(Objects::nonNull)
-                            .mapToLong(Long::longValue)
-                            .sum();
-                    return Map.entry(indicator.getTradeDate(), total);
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
+        Map<LocalDate, Long> result = new HashMap<>();
+        for (int i = 0; i < tradingDates.size(); i++) {
+            LocalDate tradingDate = tradingDates.get(i);
+            if (tradingDate.isBefore(fromDate)) {
+                continue;
+            }
+            if (i + 1 < INVESTOR_TRADE_DAYS) {
+                continue;
+            }
+
+            long total = 0L;
+            boolean complete = true;
+            for (int j = i - INVESTOR_TRADE_DAYS + 1; j <= i; j++) {
+                MasterChoiceBacktestDailyIndicator indicator = indicatorByDate.get(tradingDates.get(j));
+                if (indicator == null || indicator.getInstitutionNetBuyQuantity() == null) {
+                    complete = false;
+                    break;
+                }
+                total += indicator.getInstitutionNetBuyQuantity();
+            }
+            if (complete) {
+                result.put(tradingDate, total);
+            }
+        }
+
+        return result;
     }
 
     private Optional<MasterChoiceBacktestFinancial> latestAvailableFinancial(List<MasterChoiceBacktestFinancial> financials,
@@ -277,11 +319,17 @@ public class MasterChoiceBacktestService {
     private BigDecimal high52WeekRate(List<StockCandle> candles, StockCandle target) {
         LocalDate targetDate = target.getCandleTime().toLocalDate();
         LocalDate startDate = targetDate.minusYears(1);
-        BigDecimal high = candles.stream()
+        List<StockCandle> lookbackCandles = candles.stream()
                 .filter(candle -> {
                     LocalDate date = candle.getCandleTime().toLocalDate();
                     return !date.isBefore(startDate) && !date.isAfter(targetDate);
                 })
+                .toList();
+        if (lookbackCandles.size() < 200) {
+            return null;
+        }
+
+        BigDecimal high = lookbackCandles.stream()
                 .map(StockCandle::getHighPrice)
                 .filter(Objects::nonNull)
                 .max(BigDecimal::compareTo)
@@ -341,6 +389,89 @@ public class MasterChoiceBacktestService {
 
     private boolean positive(BigDecimal value) {
         return value != null && value.signum() > 0;
+    }
+
+    private MasterChoiceBacktestResponse.Metrics toMetrics(BacktestIndicator indicator) {
+        return new MasterChoiceBacktestResponse.Metrics(
+                indicator.roe(),
+                indicator.per(),
+                indicator.epsGrowthRate(),
+                indicator.debtRatio(),
+                indicator.operatingMargin(),
+                peg(indicator),
+                indicator.salesGrowthRate(),
+                indicator.marginDebtRate(),
+                earningsYield(indicator),
+                indicator.high52WeekRate(),
+                indicator.instNetBuy20Days(),
+                indicator.stock().isMarketLeader()
+        );
+    }
+
+    private List<MasterChoiceBacktestResponse.DataWarning> dataWarnings(LocalDate tradingDate,
+                                                                        List<MasterOptionLogicCode> logicCodes,
+                                                                        MasterChoiceBacktestFinancial financial,
+                                                                        MasterChoiceBacktestDailyIndicator dailyIndicator,
+                                                                        BacktestIndicator indicator) {
+        List<MasterChoiceBacktestResponse.DataWarning> warnings = new ArrayList<>();
+        if (financial == null && needsFinancialData(logicCodes)) {
+            warnings.add(new MasterChoiceBacktestResponse.DataWarning(
+                    tradingDate,
+                    "FINANCIAL_MISSING",
+                    "해당 거래일에 적용 가능한 연간 재무 스냅샷이 없습니다."
+            ));
+        }
+        if (logicCodes.contains(MasterOptionLogicCode.DALIO_MARGIN_DEBT)
+                && (dailyIndicator == null || dailyIndicator.getMarginDebtRate() == null)) {
+            warnings.add(new MasterChoiceBacktestResponse.DataWarning(
+                    tradingDate,
+                    "MARGIN_DEBT_MISSING",
+                    "해당 거래일의 신용잔고율 데이터가 없습니다."
+            ));
+        }
+        if (logicCodes.contains(MasterOptionLogicCode.ONEIL_INST_NET_BUY)
+                && indicator.instNetBuy20Days() == null) {
+            warnings.add(new MasterChoiceBacktestResponse.DataWarning(
+                    tradingDate,
+                    "INSTITUTION_NET_BUY_20D_MISSING",
+                    "최근 20거래일 기관 순매수 합산에 필요한 데이터가 부족합니다."
+            ));
+        }
+        if (logicCodes.contains(MasterOptionLogicCode.ONEIL_HIGH_52_WEEK)
+                && indicator.high52WeekRate() == null) {
+            warnings.add(new MasterChoiceBacktestResponse.DataWarning(
+                    tradingDate,
+                    "HIGH_52_WEEK_LOOKBACK_MISSING",
+                    "52주 고가 대비율 계산에 필요한 선행 일봉 데이터가 부족합니다."
+            ));
+        }
+        return warnings;
+    }
+
+    private boolean needsFinancialData(List<MasterOptionLogicCode> logicCodes) {
+        return logicCodes.stream()
+                .anyMatch(logicCode -> switch (logicCode) {
+                    case BUFFETT_ROE,
+                         BUFFETT_PER,
+                         BUFFETT_EPS_GROWTH,
+                         BUFFETT_DEBT_RATIO,
+                         BUFFETT_OPERATING_MARGIN,
+                         LYNCH_PEG,
+                         LYNCH_EPS_GROWTH,
+                         LYNCH_DEBT_RATIO,
+                         LYNCH_SALES_GROWTH,
+                         DALIO_PER,
+                         DALIO_DEBT_RATIO,
+                         DALIO_EARNINGS_YIELD,
+                         ONEIL_EPS_GROWTH,
+                         ONEIL_ROE -> true;
+                    case LYNCH_SECTOR,
+                         DALIO_ALL_WEATHER,
+                         DALIO_MARGIN_DEBT,
+                         ONEIL_HIGH_52_WEEK,
+                         ONEIL_MARKET_LEADER,
+                         ONEIL_INST_NET_BUY -> false;
+                });
     }
 
     private List<MasterChoiceBacktestResponse.MatchedRange> toMatchedRanges(List<MasterChoiceBacktestResponse.DailyEvaluation> evaluations) {

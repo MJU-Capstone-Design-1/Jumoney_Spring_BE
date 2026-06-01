@@ -58,7 +58,11 @@ public class MasterChoiceBacktestDailyIndicator extends BaseEntity {
     }
 
     public void update(BigDecimal marginDebtRate, Long institutionNetBuyQuantity) {
-        this.marginDebtRate = marginDebtRate;
-        this.institutionNetBuyQuantity = institutionNetBuyQuantity;
+        if (marginDebtRate != null) {
+            this.marginDebtRate = marginDebtRate;
+        }
+        if (institutionNetBuyQuantity != null) {
+            this.institutionNetBuyQuantity = institutionNetBuyQuantity;
+        }
     }
 }
