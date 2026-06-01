@@ -2,8 +2,10 @@ package com.mju.Jumoney.domain.masterchoice.controller;
 
 import com.mju.Jumoney.domain.master.dto.MasterResponse;
 import com.mju.Jumoney.domain.master.service.MasterQueryService;
+import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceBacktestResponse;
 import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceRequest;
 import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceResponse;
+import com.mju.Jumoney.domain.masterchoice.service.MasterChoiceBacktestService;
 import com.mju.Jumoney.domain.masterchoice.service.MasterChoiceService;
 import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.jwt.UserPrincipal;
@@ -28,6 +30,7 @@ public class MasterChoiceController {
 
     private final MasterQueryService masterQueryService;
     private final MasterChoiceService masterChoiceService;
+    private final MasterChoiceBacktestService masterChoiceBacktestService;
 
     @Operation(summary = "거장 정보 및 추천 조건 조회", description = "선택한 거장의 설명과 추천 조건 버튼 목록을 조회합니다.")
     @GetMapping("/masters/{masterId}")
@@ -92,6 +95,22 @@ public class MasterChoiceController {
         getAuthenticatedUserId(userPrincipal);
         MasterChoiceResponse response = masterChoiceService.recommend(masterId, request);
         // TODO: 거장의 선택 결과 히스토리/최신 조회 기능이 필요해지면 saveMasterChoice 호출을 다시 연결한다.
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "거장의 선택 백테스팅 검증",
+            description = "선택 종목의 최근 1년 일봉과 현재 거장의 선택 추천 조건을 연간 재무 기준으로 과거 거래일에 적용한 결과를 조회합니다."
+    )
+    @PostMapping("/masters/{masterId}/backtests/stocks/{stockCode}")
+    public ResponseEntity<ApiResponse<MasterChoiceBacktestResponse>> backtestMaster(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @PathVariable Long masterId,
+            @PathVariable String stockCode,
+            @Valid @RequestBody MasterChoiceRequest request
+    ) {
+        getAuthenticatedUserId(userPrincipal);
+        MasterChoiceBacktestResponse response = masterChoiceBacktestService.backtest(masterId, stockCode, request);
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
 

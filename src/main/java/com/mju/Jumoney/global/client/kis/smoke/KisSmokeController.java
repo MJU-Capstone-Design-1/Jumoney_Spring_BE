@@ -1,5 +1,7 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
+import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceBacktestDataStatusResponse;
+import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceBacktestDataSyncResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
@@ -23,6 +25,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 @Tag(name = "KIS Smoke", description = "KIS API 호출 검증 및 배치 수동 실행")
@@ -315,6 +318,78 @@ public class KisSmokeController {
         return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
     }
 
+    @Operation(
+            summary = "거장의 선택 백테스트 재무 데이터 수동 동기화",
+            description = "KIS 연간 재무비율/손익계산서를 조회해 master_choice_backtest_financials 테이블에 upsert합니다. "
+                    + "stockCodes를 생략하면 등록된 전체 종목을 대상으로 실행합니다. 운영 환경에서는 adminKey가 필요합니다."
+    )
+    @PostMapping("/master-choice/backtest/financials/sync")
+    public ResponseEntity<ApiResponse<MasterChoiceBacktestDataSyncResponse>> syncMasterChoiceBacktestFinancials(
+            @Parameter(description = "운영 환경 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "쉼표로 구분한 종목 코드 목록. 생략 시 전체 종목 대상", example = "005930,000660")
+            @RequestParam(required = false) String stockCodes
+    ) {
+        validateAdminKey(adminKey);
+        MasterChoiceBacktestDataSyncResponse response =
+                kisSmokeService.syncMasterChoiceBacktestFinancials(parseStockCodes(stockCodes));
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "거장의 선택 백테스트 일별 보조지표 수동 동기화",
+            description = "KIS 신용잔고 일별추이와 종목별 투자자매매동향 일별 API를 조회해 "
+                    + "master_choice_backtest_daily_indicators 테이블에 upsert합니다. "
+                    + "stockCodes를 생략하면 등록된 전체 종목을 대상으로 실행합니다. 운영 환경에서는 adminKey가 필요합니다."
+    )
+    @PostMapping("/master-choice/backtest/daily-indicators/sync")
+    public ResponseEntity<ApiResponse<MasterChoiceBacktestDataSyncResponse>> syncMasterChoiceBacktestDailyIndicators(
+            @Parameter(description = "운영 환경 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "쉼표로 구분한 종목 코드 목록. 생략 시 전체 종목 대상", example = "005930,000660")
+            @RequestParam(required = false) String stockCodes,
+
+            @Parameter(description = "동기화 시작일. 생략 시 종료일 기준 1년 전")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+
+            @Parameter(description = "동기화 종료일. 생략 시 오늘")
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate
+    ) {
+        validateAdminKey(adminKey);
+        LocalDate resolvedToDate = toDate == null ? LocalDate.now() : toDate;
+        LocalDate resolvedFromDate = fromDate == null ? resolvedToDate.minusYears(1) : fromDate;
+        MasterChoiceBacktestDataSyncResponse response = kisSmokeService.syncMasterChoiceBacktestDailyIndicators(
+                parseStockCodes(stockCodes),
+                resolvedFromDate,
+                resolvedToDate
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
+    @Operation(
+            summary = "거장의 선택 백테스트 데이터 적재 상태 확인",
+            description = "특정 종목의 백테스트 재무/일별 보조지표 적재 건수와 최신 기준일을 확인합니다. 운영 환경에서는 adminKey가 필요합니다."
+    )
+    @GetMapping("/master-choice/backtest/status")
+    public ResponseEntity<ApiResponse<MasterChoiceBacktestDataStatusResponse>> getMasterChoiceBacktestDataStatus(
+            @Parameter(description = "운영 환경 전용 관리자 키")
+            @RequestParam(required = false) String adminKey,
+
+            @Parameter(description = "종목 코드", example = "005930")
+            @RequestParam String stockCode
+    ) {
+        validateAdminKey(adminKey);
+        MasterChoiceBacktestDataStatusResponse response = kisSmokeService.getMasterChoiceBacktestDataStatus(stockCode);
+
+        return ResponseEntity.ok(ApiResponse.success(SuccessCode.OK, response));
+    }
+
     private String resolveHtsUserId(String userId) {
         if (StringUtils.hasText(userId)) {
             return userId;
@@ -331,6 +406,16 @@ public class KisSmokeController {
 
     private void validateAdminKey(String adminKey) {
         smokeAdminKeyValidator.validate(adminKey);
+    }
+
+    private List<String> parseStockCodes(String stockCodes) {
+        if (!StringUtils.hasText(stockCodes)) {
+            return List.of();
+        }
+        return Arrays.stream(stockCodes.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 
 }
