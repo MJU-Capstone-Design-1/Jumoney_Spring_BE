@@ -44,6 +44,8 @@ kis:
       enabled: ${KIS_HTS_CONDITION_SCHEDULER_ENABLED:true}
     minute-candle:
       enabled: ${KIS_MINUTE_CANDLE_SCHEDULER_ENABLED:true}
+    master-choice-backtest:
+      enabled: ${KIS_MASTER_CHOICE_BACKTEST_SCHEDULER_ENABLED:true}
 
 verified-operation:
   scheduler:
