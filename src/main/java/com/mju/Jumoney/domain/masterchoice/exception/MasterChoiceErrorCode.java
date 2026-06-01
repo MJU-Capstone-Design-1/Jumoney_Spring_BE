@@ -13,7 +13,8 @@ public enum MasterChoiceErrorCode implements BaseErrorCode {
     MISSING_MASTER_SECTOR_SELECTION(HttpStatus.BAD_REQUEST, "MASTER_CHOICE400_SECTOR_REQUIRED", "선택한 거장 조건에는 섹터 선택이 필요합니다."),
     UNSUPPORTED_MASTER_SECTOR_SELECTION(HttpStatus.BAD_REQUEST, "MASTER_CHOICE400_SECTOR_UNSUPPORTED", "선택한 거장 조건에서는 섹터를 사용할 수 없습니다."),
     BACKTEST_CANDLE_DATA_NOT_FOUND(HttpStatus.BAD_REQUEST, "MASTER_CHOICE400_BACKTEST_CANDLE", "백테스팅에 사용할 일봉 데이터가 없습니다."),
-    BACKTEST_FINANCIAL_DATA_NOT_FOUND(HttpStatus.BAD_REQUEST, "MASTER_CHOICE400_BACKTEST_FINANCIAL", "백테스팅에 사용할 재무 데이터가 없습니다.");
+    BACKTEST_FINANCIAL_DATA_NOT_FOUND(HttpStatus.BAD_REQUEST, "MASTER_CHOICE400_BACKTEST_FINANCIAL", "백테스팅에 사용할 재무 데이터가 없습니다."),
+    BACKTEST_DAILY_INDICATOR_DATA_NOT_FOUND(HttpStatus.BAD_REQUEST, "MASTER_CHOICE400_BACKTEST_DAILY_INDICATOR", "백테스팅에 사용할 일별 보조지표 데이터가 없습니다.");
 
     private final HttpStatus status;
     private final String code;

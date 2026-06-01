@@ -1,5 +1,7 @@
 package com.mju.Jumoney.global.batch;
 
+import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceBacktestDataSyncResponse;
+import com.mju.Jumoney.domain.masterchoice.service.MasterChoiceBacktestDataSyncService;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncResponse;
 import com.mju.Jumoney.domain.mockinvestment.service.MockInvestmentChartSyncService;
 import com.mju.Jumoney.domain.stock.dto.MinuteCandleSyncResponse;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -33,12 +36,14 @@ public class StockDataBatchScheduler {
     private final StockIndicatorBatchService stockIndicatorBatchService;
     private final StockMinuteCandleSyncService stockMinuteCandleSyncService;
     private final MockInvestmentChartSyncService mockInvestmentChartSyncService;
+    private final MasterChoiceBacktestDataSyncService masterChoiceBacktestDataSyncService;
     private final Job stockIndicatorBatchJob;
     private final Job htsConditionBatchJob;
     private final boolean stockIndicatorEnabled;
     private final boolean stockIndicatorExecutionStrengthCloseEnabled;
     private final boolean htsConditionEnabled;
     private final boolean minuteCandleEnabled;
+    private final boolean masterChoiceBacktestEnabled;
     private final ZoneId zoneId;
 
     public StockDataBatchScheduler(
@@ -48,12 +53,14 @@ public class StockDataBatchScheduler {
             StockIndicatorBatchService stockIndicatorBatchService,
             StockMinuteCandleSyncService stockMinuteCandleSyncService,
             MockInvestmentChartSyncService mockInvestmentChartSyncService,
+            MasterChoiceBacktestDataSyncService masterChoiceBacktestDataSyncService,
             @Qualifier(StockDataBatchJobConfig.STOCK_INDICATOR_JOB_NAME) Job stockIndicatorBatchJob,
             @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob,
             @Value("${kis.batch.stock-indicator.enabled:true}") boolean stockIndicatorEnabled,
             @Value("${kis.batch.stock-indicator.execution-strength-close-enabled:${kis.batch.stock-indicator.enabled:true}}") boolean stockIndicatorExecutionStrengthCloseEnabled,
             @Value("${kis.batch.hts-condition.enabled:true}") boolean htsConditionEnabled,
             @Value("${kis.batch.minute-candle.enabled:true}") boolean minuteCandleEnabled,
+            @Value("${kis.batch.master-choice-backtest.enabled:true}") boolean masterChoiceBacktestEnabled,
             @Value("${kis.batch.zone-id:Asia/Seoul}") String zoneId
     ) {
         this.jobOperator = jobOperator;
@@ -62,12 +69,14 @@ public class StockDataBatchScheduler {
         this.stockIndicatorBatchService = stockIndicatorBatchService;
         this.stockMinuteCandleSyncService = stockMinuteCandleSyncService;
         this.mockInvestmentChartSyncService = mockInvestmentChartSyncService;
+        this.masterChoiceBacktestDataSyncService = masterChoiceBacktestDataSyncService;
         this.stockIndicatorBatchJob = stockIndicatorBatchJob;
         this.htsConditionBatchJob = htsConditionBatchJob;
         this.stockIndicatorEnabled = stockIndicatorEnabled;
         this.stockIndicatorExecutionStrengthCloseEnabled = stockIndicatorExecutionStrengthCloseEnabled;
         this.htsConditionEnabled = htsConditionEnabled;
         this.minuteCandleEnabled = minuteCandleEnabled;
+        this.masterChoiceBacktestEnabled = masterChoiceBacktestEnabled;
         this.zoneId = ZoneId.of(zoneId);
     }
 
@@ -141,6 +150,56 @@ public class StockDataBatchScheduler {
     )
     public void runMinuteCandleCloseSync() {
         runMinuteCandleSync("close");
+    }
+
+    @Scheduled(
+            cron = "${kis.batch.master-choice-backtest.daily-indicator-cron:0 0 7 * * TUE-SAT}",
+            zone = "${kis.batch.zone-id:Asia/Seoul}"
+    )
+    public void runMasterChoiceBacktestDailyIndicatorSync() {
+        if (!masterChoiceBacktestEnabled) {
+            log.info("[StockDataBatchScheduler] 거장의 선택 백테스트 일별 보조지표 적재 스케줄 비활성화");
+            return;
+        }
+
+        LocalDate baseDate = batchBaseDateResolver.resolveScheduledBaseDate();
+        log.info("[StockDataBatchScheduler] 거장의 선택 백테스트 일별 보조지표 적재 시작: baseDate={}", baseDate);
+        try {
+            MasterChoiceBacktestDataSyncResponse dailyIndicators =
+                    masterChoiceBacktestDataSyncService.syncDailyIndicators(List.of(), baseDate, baseDate);
+
+            log.info("[StockDataBatchScheduler] 거장의 선택 백테스트 일별 보조지표 적재 완료: baseDate={}, successCount={}, failureCount={}",
+                    baseDate,
+                    dailyIndicators.successCount(),
+                    dailyIndicators.failureCount());
+        } catch (Exception e) {
+            log.error("[StockDataBatchScheduler] 거장의 선택 백테스트 일별 보조지표 적재 실패: baseDate={}", baseDate, e);
+        }
+    }
+
+    @Scheduled(
+            cron = "${kis.batch.master-choice-backtest.financial-cron:0 10 7 1 * *}",
+            zone = "${kis.batch.zone-id:Asia/Seoul}"
+    )
+    public void runMasterChoiceBacktestFinancialSync() {
+        if (!masterChoiceBacktestEnabled) {
+            log.info("[StockDataBatchScheduler] 거장의 선택 백테스트 재무 데이터 적재 스케줄 비활성화");
+            return;
+        }
+
+        LocalDate today = LocalDate.now(zoneId);
+        log.info("[StockDataBatchScheduler] 거장의 선택 백테스트 재무 데이터 적재 시작: date={}", today);
+        try {
+            MasterChoiceBacktestDataSyncResponse financials =
+                    masterChoiceBacktestDataSyncService.syncFinancials(List.of());
+
+            log.info("[StockDataBatchScheduler] 거장의 선택 백테스트 재무 데이터 적재 완료: date={}, successCount={}, failureCount={}",
+                    today,
+                    financials.successCount(),
+                    financials.failureCount());
+        } catch (Exception e) {
+            log.error("[StockDataBatchScheduler] 거장의 선택 백테스트 재무 데이터 적재 실패: date={}", today, e);
+        }
     }
 
     private void runMinuteCandleSync(String scheduleType) {

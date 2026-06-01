@@ -20,6 +20,7 @@ import com.mju.Jumoney.domain.stock.enums.StockCandleIntervalType;
 import com.mju.Jumoney.domain.stock.exception.StockErrorCode;
 import com.mju.Jumoney.domain.stock.repository.StockCandleRepository;
 import com.mju.Jumoney.domain.stock.repository.StockRepository;
+import com.mju.Jumoney.global.batch.MarketCalendarService;
 import com.mju.Jumoney.global.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -73,9 +74,13 @@ public class MasterChoiceBacktestService {
     private final StockCandleRepository stockCandleRepository;
     private final MasterChoiceBacktestFinancialRepository financialRepository;
     private final MasterChoiceBacktestDailyIndicatorRepository dailyIndicatorRepository;
+    private final MarketCalendarService marketCalendarService;
 
     @Value("${kis.batch.zone-id:Asia/Seoul}")
     private String zoneId;
+
+    @Value("${kis.batch.opening-day-lookback-days:14}")
+    private int openingDayLookbackDays;
 
     public MasterChoiceBacktestResponse backtest(Long masterId, String stockCode, MasterChoiceRequest request) {
         Master master = masterRepository.findById(masterId)
@@ -92,7 +97,13 @@ public class MasterChoiceBacktestService {
                 ? Set.of()
                 : EnumSet.copyOf(request.sectorTypes());
 
-        LocalDate toDate = LocalDate.now(ZoneId.of(zoneId));
+        ZoneId batchZoneId = ZoneId.of(zoneId);
+        LocalDate previousOpenDate = marketCalendarService.resolvePreviousOpenDay(
+                LocalDate.now(batchZoneId),
+                openingDayLookbackDays,
+                batchZoneId
+        );
+        LocalDate toDate = resolveBacktestToDate(stock, logicCodes, previousOpenDate);
         LocalDate fromDate = toDate.minusYears(BACKTEST_YEARS);
         List<StockCandle> candles = getDailyCandles(stock, fromDate, toDate);
         List<StockCandle> high52WeekCandles = getDailyCandles(stock, fromDate.minusYears(1), toDate);
@@ -147,6 +158,22 @@ public class MasterChoiceBacktestService {
                 dailyResults,
                 dataWarnings
         );
+    }
+
+    private LocalDate resolveBacktestToDate(Stock stock,
+                                            List<MasterOptionLogicCode> logicCodes,
+                                            LocalDate previousOpenDate) {
+        if (!needsDailyIndicatorData(logicCodes)) {
+            return previousOpenDate;
+        }
+
+        LocalDate latestDailyIndicatorDate = dailyIndicatorRepository.findTopByStockOrderByTradeDateDesc(stock)
+                .map(MasterChoiceBacktestDailyIndicator::getTradeDate)
+                .orElseThrow(() -> new CustomException(MasterChoiceErrorCode.BACKTEST_DAILY_INDICATOR_DATA_NOT_FOUND));
+        if (latestDailyIndicatorDate.isBefore(previousOpenDate)) {
+            return latestDailyIndicatorDate;
+        }
+        return previousOpenDate;
     }
 
     private List<StockCandle> getDailyCandles(Stock stock, LocalDate fromDate, LocalDate toDate) {
@@ -480,6 +507,12 @@ public class MasterChoiceBacktestService {
                          ONEIL_MARKET_LEADER,
                          ONEIL_INST_NET_BUY -> false;
                 });
+    }
+
+    private boolean needsDailyIndicatorData(List<MasterOptionLogicCode> logicCodes) {
+        return logicCodes.stream()
+                .anyMatch(logicCode -> logicCode == MasterOptionLogicCode.DALIO_MARGIN_DEBT
+                        || logicCode == MasterOptionLogicCode.ONEIL_INST_NET_BUY);
     }
 
     private List<MasterOption> resolveSelectedOptions(Master master, List<Long> selectedOptionIds) {
