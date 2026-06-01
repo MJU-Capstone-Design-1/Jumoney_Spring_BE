@@ -100,7 +100,7 @@ public class MasterChoiceController {
 
     @Operation(
             summary = "거장의 선택 백테스팅 검증",
-            description = "선택 종목의 최근 1년 일봉과 현재 거장의 선택 추천 조건을 연간 재무 기준으로 과거 거래일에 적용한 결과를 조회합니다."
+            description = "선택 종목의 최근 1년 거래일에 현재 거장의 선택 추천 조건을 적용해 날짜별 조건 만족 여부를 조회합니다."
     )
     @PostMapping("/masters/{masterId}/backtests/stocks/{stockCode}")
     public ResponseEntity<ApiResponse<MasterChoiceBacktestResponse>> backtestMaster(

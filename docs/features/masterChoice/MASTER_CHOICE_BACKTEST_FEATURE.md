@@ -3,7 +3,7 @@
 ## Summary
 
 거장의 선택 백테스팅 검증 기능은 사용자 요청 시점에 KIS REST API를 호출하지 않는다. 필요한 과거 원천 데이터는 배치로 미리 DB에 적재하고, 백테스트 API는 DB 데이터만 조회해 선택 종목의 최근 1년
-일봉과 추천 조건 만족 구간을 반환한다.
+추천 조건 만족 여부를 날짜별로 반환한다. 차트 일봉 데이터는 기존 차트 API에서 별도로 조회한다.
 
 이 기능은 현재 운영 추천 로직을 검증하는 목적이므로, 운영 추천과 동일하게 연간 재무 데이터 기준으로 평가한다. 운영 추천 저장 구조(`stock_indicators`)는 월별 upsert 테이블이므로 과거 일별
 백테스트 원천으로 재사용하지 않는다.
@@ -97,9 +97,9 @@
 | `current_eps`           | NUMERIC(19,4)      |                                  |
 | `last_year_eps`         | NUMERIC(19,4) NULL | 직전 연간 결산 EPS                     |
 | `debt_ratio`            | NUMERIC(19,4)      |                                  |
-| `current_sales`         | NUMERIC(19,4)      |                                  |
-| `last_year_sales`       | NUMERIC(19,4) NULL | 직전 연간 결산 매출                      |
-| `operating_profit`      | NUMERIC(19,4)      |                                  |
+| `current_sales`         | BIGINT             |                                  |
+| `last_year_sales`       | BIGINT NULL        | 직전 연간 결산 매출                      |
+| `operating_profit`      | BIGINT             |                                  |
 
 Constraints and indexes:
 
@@ -117,7 +117,7 @@ Constraints and indexes:
 | `stock_id`                     | BIGINT FK          |           |
 | `trade_date`                   | DATE               | KRX 거래일   |
 | `margin_debt_rate`             | NUMERIC(19,4) NULL | 신용잔고율     |
-| `institution_net_buy_quantity` | NUMERIC(19,4) NULL | 기관 순매수 수량 |
+| `institution_net_buy_quantity` | BIGINT NULL         | 기관 순매수 수량 |
 
 일별 테이블은 신용잔고율과 기관 순매수를 한 테이블에 합쳐 저장한다. 둘 중 하나만 적재된 날짜도 허용한다.
 
@@ -239,9 +239,7 @@ KIS REST 호출은 기존 `KisRateLimiter` 정책을 따른다. 배치 중 사�
 
 ### Response
 
-- `candles`: 최근 1년 일봉
-- `matchedRanges`: 모든 선택 조건을 만족한 연속 거래일 구간
-- `dailyEvaluations`: 거래일별 조건 충족 결과
+- `dailyResults`: 거래일별 조건 충족 여부
 - `dataWarnings`: 선택 조건 평가에 필요한 원천 데이터가 부족한 경우 경고
 
 백테스트 API는 KIS를 호출하지 않고 다음 DB 데이터만 읽는다.
@@ -257,10 +255,7 @@ Suggested response shape:
 {
   "masterId": 1,
   "masterCode": "WARREN_BUFFETT",
-  "masterName": "워런 버핏",
-  "stockId": 1,
   "stockCode": "005930",
-  "stockName": "삼성전자",
   "fromDate": "2025-06-01",
   "toDate": "2026-06-01",
   "selectedLogicCodes": [
@@ -268,45 +263,20 @@ Suggested response shape:
     "BUFFETT_PER"
   ],
   "dataWarnings": [],
-  "candles": [
+  "dailyResults": [
     {
       "date": "2026-01-02",
-      "openPrice": 71000,
-      "highPrice": 72000,
-      "lowPrice": 70500,
-      "closePrice": 71800,
-      "volume": 1000000,
-      "tradeAmount": 71800000000
-    }
-  ],
-  "matchedRanges": [
+      "matched": true
+    },
     {
-      "startDate": "2026-01-02",
-      "endDate": "2026-01-17"
-    }
-  ],
-  "dailyEvaluations": [
-    {
-      "date": "2026-01-02",
-      "matched": true,
-      "matchedLogicCodes": [
-        "BUFFETT_ROE",
-        "BUFFETT_PER"
-      ],
-      "matchedConditionCount": 2,
-      "totalConditionCount": 2,
-      "financialBaseYearMonth": "202412",
-      "metrics": {
-        "per": 9.42,
-        "roe": 15.2,
-        "epsGrowthRate": 11.8
-      }
+      "date": "2026-01-05",
+      "matched": false
     }
   ]
 }
 ```
 
-`metrics`는 프론트가 조건별 상세 근거를 표시할 수 있도록 포함하는 것을 권장한다. 최소 MVP에서 제외할 수 있지만, 시연 설명력은 크게 좋아진다.
+프론트는 기존 차트 API의 일봉 응답과 `dailyResults`를 날짜 기준으로 매칭해 하이라이트를 표시한다.
 
 ## Evaluation Rules
 
@@ -331,9 +301,10 @@ Suggested response shape:
 - 기관 순매수 조건을 선택했는데 최근 20거래일 합산에 필요한 일별 데이터가 부족하면 해당 조건은 불만족 처리하고 `dataWarnings`에 누락 범위를 포함한다.
 - 52주 고가 계산을 위한 선행 일봉이 부족하면 가능한 데이터만으로 계산하지 않는다. 해당 거래일의 52주 조건은 불만족 처리하고 `dataWarnings`에 선행 일봉 부족을 포함한다.
 
-### Range Merge Policy
+### Frontend Highlight Policy
 
-- `dailyEvaluations.matched = true`인 거래일을 연속 구간으로 묶는다.
+- `dailyResults.matched = true`인 거래일을 하이라이트한다.
+- 연속 구간이 필요하면 프론트에서 `dailyResults`를 순회해 묶는다.
 - 주말/휴장일은 거래일 목록에 없으므로 구간 단절로 보지 않는다.
 - 중간 거래일이 데이터 부족 또는 조건 불만족이면 구간을 끊는다.
 
@@ -354,9 +325,9 @@ Suggested response shape:
     - `MasterChoiceBacktestFinancialRepository`
     - `MasterChoiceBacktestDailyIndicatorRepository`
 - `domain.masterchoice.service`
-    - `MasterChoiceBacktestDataSyncService`
-    - `MasterChoiceBacktestService`
-    - `MasterChoiceBacktestEvaluator`
+  - `MasterChoiceBacktestDataSyncService`
+  - `MasterChoiceBacktestService`
+  - 평가 로직은 현재 `MasterChoiceBacktestService` 내부 private 메서드로 통합한다.
 - `domain.masterchoice.dto`
     - `MasterChoiceBacktestResponse`
     - `MasterChoiceBacktestDataSyncResponse`
@@ -368,8 +339,7 @@ Suggested response shape:
 3. Add data sync service that calls KIS and upserts DB rows.
 4. Add smoke/admin sync/status endpoints.
 5. Replace current request-time KIS implementation in `MasterChoiceBacktestService` with repository-only queries.
-6. Add evaluation unit tests with fixed candle/financial/daily indicator fixtures.
-7. Add compile/test verification.
+6. Add compile verification.
 
 ### Current Implementation Status
 
@@ -392,5 +362,5 @@ KIS 호출은 수동 적재용 `MasterChoiceBacktestDataSyncService`에만 남�
 - 백테스트 API는 대표 종목 1개 기준 DB 조회만으로 1초 내외 응답을 목표로 한다.
 - 워런 버핏, 피터 린치, 레이 달리오, 윌리엄 오닐의 모든 `MasterOptionLogicCode`를 평가할 수 있다.
 - 선택 조건이 섹터를 요구하면 기존 추천 API와 동일하게 섹터 미입력 에러를 반환한다.
-- 응답에는 차트 표시용 일봉과 하이라이트 표시용 `matchedRanges`가 모두 포함된다.
+- 응답에는 하이라이트 판단용 `dailyResults`가 포함된다.
 - 배치 데이터가 부족한 경우 API가 조용히 빈 결과만 반환하지 않고 `dataWarnings` 또는 명확한 에러를 제공한다.
