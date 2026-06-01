@@ -27,13 +27,13 @@
 
 ### 🛰️ 데이터 파이프라인
 
-1. **시세 수집**: `Node.js` 서버가 KIS WebSocket에 상시 연결되어 실시간 데이터를 수집합니다.
-2. **데이터 중계**: `Node.js`에서 수집된 실시간 틱 데이터는 **Redis Stream** 및 **ZSET**에 적재됩니다.
+1. **시세 수집**: `Node.js` 서버가 KIS WebSocket에 상시 연결되어 실시간 체결 데이터를 수집합니다.
+2. **데이터 중계**: `Node.js`는 실시간 체결 틱을 1분 미확정 분봉으로 집계한 뒤 Redis `stock:minute-candles:{code}`(ZSET)과 `stock:latest:{code}`(String)에 적재합니다.
 3. **비즈니스 처리**:
 
 - `Spring Boot` 서버는 KIS WebSocket API를 직접 호출하지 않습니다.
 - `Spring Boot` 서버는 KIS REST API만 직접 호출합니다. (WebClient 논블로킹 연동)
-- `Spring Boot` 서버는 배치를 통해 사전 적재해둔 DB의 지표 데이터와 Redis(ZSET)의 인메모리 데이터로 추천 알고리즘, 차트 생성, 수익률 계산 등을 수행합니다.
+- `Spring Boot` 서버는 배치를 통해 사전 적재한 DB 지표 데이터와 Redis의 실시간 분봉/최신 스냅샷을 사용해 추천 알고리즘, 차트 생성, 수익률 계산 등을 수행합니다.
 
 4. **사용자 전송**: 프론트엔드로의 실시간 시세 푸시는 `Node.js`가 전담하며, `Spring Boot`는 REST API 응답에 집중합니다.
 
@@ -47,6 +47,7 @@
     - 로컬 환경 변수 예시: `REALTIME_REDIS_HOST=<local-forward-host>`, `REALTIME_REDIS_PORT=<local-forward-port>`,
       `REALTIME_REDIS_PASSWORD=<redis-password>`
     - 검증 API: `/api/smoke/realtime-redis/value`, `/api/smoke/realtime-redis/hash`, `/api/smoke/realtime-redis/zset`
+* **Smoke API**: 로컬 검증과 운영 수동 관리를 위해 관리자용 smoke API를 제공합니다. 운영 환경에서는 `KIS_SMOKE_ADMIN_KEY`로 보호합니다.
 
 ---
 
@@ -62,7 +63,7 @@
     - `docs/features/home/HOME_FEATURE.md` (홈/랭킹)
     - `docs/features/stock/STOCK_TERM_FEATURE.md` (주식 용어)
     - `docs/features/master/MASTER_INFO_FEATURE.md` (투자 거장 소개)
-    - `docs/features/mock-investment/MOCK_INVESTMENT_FEATURE.md` (모의투자/주문)
+    - `docs/features/mockInvestment/MOCK_INVESTMENT_FEATURE.md` (모의투자/주문)
     - `docs/features/stock/STOCK_DETAIL_FEATURE.md` (기업 상세/차트)
 
 ### ✅ 종목 추천 알고리즘
@@ -75,10 +76,10 @@
 
 시스템 부하 분산을 위해 데이터 수집 주기를 분리합니다.
 
-- **[주간/일간 배치]**: 무거운 재무지표(`StockIndicator`) 수집 및 HTS 조건검색 필터링 결과 저장.
-- **[장 마감 배치]**: 매일 16:00 이후 당일 확정된 일/주/월/년봉 차트 데이터를 DB(`StockPrice`)에 이관.
-- **[1분 스케줄러]**: 장 중 1분마다 확정된 1분봉 데이터를 수집하여 Redis ZSET에 갱신.
-- **[1시간 스케줄러]**: 모의투자 전체 사용자의 수익률을 계산하여 랭킹(`UserRanking`) DB 갱신.
+- **[오전 배치]**: `StockIndicator` 배치는 화요일~토요일 06:00, `HtsCondition` 배치는 화요일~토요일 06:30에 실행되어 전일 장 마감 기준 데이터를 적재합니다.
+- **[장중 분봉 동기화]**: Spring은 `09:02`, `09:32`, `10:02` ... `15:32`에 KIS REST 분봉 API를 호출해 최근 2분을 제외한 확정 1분봉을 DB `stock_candles`에 저장하고, `15:40`에 장 마감 보정 동기화를 한 번 더 수행합니다.
+- **[실시간 분봉 집계]**: Node는 실시간 체결 틱을 1분 미확정 분봉으로 집계해 Redis `stock:minute-candles:{code}`와 `stock:latest:{code}`에 적재합니다.
+- **[1시간 스케줄러]**: 매 정각마다 모의투자 전체 사용자의 총 자산과 총 수익률을 재계산해 `UserRanking`을 갱신합니다.
 
 ---
 
@@ -98,8 +99,8 @@
 
 ### 프로필과 배포
 
-- `local`: 로컬 개발용 프로필입니다. JPA `ddl-auto=validate`, Flyway 마이그레이션 적용, SQL 로그 출력, 로컬 PostgreSQL/Redis를 기본으로 사용합니다.
-- `prod`: EC2 운영용 프로필입니다. 환경 변수 기반 DB/Redis/KIS/Kakao 설정을 사용하며, 운영 쿠키는 기본적으로 `Secure`와 `SameSite=None`을 사용합니다.
+- `local`: 로컬 개발용 프로필입니다. JPA `ddl-auto=validate`, Flyway 마이그레이션 적용, SQL 로그 출력, 로컬 PostgreSQL/Redis를 기본으로 사용합니다. 실시간 피드 Redis는 필요 시 SSH 터널로 연결한 배포 Redis를 읽을 수 있습니다.
+- `prod`: EC2 운영용 프로필입니다. 환경 변수 기반 DB/Redis/KIS/Kakao 설정을 사용하며, 운영 쿠키는 기본적으로 `Secure`와 `SameSite=None`을 사용합니다. 앱 캐시 Redis와 실시간 피드 Redis가 같은 운영 Redis를 바라볼 수 있지만 코드에서는 역할을 분리합니다.
 - EC2 프리티어에서는 Gradle/Docker 빌드가 메모리 부족을 유발할 수 있으므로 Spring 이미지는 로컬 PC 또는 CI에서 빌드해 Container Registry에 push하고, EC2에서는
   pull만 수행합니다.
 - 운영 DB 스키마는 Flyway 마이그레이션으로 관리하며, JPA는 `ddl-auto=validate`로 매핑 검증만 수행합니다.
@@ -110,7 +111,7 @@
 
 1. **Phase 1**: 프로젝트 초기 세팅 및 로컬 인프라 작업
 2. **Phase 2**: EC2 인스턴스 생성, Docker(PostgreSQL, Redis) 컨테이너 실행 등 인프라 작업
-3. **Phase 3**: Node.js ↔ Redis(Stream/ZSET) ↔ Spring 서버 간 데이터 파이프라인 연동
+3. **Phase 3**: Node.js ↔ Redis(ZSET/String) ↔ Spring 서버 간 실시간 주식 데이터 파이프라인 연동
 4. **Phase 4**: Nginx 설치 및 리버스 프록시
 5. **Phase 5**: 도메인 연결 및 SSL(HTTPS) 적용
 6. **Phase 6**: KIS REST API 연동(WebClient) -> REST API 및 추천 로직 개발 + Batch/Scheduler 작업

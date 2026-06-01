@@ -1,5 +1,8 @@
 package com.mju.Jumoney.global.client.kis.smoke;
 
+import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceBacktestDataStatusResponse;
+import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceBacktestDataSyncResponse;
+import com.mju.Jumoney.domain.masterchoice.service.MasterChoiceBacktestDataSyncService;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncResponse;
 import com.mju.Jumoney.domain.mockinvestment.dto.MockInvestmentChartCandleSyncStatusResponse;
 import com.mju.Jumoney.domain.mockinvestment.enums.MockInvestmentChartPeriod;
@@ -50,6 +53,7 @@ public class KisSmokeService {
     private final BatchBaseDateResolver batchBaseDateResolver;
     private final StockMinuteCandleSyncService stockMinuteCandleSyncService;
     private final MockInvestmentChartSyncService mockInvestmentChartSyncService;
+    private final MasterChoiceBacktestDataSyncService masterChoiceBacktestDataSyncService;
 
     public KisSmokeService(KisApiClient kisApiClient,
                            StockRepository stockRepository,
@@ -59,7 +63,8 @@ public class KisSmokeService {
                            @Qualifier(StockDataBatchJobConfig.HTS_CONDITION_JOB_NAME) Job htsConditionBatchJob,
                            BatchBaseDateResolver batchBaseDateResolver,
                            StockMinuteCandleSyncService stockMinuteCandleSyncService,
-                           MockInvestmentChartSyncService mockInvestmentChartSyncService) {
+                           MockInvestmentChartSyncService mockInvestmentChartSyncService,
+                           MasterChoiceBacktestDataSyncService masterChoiceBacktestDataSyncService) {
         this.kisApiClient = kisApiClient;
         this.stockRepository = stockRepository;
         this.stockIndicatorRepository = stockIndicatorRepository;
@@ -69,6 +74,7 @@ public class KisSmokeService {
         this.batchBaseDateResolver = batchBaseDateResolver;
         this.stockMinuteCandleSyncService = stockMinuteCandleSyncService;
         this.mockInvestmentChartSyncService = mockInvestmentChartSyncService;
+        this.masterChoiceBacktestDataSyncService = masterChoiceBacktestDataSyncService;
     }
 
     public KisSmokeResponse smoke(String stockCode, LocalDate baseDate, LocalDate dividendFrom, LocalDate dividendTo) {
@@ -187,6 +193,20 @@ public class KisSmokeService {
                                                                                 MockInvestmentChartPeriod period,
                                                                                 LocalDate date) {
         return mockInvestmentChartSyncService.getChartCandleSyncStatus(stockCode, period, date);
+    }
+
+    public MasterChoiceBacktestDataSyncResponse syncMasterChoiceBacktestFinancials(List<String> stockCodes) {
+        return masterChoiceBacktestDataSyncService.syncFinancials(stockCodes);
+    }
+
+    public MasterChoiceBacktestDataSyncResponse syncMasterChoiceBacktestDailyIndicators(List<String> stockCodes,
+                                                                                        LocalDate fromDate,
+                                                                                        LocalDate toDate) {
+        return masterChoiceBacktestDataSyncService.syncDailyIndicators(stockCodes, fromDate, toDate);
+    }
+
+    public MasterChoiceBacktestDataStatusResponse getMasterChoiceBacktestDataStatus(String stockCode) {
+        return masterChoiceBacktestDataSyncService.getStatus(stockCode);
     }
 
     private String toBaseTime(LocalDate baseDate) {
