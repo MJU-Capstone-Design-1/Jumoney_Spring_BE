@@ -70,6 +70,9 @@ public class MasterChoiceFilterService {
             MasterChoiceCandidate candidate = evaluate(indicator, logicCodes, sectorTypes);
             if (candidate.matchedConditionCount() == logicCodes.size()) {
                 candidate.setSortMetricValue(sortMetricValue(masterCode, indicator));
+                if (masterCode == MasterCode.PETER_LYNCH) {
+                    candidate.setFallbackSortMetricValue(indicator.getSalesGrowthRate());
+                }
                 candidates.add(candidate);
             }
         }
@@ -129,7 +132,7 @@ public class MasterChoiceFilterService {
             case LYNCH_PEG -> lessThanOrEqual(peg(indicator), LYNCH_MAX_PEG);
             case LYNCH_EPS_GROWTH -> between(epsGrowthRate(indicator), LYNCH_MIN_EPS_GROWTH_RATE, LYNCH_MAX_EPS_GROWTH_RATE);
             case LYNCH_DEBT_RATIO -> lessThanOrEqual(indicator.getDebtRatio(), LYNCH_MAX_DEBT_RATIO);
-            case LYNCH_SALES_GROWTH -> greaterThanOrEqual(salesGrowthRate(indicator), LYNCH_MIN_SALES_GROWTH_RATE);
+            case LYNCH_SALES_GROWTH -> greaterThanOrEqual(indicator.getSalesGrowthRate(), LYNCH_MIN_SALES_GROWTH_RATE);
             case LYNCH_SECTOR -> matchesSelectedSector(indicator, selectedSectorTypes);
 
             case DALIO_ALL_WEATHER -> matchesSelectedSector(indicator, selectedSectorTypes);
@@ -187,15 +190,6 @@ public class MasterChoiceFilterService {
             return null;
         }
         return indicator.getPer().divide(epsGrowthRate, RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal salesGrowthRate(StockIndicator indicator) {
-        if (indicator.getCurrentSales() == null || indicator.getLastYearSales() == null || indicator.getLastYearSales() <= 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(indicator.getCurrentSales() - indicator.getLastYearSales())
-                .multiply(HUNDRED)
-                .divide(BigDecimal.valueOf(indicator.getLastYearSales()), RATIO_SCALE, RoundingMode.HALF_UP);
     }
 
     private BigDecimal earningsYield(StockIndicator indicator) {

@@ -60,7 +60,7 @@ public class MasterChoiceService {
                         request.sectorTypes()
                 )
                 .stream()
-                .filter(candidate -> candidate.getSortMetricValue() != null)
+                .filter(candidate -> hasSortableMetric(master.getMasterCode(), candidate))
                 .sorted(candidateComparator(master.getMasterCode(), goodSectorNames))
                 .toList();
 
@@ -76,7 +76,8 @@ public class MasterChoiceService {
         List<MasterChoiceResponse.RecommendedStockResponse> recommendations = topCandidates.stream()
                 .map(candidate -> toRecommendedStockResponse(
                         candidate,
-                        sortMetricKey(master.getMasterCode()),
+                        sortMetricKey(master.getMasterCode(), candidate),
+                        sortMetricValue(master.getMasterCode(), candidate),
                         currentPrices.get(candidate.getStock().getStockCode()),
                         goodSectorNames
                 ))
@@ -142,34 +143,51 @@ public class MasterChoiceService {
         Comparator<MasterChoiceCandidate> comparator = Comparator
                 .comparing((MasterChoiceCandidate candidate) -> goodSectorService.hasGoodSectorMatch(candidate.getStock(), goodSectorNames), Comparator.reverseOrder());
 
+        if (masterCode == MasterCode.PETER_LYNCH) {
+            return comparator
+                    .thenComparing(candidate -> candidate.getSortMetricValue() != null, Comparator.reverseOrder())
+                    .thenComparing(MasterChoiceCandidate::getSortMetricValue, Comparator.nullsLast(BigDecimal::compareTo))
+                    .thenComparing(MasterChoiceCandidate::getFallbackSortMetricValue, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(candidate -> candidate.getStock().getStockCode());
+        }
+
         Comparator<MasterChoiceCandidate> sortMetricComparator = Comparator.comparing(
                 MasterChoiceCandidate::getSortMetricValue,
                 Comparator.nullsLast(BigDecimal::compareTo)
         );
-
-        if (masterCode == MasterCode.PETER_LYNCH) {
-            return comparator
-                    .thenComparing(sortMetricComparator)
-                    .thenComparing(candidate -> candidate.getStock().getStockCode());
-        }
 
         return comparator
                 .thenComparing(sortMetricComparator.reversed())
                 .thenComparing(candidate -> candidate.getStock().getStockCode());
     }
 
-    private String sortMetricKey(MasterCode masterCode) {
+    private boolean hasSortableMetric(MasterCode masterCode, MasterChoiceCandidate candidate) {
+        if (masterCode == MasterCode.PETER_LYNCH) {
+            return true;
+        }
+        return candidate.getSortMetricValue() != null;
+    }
+
+    private String sortMetricKey(MasterCode masterCode, MasterChoiceCandidate candidate) {
         return switch (masterCode) {
             case WARREN_BUFFETT -> "ROE";
-            case PETER_LYNCH -> "PEG";
+            case PETER_LYNCH -> candidate.getSortMetricValue() != null ? "PEG" : "SALES_GROWTH_RATE";
             case RAY_DALIO -> "MARKET_CAP";
             case WILLIAM_ONEIL -> "HIGH_52_WEEK_RATE";
         };
     }
 
+    private BigDecimal sortMetricValue(MasterCode masterCode, MasterChoiceCandidate candidate) {
+        if (masterCode == MasterCode.PETER_LYNCH && candidate.getSortMetricValue() == null) {
+            return candidate.getFallbackSortMetricValue();
+        }
+        return candidate.getSortMetricValue();
+    }
+
     private MasterChoiceResponse.RecommendedStockResponse toRecommendedStockResponse(
             MasterChoiceCandidate candidate,
             String sortMetricKey,
+            BigDecimal sortMetricValue,
             StockCurrentPriceSnapshot currentPrice,
             Set<String> goodSectorNames
     ) {
@@ -183,7 +201,7 @@ public class MasterChoiceService {
                 goodSectorService.goodSectorTags(stock, goodSectorNames),
                 candidate.matchedConditionCount(),
                 sortMetricKey,
-                candidate.getSortMetricValue(),
+                sortMetricValue,
                 currentPrice == null ? null : currentPrice.currentPrice(),
                 currentPrice == null ? null : currentPrice.changeRate()
         );

@@ -291,7 +291,7 @@ public class MasterChoiceBacktestService {
                 epsGrowthRate,
                 financial == null ? null : financial.getDebtRatio(),
                 financial == null ? null : operatingMargin(financial.getOperatingProfit(), financial.getCurrentSales()),
-                financial == null ? null : salesGrowthRate(financial.getCurrentSales(), financial.getLastYearSales()),
+                financial == null ? null : financial.getSalesGrowthRate(),
                 dailyIndicator == null ? null : dailyIndicator.getMarginDebtRate(),
                 high52WeekRate(high52WeekHighByDate, candle),
                 institutionNetBuy20Days,
@@ -367,15 +367,6 @@ public class MasterChoiceBacktestService {
         return BigDecimal.valueOf(operatingProfit)
                 .multiply(HUNDRED)
                 .divide(BigDecimal.valueOf(currentSales), RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal salesGrowthRate(Long currentSales, Long lastYearSales) {
-        if (currentSales == null || lastYearSales == null || lastYearSales <= 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(currentSales - lastYearSales)
-                .multiply(HUNDRED)
-                .divide(BigDecimal.valueOf(lastYearSales), RATIO_SCALE, RoundingMode.HALF_UP);
     }
 
     private BigDecimal peg(BigDecimal per, BigDecimal epsGrowthRate) {

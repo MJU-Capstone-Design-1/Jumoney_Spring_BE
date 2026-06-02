@@ -142,6 +142,7 @@ public class MasterChoiceBacktestDataSyncService {
                             currentRatio.debtRatio(),
                             toLong(currentStatement == null ? null : currentStatement.sales()),
                             toLong(previousStatement == null ? null : previousStatement.sales()),
+                            currentRatio.salesGrowthRate(),
                             toLong(currentStatement == null ? null : currentStatement.operatingProfit())
                     );
             backtestMetrics.add(metrics);

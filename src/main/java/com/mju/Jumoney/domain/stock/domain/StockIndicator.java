@@ -55,6 +55,9 @@ public class StockIndicator {
     @Column(name = "operating_profit_growth_rate", nullable = false, precision = 19, scale = 4)
     private BigDecimal operatingProfitGrowthRate;
 
+    @Column(name = "sales_growth_rate", precision = 19, scale = 4)
+    private BigDecimal salesGrowthRate;
+
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal dps;
 
@@ -105,6 +108,7 @@ public class StockIndicator {
             BigDecimal debtRatio,
             Long operatingProfit,
             BigDecimal operatingProfitGrowthRate,
+            BigDecimal salesGrowthRate,
             BigDecimal dps,
             BigDecimal dividendYield,
             BigDecimal payoutRatio,
@@ -128,6 +132,7 @@ public class StockIndicator {
                 .debtRatio(debtRatio)
                 .operatingProfit(operatingProfit)
                 .operatingProfitGrowthRate(operatingProfitGrowthRate)
+                .salesGrowthRate(salesGrowthRate)
                 .dps(dps)
                 .dividendYield(dividendYield)
                 .payoutRatio(payoutRatio)
@@ -151,6 +156,7 @@ public class StockIndicator {
             BigDecimal debtRatio,
             Long operatingProfit,
             BigDecimal operatingProfitGrowthRate,
+            BigDecimal salesGrowthRate,
             BigDecimal dps,
             BigDecimal dividendYield,
             BigDecimal payoutRatio,
@@ -171,6 +177,7 @@ public class StockIndicator {
         this.debtRatio = debtRatio;
         this.operatingProfit = operatingProfit;
         this.operatingProfitGrowthRate = operatingProfitGrowthRate;
+        this.salesGrowthRate = salesGrowthRate;
         this.dps = dps;
         this.dividendYield = dividendYield;
         this.payoutRatio = payoutRatio;
