@@ -32,10 +32,12 @@ public class KisTokenManager {
     private static final String KIS_TOKEN_REDIS_KEY = "kis:token";
     private static final Duration KIS_TOKEN_TTL = Duration.ofHours(23);
     private static final Duration REDIS_CIRCUIT_OPEN_DURATION = Duration.ofMinutes(5);
+    private static final Duration TOKEN_INVALIDATION_COOLDOWN = Duration.ofSeconds(60);
     private final Object tokenLock = new Object();
     private final AtomicLong redisCircuitOpenUntilMillis = new AtomicLong(0);
     private volatile String localCachedToken;
     private volatile Instant localTokenExpiresAt;
+    private long lastTokenInvalidationMillis = 0L;
 
     public KisTokenManager(@Qualifier("kisWebClient") WebClient webClient, RedisUtil redisUtil) {
         this.webClient = webClient;
@@ -60,6 +62,33 @@ public class KisTokenManager {
             cacheTokenLocally(newToken);
 
             return newToken;
+        }
+    }
+
+    public void invalidateToken() {
+        synchronized (tokenLock) {
+            long now = System.currentTimeMillis();
+            if (now - lastTokenInvalidationMillis < TOKEN_INVALIDATION_COOLDOWN.toMillis()) {
+                log.warn("[KIS] Access Token 캐시 무효화 생략: 최근 무효화가 이미 수행되었습니다.");
+                return;
+            }
+            lastTokenInvalidationMillis = now;
+
+            localCachedToken = null;
+            localTokenExpiresAt = null;
+
+            if (isRedisCircuitOpen()) {
+                return;
+            }
+
+            try {
+                redisUtil.delete(KIS_TOKEN_REDIS_KEY);
+                closeRedisCircuit();
+                log.info("[KIS] Access Token 캐시 무효화 완료");
+            } catch (Exception e) {
+                openRedisCircuit();
+                log.warn("[KIS] Access Token Redis 캐시 삭제 실패. 로컬 캐시만 무효화합니다. Error: {}", e.getMessage());
+            }
         }
     }
 
