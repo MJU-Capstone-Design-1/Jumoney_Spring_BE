@@ -62,6 +62,7 @@ public class KisMetricMapper {
     public KisFinancialRatioMetrics toFinancialRatioMetrics(KisFinancialRatioOutput output) {
         return new KisFinancialRatioMetrics(
                 output.settlementYearMonth(),
+                toBigDecimal(output.salesGrowthRate()),
                 toBigDecimal(output.operatingProfitGrowthRate()),
                 toBigDecimal(output.roe()),
                 toBigDecimal(output.eps()),

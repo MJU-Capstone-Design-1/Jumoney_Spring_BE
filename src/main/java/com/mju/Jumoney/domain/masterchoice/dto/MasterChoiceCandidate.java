@@ -14,6 +14,7 @@ public class MasterChoiceCandidate {
     private final StockIndicator indicator;
     private final Set<MasterOptionLogicCode> matchedOptions = new LinkedHashSet<>();
     private BigDecimal sortMetricValue;
+    private BigDecimal fallbackSortMetricValue;
 
     public MasterChoiceCandidate(StockIndicator indicator) {
         this.indicator = indicator;
@@ -38,6 +39,14 @@ public class MasterChoiceCandidate {
 
     public void setSortMetricValue(BigDecimal sortMetricValue) {
         this.sortMetricValue = sortMetricValue;
+    }
+
+    public BigDecimal getFallbackSortMetricValue() {
+        return fallbackSortMetricValue;
+    }
+
+    public void setFallbackSortMetricValue(BigDecimal fallbackSortMetricValue) {
+        this.fallbackSortMetricValue = fallbackSortMetricValue;
     }
 
     public void addMatchedOption(MasterOptionLogicCode logicCode) {

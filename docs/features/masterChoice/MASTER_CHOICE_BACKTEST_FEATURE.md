@@ -99,6 +99,7 @@
 | `debt_ratio`            | NUMERIC(19,4)      |                                  |
 | `current_sales`         | BIGINT             |                                  |
 | `last_year_sales`       | BIGINT NULL        | 직전 연간 결산 매출                      |
+| `sales_growth_rate`     | NUMERIC(19,4) NULL | KIS 재무비율 `grs`                    |
 | `operating_profit`      | BIGINT             |                                  |
 
 Constraints and indexes:
@@ -283,7 +284,7 @@ Suggested response shape:
 - 연간 재무 데이터는 `availableDate <= tradingDate`인 최신 스냅샷을 적용한다.
 - PER은 `해당 거래일 종가 / currentEps`로 계산한다.
 - EPS 성장률은 `(currentEps - lastYearEps) / lastYearEps * 100`으로 계산한다.
-- 매출 성장률은 `(currentSales - lastYearSales) / lastYearSales * 100`으로 계산한다.
+- 매출 성장률은 KIS 재무비율 `grs`를 저장한 `salesGrowthRate`를 사용한다.
 - 영업이익률은 `operatingProfit / currentSales * 100`으로 계산한다.
 - PEG는 `PER / EPS 성장률`로 계산한다.
 - 이익수익률은 `100 / PER`로 계산한다.

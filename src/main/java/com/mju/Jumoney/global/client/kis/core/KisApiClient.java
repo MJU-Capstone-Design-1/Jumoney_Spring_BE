@@ -52,6 +52,7 @@ public class KisApiClient {
     private static final String CUSTOMER_TYPE_PERSONAL = "P";
     private static final String MARKET_DIV_CODE_KRX = "J";
     private static final String CREDIT_BALANCE_SCREEN_DIV_CODE = "20476";
+    private static final String EXPIRED_TOKEN_CODE = "EGW00123";
     private static final String EMPTY_HTS_RESULT_CODE = "MCA05918";
     private static final String HTS_CONDITION_NOT_SAVED_CODE = "MCA05762";
     private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
@@ -172,7 +173,8 @@ public class KisApiClient {
                     .headers(headers -> setKisHeaders(headers, TR_ID_FINANCIAL_RATIO))
                     .retrieve()
                     .bodyToMono(KisFinancialRatioResponse.class)
-                    .onErrorMap(e -> new KisApiException("[KIS] 재무비율 조회 실패: stockCode=" + stockCode, e))
+                    .onErrorMap(e -> new KisApiException("[KIS] 재무비율 조회 실패: stockCode=" + stockCode
+                            + errorDetail(e), e))
                     .block();
 
             validateSuccess(response, TR_ID_FINANCIAL_RATIO);
@@ -481,6 +483,15 @@ public class KisApiClient {
         headers.set("custtype", CUSTOMER_TYPE_PERSONAL);
     }
 
+    private String errorDetail(Throwable throwable) {
+        Throwable rootCause = rootCause(throwable);
+        if (rootCause instanceof WebClientResponseException responseException) {
+            return ", status=" + responseException.getStatusCode()
+                    + ", body=" + responseException.getResponseBodyAsString();
+        }
+        return "";
+    }
+
     // kis api의 호출 성공 여부 확인
     private void validateSuccess(KisApiResponse response, String trId) {
         if (response == null) {
@@ -511,6 +522,9 @@ public class KisApiClient {
                 return supplier.get();
             } catch (RuntimeException e) {
                 lastException = e;
+                if (isExpiredTokenException(e)) {
+                    kisTokenManager.invalidateToken();
+                }
                 if (attempt >= attempts || !isRetryable(e)) {
                     throw e;
                 }
@@ -524,6 +538,10 @@ public class KisApiClient {
     }
 
     private boolean isRetryable(RuntimeException exception) {
+        if (isExpiredTokenException(exception)) {
+            return true;
+        }
+
         Throwable rootCause = rootCause(exception);
         if (rootCause instanceof WebClientResponseException responseException) {
             HttpStatusCode statusCode = responseException.getStatusCode();
@@ -545,6 +563,16 @@ public class KisApiClient {
                 || rootCause instanceof TimeoutException
                 || rootCause.getClass().getName().contains("Timeout")
                 || message != null && message.contains("Connection prematurely closed");
+    }
+
+    private boolean isExpiredTokenException(RuntimeException exception) {
+        Throwable rootCause = rootCause(exception);
+        if (rootCause instanceof WebClientResponseException responseException) {
+            return responseException.getResponseBodyAsString().contains(EXPIRED_TOKEN_CODE);
+        }
+
+        String message = exception.getMessage();
+        return message != null && message.contains(EXPIRED_TOKEN_CODE);
     }
 
     private Throwable rootCause(Throwable throwable) {

@@ -47,27 +47,6 @@ public class MasterChoiceBacktestService {
     private static final int HIGH_52_WEEK_MIN_LOOKBACK_DAYS = 200;
     private static final int INSTITUTION_NET_BUY_LOOKBACK_CALENDAR_DAYS = 90;
 
-    private static final BigDecimal BUFFETT_MIN_ROE = BigDecimal.valueOf(15);
-    private static final BigDecimal BUFFETT_MAX_PER = BigDecimal.valueOf(15);
-    private static final BigDecimal BUFFETT_MIN_EPS_GROWTH_RATE = BigDecimal.valueOf(10);
-    private static final BigDecimal BUFFETT_MAX_DEBT_RATIO = BigDecimal.valueOf(100);
-    private static final BigDecimal BUFFETT_MIN_OPERATING_MARGIN = BigDecimal.valueOf(20);
-
-    private static final BigDecimal LYNCH_MAX_PEG = BigDecimal.ONE;
-    private static final BigDecimal LYNCH_MIN_EPS_GROWTH_RATE = BigDecimal.valueOf(20);
-    private static final BigDecimal LYNCH_MAX_EPS_GROWTH_RATE = BigDecimal.valueOf(50);
-    private static final BigDecimal LYNCH_MAX_DEBT_RATIO = BigDecimal.valueOf(100);
-    private static final BigDecimal LYNCH_MIN_SALES_GROWTH_RATE = BigDecimal.valueOf(10);
-
-    private static final BigDecimal DALIO_MAX_PER = BigDecimal.valueOf(20);
-    private static final BigDecimal DALIO_MAX_MARGIN_DEBT_RATE = BigDecimal.valueOf(5);
-    private static final BigDecimal DALIO_MAX_DEBT_RATIO = BigDecimal.valueOf(50);
-    private static final BigDecimal DALIO_MIN_EARNINGS_YIELD = BigDecimal.valueOf(3.38);
-
-    private static final BigDecimal ONEIL_MIN_EPS_GROWTH_RATE = BigDecimal.valueOf(25);
-    private static final BigDecimal ONEIL_MIN_ROE = BigDecimal.valueOf(17);
-    private static final BigDecimal ONEIL_MIN_HIGH_52_WEEK_RATE = BigDecimal.valueOf(90);
-
     private final MasterRepository masterRepository;
     private final MasterOptionRepository masterOptionRepository;
     private final StockRepository stockRepository;
@@ -130,7 +109,7 @@ public class MasterChoiceBacktestService {
             LocalDate tradingDate = candle.getCandleTime().toLocalDate();
             MasterChoiceBacktestFinancial financial = latestAvailableFinancial(financialByAvailableDate, tradingDate).orElse(null);
             MasterChoiceBacktestDailyIndicator dailyIndicator = dailyIndicatorByDate.get(tradingDate);
-            BacktestIndicator indicator = toIndicator(
+            MasterChoiceRuleEvaluator.Indicator indicator = toIndicator(
                     stock,
                     candle,
                     high52WeekHighByDate,
@@ -140,7 +119,7 @@ public class MasterChoiceBacktestService {
             );
 
             boolean matched = logicCodes.stream()
-                    .allMatch(logicCode -> matches(indicator, logicCode, sectorTypes));
+                    .allMatch(logicCode -> MasterChoiceRuleEvaluator.matches(indicator, logicCode, sectorTypes));
             dataWarnings.addAll(dataWarnings(tradingDate, logicCodes, financial, dailyIndicator, indicator));
             dailyResults.add(new MasterChoiceBacktestResponse.DailyResult(
                     tradingDate,
@@ -274,29 +253,26 @@ public class MasterChoiceBacktestService {
         return entry == null ? Optional.empty() : Optional.of(entry.getValue());
     }
 
-    private BacktestIndicator toIndicator(Stock stock,
-                                          StockCandle candle,
-                                          Map<LocalDate, BigDecimal> high52WeekHighByDate,
-                                          MasterChoiceBacktestFinancial financial,
-                                          MasterChoiceBacktestDailyIndicator dailyIndicator,
-                                          Long institutionNetBuy20Days) {
-        BigDecimal per = financial == null ? null : per(candle.getClosePrice(), financial.getCurrentEps());
-        BigDecimal epsGrowthRate = financial == null ? null : epsGrowthRate(financial.getCurrentEps(), financial.getLastYearEps());
-        BigDecimal earningsYield = earningsYield(per);
-        BigDecimal peg = peg(per, epsGrowthRate);
-        return new BacktestIndicator(
+    private MasterChoiceRuleEvaluator.Indicator toIndicator(Stock stock,
+                                                            StockCandle candle,
+                                                            Map<LocalDate, BigDecimal> high52WeekHighByDate,
+                                                            MasterChoiceBacktestFinancial financial,
+                                                            MasterChoiceBacktestDailyIndicator dailyIndicator,
+                                                            Long institutionNetBuy20Days) {
+        BigDecimal per = financial == null ? null : MasterChoiceRuleEvaluator.per(candle.getClosePrice(), financial.getCurrentEps());
+        return MasterChoiceRuleEvaluator.fromBacktestValues(
                 stock,
                 financial == null ? null : financial.getRoe(),
                 per,
-                epsGrowthRate,
+                financial == null ? null : financial.getCurrentEps(),
+                financial == null ? null : financial.getLastYearEps(),
                 financial == null ? null : financial.getDebtRatio(),
-                financial == null ? null : operatingMargin(financial.getOperatingProfit(), financial.getCurrentSales()),
-                financial == null ? null : salesGrowthRate(financial.getCurrentSales(), financial.getLastYearSales()),
+                financial == null ? null : financial.getOperatingProfit(),
+                financial == null ? null : financial.getCurrentSales(),
+                financial == null ? null : financial.getSalesGrowthRate(),
                 dailyIndicator == null ? null : dailyIndicator.getMarginDebtRate(),
                 high52WeekRate(high52WeekHighByDate, candle),
-                institutionNetBuy20Days,
-                peg,
-                earningsYield
+                institutionNetBuy20Days
         );
     }
 
@@ -344,110 +320,11 @@ public class MasterChoiceBacktestService {
         return target.getClosePrice().multiply(HUNDRED).divide(high, RATIO_SCALE, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal per(BigDecimal closePrice, BigDecimal eps) {
-        if (closePrice == null || eps == null || eps.signum() <= 0) {
-            return null;
-        }
-        return closePrice.divide(eps, RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal epsGrowthRate(BigDecimal currentEps, BigDecimal lastYearEps) {
-        if (currentEps == null || lastYearEps == null || lastYearEps.signum() <= 0) {
-            return null;
-        }
-        return currentEps.subtract(lastYearEps)
-                .multiply(HUNDRED)
-                .divide(lastYearEps, RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal operatingMargin(Long operatingProfit, Long currentSales) {
-        if (operatingProfit == null || currentSales == null || currentSales <= 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(operatingProfit)
-                .multiply(HUNDRED)
-                .divide(BigDecimal.valueOf(currentSales), RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal salesGrowthRate(Long currentSales, Long lastYearSales) {
-        if (currentSales == null || lastYearSales == null || lastYearSales <= 0) {
-            return null;
-        }
-        return BigDecimal.valueOf(currentSales - lastYearSales)
-                .multiply(HUNDRED)
-                .divide(BigDecimal.valueOf(lastYearSales), RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal peg(BigDecimal per, BigDecimal epsGrowthRate) {
-        if (per == null || per.signum() <= 0 || epsGrowthRate == null || epsGrowthRate.signum() <= 0) {
-            return null;
-        }
-        return per.divide(epsGrowthRate, RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal earningsYield(BigDecimal per) {
-        if (per == null || per.signum() <= 0) {
-            return null;
-        }
-        return HUNDRED.divide(per, RATIO_SCALE, RoundingMode.HALF_UP);
-    }
-
-    private boolean matches(BacktestIndicator indicator, MasterOptionLogicCode logicCode, Set<SectorType> selectedSectorTypes) {
-        return switch (logicCode) {
-            case BUFFETT_ROE -> greaterThanOrEqual(indicator.roe(), BUFFETT_MIN_ROE);
-            case BUFFETT_PER -> positive(indicator.per()) && lessThanOrEqual(indicator.per(), BUFFETT_MAX_PER);
-            case BUFFETT_EPS_GROWTH -> greaterThanOrEqual(indicator.epsGrowthRate(), BUFFETT_MIN_EPS_GROWTH_RATE);
-            case BUFFETT_DEBT_RATIO -> lessThanOrEqual(indicator.debtRatio(), BUFFETT_MAX_DEBT_RATIO);
-            case BUFFETT_OPERATING_MARGIN ->
-                    greaterThanOrEqual(indicator.operatingMargin(), BUFFETT_MIN_OPERATING_MARGIN);
-
-            case LYNCH_PEG -> lessThanOrEqual(indicator.peg(), LYNCH_MAX_PEG);
-            case LYNCH_EPS_GROWTH ->
-                    between(indicator.epsGrowthRate(), LYNCH_MIN_EPS_GROWTH_RATE, LYNCH_MAX_EPS_GROWTH_RATE);
-            case LYNCH_DEBT_RATIO -> lessThanOrEqual(indicator.debtRatio(), LYNCH_MAX_DEBT_RATIO);
-            case LYNCH_SALES_GROWTH -> greaterThanOrEqual(indicator.salesGrowthRate(), LYNCH_MIN_SALES_GROWTH_RATE);
-            case LYNCH_SECTOR -> matchesSelectedSector(indicator.stock(), selectedSectorTypes);
-
-            case DALIO_ALL_WEATHER -> matchesSelectedSector(indicator.stock(), selectedSectorTypes);
-            case DALIO_PER -> positive(indicator.per()) && lessThanOrEqual(indicator.per(), DALIO_MAX_PER);
-            case DALIO_MARGIN_DEBT -> lessThanOrEqual(indicator.marginDebtRate(), DALIO_MAX_MARGIN_DEBT_RATE);
-            case DALIO_DEBT_RATIO -> lessThanOrEqual(indicator.debtRatio(), DALIO_MAX_DEBT_RATIO);
-            case DALIO_EARNINGS_YIELD -> greaterThanOrEqual(indicator.earningsYield(), DALIO_MIN_EARNINGS_YIELD);
-
-            case ONEIL_EPS_GROWTH -> greaterThanOrEqual(indicator.epsGrowthRate(), ONEIL_MIN_EPS_GROWTH_RATE);
-            case ONEIL_ROE -> greaterThanOrEqual(indicator.roe(), ONEIL_MIN_ROE);
-            case ONEIL_HIGH_52_WEEK -> greaterThanOrEqual(indicator.high52WeekRate(), ONEIL_MIN_HIGH_52_WEEK_RATE);
-            case ONEIL_MARKET_LEADER -> indicator.stock().isMarketLeader();
-            case ONEIL_INST_NET_BUY -> indicator.instNetBuy20Days() != null && indicator.instNetBuy20Days() >= 0;
-        };
-    }
-
-    private boolean matchesSelectedSector(Stock stock, Set<SectorType> selectedSectorTypes) {
-        return !selectedSectorTypes.isEmpty()
-                && selectedSectorTypes.contains(stock.getSector().getSectorName());
-    }
-
-    private boolean greaterThanOrEqual(BigDecimal value, BigDecimal threshold) {
-        return value != null && value.compareTo(threshold) >= 0;
-    }
-
-    private boolean lessThanOrEqual(BigDecimal value, BigDecimal threshold) {
-        return value != null && value.compareTo(threshold) <= 0;
-    }
-
-    private boolean between(BigDecimal value, BigDecimal min, BigDecimal max) {
-        return greaterThanOrEqual(value, min) && lessThanOrEqual(value, max);
-    }
-
-    private boolean positive(BigDecimal value) {
-        return value != null && value.signum() > 0;
-    }
-
     private List<MasterChoiceBacktestResponse.DataWarning> dataWarnings(LocalDate tradingDate,
                                                                         List<MasterOptionLogicCode> logicCodes,
                                                                         MasterChoiceBacktestFinancial financial,
                                                                         MasterChoiceBacktestDailyIndicator dailyIndicator,
-                                                                        BacktestIndicator indicator) {
+                                                                        MasterChoiceRuleEvaluator.Indicator indicator) {
         List<MasterChoiceBacktestResponse.DataWarning> warnings = new ArrayList<>();
         if (financial == null && needsFinancialData(logicCodes)) {
             warnings.add(new MasterChoiceBacktestResponse.DataWarning(
@@ -535,8 +412,10 @@ public class MasterChoiceBacktestService {
     }
 
     private void validateSectorSelection(List<MasterOption> selectedOptions, List<?> sectorTypes) {
-        boolean needsSectorSelection = selectedOptions.stream()
+        Set<MasterOptionLogicCode> logicCodes = selectedOptions.stream()
                 .map(MasterOption::getLogicCode)
+                .collect(Collectors.toSet());
+        boolean needsSectorSelection = logicCodes.stream()
                 .anyMatch(this::requiresSectorSelection);
         if (needsSectorSelection && (sectorTypes == null || sectorTypes.isEmpty())) {
             throw new CustomException(MasterChoiceErrorCode.MISSING_MASTER_SECTOR_SELECTION);
@@ -551,19 +430,4 @@ public class MasterChoiceBacktestService {
                 || logicCode == MasterOptionLogicCode.DALIO_ALL_WEATHER;
     }
 
-    private record BacktestIndicator(
-            Stock stock,
-            BigDecimal roe,
-            BigDecimal per,
-            BigDecimal epsGrowthRate,
-            BigDecimal debtRatio,
-            BigDecimal operatingMargin,
-            BigDecimal salesGrowthRate,
-            BigDecimal marginDebtRate,
-            BigDecimal high52WeekRate,
-            Long instNetBuy20Days,
-            BigDecimal peg,
-            BigDecimal earningsYield
-    ) {
-    }
 }

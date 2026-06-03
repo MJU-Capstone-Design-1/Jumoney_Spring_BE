@@ -60,6 +60,9 @@ public class MasterChoiceBacktestFinancial extends BaseEntity {
     @Column(name = "last_year_sales")
     private Long lastYearSales;
 
+    @Column(name = "sales_growth_rate", precision = 19, scale = 4)
+    private BigDecimal salesGrowthRate;
+
     @Column(name = "operating_profit")
     private Long operatingProfit;
 
@@ -74,6 +77,7 @@ public class MasterChoiceBacktestFinancial extends BaseEntity {
                 .debtRatio(metrics.debtRatio())
                 .currentSales(metrics.currentSales())
                 .lastYearSales(metrics.lastYearSales())
+                .salesGrowthRate(metrics.salesGrowthRate())
                 .operatingProfit(metrics.operatingProfit())
                 .build();
     }
@@ -86,6 +90,7 @@ public class MasterChoiceBacktestFinancial extends BaseEntity {
         this.debtRatio = metrics.debtRatio();
         this.currentSales = metrics.currentSales();
         this.lastYearSales = metrics.lastYearSales();
+        this.salesGrowthRate = metrics.salesGrowthRate();
         this.operatingProfit = metrics.operatingProfit();
     }
 
@@ -99,6 +104,7 @@ public class MasterChoiceBacktestFinancial extends BaseEntity {
             BigDecimal debtRatio,
             Long currentSales,
             Long lastYearSales,
+            BigDecimal salesGrowthRate,
             Long operatingProfit
     ) {
     }
