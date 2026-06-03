@@ -11,6 +11,7 @@ import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceCandidate;
 import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceRequest;
 import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceResponse;
 import com.mju.Jumoney.domain.masterchoice.exception.MasterChoiceErrorCode;
+import com.mju.Jumoney.domain.sector.enums.SectorType;
 import com.mju.Jumoney.domain.sector.service.GoodSectorService;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 public class MasterChoiceService {
 
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 10;
+    private static final int DALIO_ALL_WEATHER_MAX_RECOMMENDATIONS_PER_SECTOR = 3;
 
     private final MasterRepository masterRepository;
     private final MasterOptionRepository masterOptionRepository;
@@ -64,9 +67,11 @@ public class MasterChoiceService {
                 .sorted(candidateComparator(master.getMasterCode(), goodSectorNames))
                 .toList();
 
-        List<MasterChoiceCandidate> topCandidates = eligibleCandidates.stream()
-                .limit(DEFAULT_RECOMMENDATION_LIMIT)
-                .toList();
+        List<MasterChoiceCandidate> topCandidates = selectTopCandidates(
+                master.getMasterCode(),
+                logicCodes,
+                eligibleCandidates
+        );
         Map<String, StockCurrentPriceSnapshot> currentPrices = stockCurrentPriceService.getCurrentPrices(
                 topCandidates.stream()
                         .map(candidate -> candidate.getStock().getStockCode())
@@ -120,8 +125,10 @@ public class MasterChoiceService {
     }
 
     private void validateSectorSelection(List<MasterOption> selectedOptions, List<?> sectorTypes) {
-        boolean needsSectorSelection = selectedOptions.stream()
+        Set<MasterOptionLogicCode> logicCodes = selectedOptions.stream()
                 .map(MasterOption::getLogicCode)
+                .collect(Collectors.toSet());
+        boolean needsSectorSelection = logicCodes.stream()
                 .anyMatch(this::requiresSectorSelection);
         if (needsSectorSelection && (sectorTypes == null || sectorTypes.isEmpty())) {
             throw new CustomException(MasterChoiceErrorCode.MISSING_MASTER_SECTOR_SELECTION);
@@ -134,6 +141,43 @@ public class MasterChoiceService {
     private boolean requiresSectorSelection(MasterOptionLogicCode logicCode) {
         return logicCode == MasterOptionLogicCode.LYNCH_SECTOR
                 || logicCode == MasterOptionLogicCode.DALIO_ALL_WEATHER;
+    }
+
+    private List<MasterChoiceCandidate> selectTopCandidates(
+            MasterCode masterCode,
+            List<MasterOptionLogicCode> logicCodes,
+            List<MasterChoiceCandidate> eligibleCandidates
+    ) {
+        if (masterCode == MasterCode.RAY_DALIO && logicCodes.contains(MasterOptionLogicCode.DALIO_ALL_WEATHER)) {
+            return limitDalioAllWeatherCandidatesBySector(eligibleCandidates);
+        }
+
+        return eligibleCandidates.stream()
+                .limit(DEFAULT_RECOMMENDATION_LIMIT)
+                .toList();
+    }
+
+    private List<MasterChoiceCandidate> limitDalioAllWeatherCandidatesBySector(
+            List<MasterChoiceCandidate> eligibleCandidates
+    ) {
+        Map<SectorType, Integer> recommendationCountBySector = new EnumMap<>(SectorType.class);
+        List<MasterChoiceCandidate> limitedCandidates = new ArrayList<>();
+
+        for (MasterChoiceCandidate candidate : eligibleCandidates) {
+            SectorType sectorType = candidate.getStock().getSector().getSectorName();
+            int recommendationCount = recommendationCountBySector.getOrDefault(sectorType, 0);
+            if (recommendationCount >= DALIO_ALL_WEATHER_MAX_RECOMMENDATIONS_PER_SECTOR) {
+                continue;
+            }
+
+            limitedCandidates.add(candidate);
+            recommendationCountBySector.put(sectorType, recommendationCount + 1);
+            if (limitedCandidates.size() == DEFAULT_RECOMMENDATION_LIMIT) {
+                break;
+            }
+        }
+
+        return limitedCandidates;
     }
 
     private Comparator<MasterChoiceCandidate> candidateComparator(

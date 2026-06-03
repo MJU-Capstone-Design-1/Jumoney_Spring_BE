@@ -526,8 +526,10 @@ public class MasterChoiceBacktestService {
     }
 
     private void validateSectorSelection(List<MasterOption> selectedOptions, List<?> sectorTypes) {
-        boolean needsSectorSelection = selectedOptions.stream()
+        Set<MasterOptionLogicCode> logicCodes = selectedOptions.stream()
                 .map(MasterOption::getLogicCode)
+                .collect(Collectors.toSet());
+        boolean needsSectorSelection = logicCodes.stream()
                 .anyMatch(this::requiresSectorSelection);
         if (needsSectorSelection && (sectorTypes == null || sectorTypes.isEmpty())) {
             throw new CustomException(MasterChoiceErrorCode.MISSING_MASTER_SECTOR_SELECTION);
