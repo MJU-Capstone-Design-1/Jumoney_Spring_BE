@@ -41,6 +41,7 @@ public class MasterChoiceBacktestDataSyncService {
     private static final DateTimeFormatter YEAR_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyyMM");
     private static final DateTimeFormatter KIS_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
     private static final int ANNUAL_DISCLOSURE_DELAY_DAYS = 90;
+    private static final int INTERIM_DISCLOSURE_DELAY_DAYS = 45;
     private static final int MAX_DAILY_API_WINDOWS = 30;
 
     private final StockRepository stockRepository;
@@ -110,10 +111,10 @@ public class MasterChoiceBacktestDataSyncService {
 
     protected int syncFinancials(Stock stock) {
         List<KisFinancialRatioMetrics> ratios = sortedFinancialRatios(
-                kisApiClient.getFinancialRatios(stock.getStockCode(), KisFinancialPeriod.YEAR)
+                kisApiClient.getFinancialRatios(stock.getStockCode(), KisFinancialPeriod.QUARTER)
         );
         Map<String, KisIncomeStatementMetrics> incomeStatementBySettlement = kisApiClient
-                .getIncomeStatements(stock.getStockCode(), KisFinancialPeriod.YEAR)
+                .getIncomeStatements(stock.getStockCode(), KisFinancialPeriod.QUARTER)
                 .stream()
                 .filter(metrics -> StringUtils.hasText(metrics.settlementYearMonth()))
                 .collect(Collectors.toMap(
@@ -121,21 +122,25 @@ public class MasterChoiceBacktestDataSyncService {
                         Function.identity(),
                         (left, right) -> left
                 ));
+        Map<String, KisFinancialRatioMetrics> ratioBySettlement = ratios.stream()
+                .collect(Collectors.toMap(
+                        KisFinancialRatioMetrics::settlementYearMonth,
+                        Function.identity(),
+                        (left, right) -> left
+                ));
 
         List<MasterChoiceBacktestFinancial.BacktestFinancialMetrics> backtestMetrics = new ArrayList<>();
-        for (int i = 0; i < ratios.size(); i++) {
-            KisFinancialRatioMetrics currentRatio = ratios.get(i);
-            KisFinancialRatioMetrics previousRatio = i + 1 < ratios.size() ? ratios.get(i + 1) : null;
+        for (KisFinancialRatioMetrics currentRatio : ratios) {
+            String lastYearSettlementYearMonth = previousYearSettlementYearMonth(currentRatio.settlementYearMonth());
+            KisFinancialRatioMetrics previousRatio = ratioBySettlement.get(lastYearSettlementYearMonth);
             KisIncomeStatementMetrics currentStatement = incomeStatementBySettlement.get(currentRatio.settlementYearMonth());
-            KisIncomeStatementMetrics previousStatement = previousRatio == null
-                    ? null
-                    : incomeStatementBySettlement.get(previousRatio.settlementYearMonth());
+            KisIncomeStatementMetrics previousStatement = incomeStatementBySettlement.get(lastYearSettlementYearMonth);
 
             MasterChoiceBacktestFinancial.BacktestFinancialMetrics metrics =
                     new MasterChoiceBacktestFinancial.BacktestFinancialMetrics(
                             stock,
                             currentRatio.settlementYearMonth(),
-                            availableDate(currentRatio.settlementYearMonth()),
+                            calculateAvailableDate(currentRatio.settlementYearMonth()),
                             currentRatio.roe(),
                             currentRatio.eps(),
                             previousRatio == null ? null : previousRatio.eps(),
@@ -214,9 +219,23 @@ public class MasterChoiceBacktestDataSyncService {
                 .toList();
     }
 
-    private LocalDate availableDate(String settlementYearMonth) {
+    static LocalDate calculateAvailableDate(String settlementYearMonth) {
         YearMonth yearMonth = YearMonth.parse(settlementYearMonth, YEAR_MONTH_FORMATTER);
-        return yearMonth.atEndOfMonth().plusDays(ANNUAL_DISCLOSURE_DELAY_DAYS);
+        int disclosureDelayDays = isInterimSettlementMonth(yearMonth)
+                ? INTERIM_DISCLOSURE_DELAY_DAYS
+                : ANNUAL_DISCLOSURE_DELAY_DAYS;
+        return yearMonth.atEndOfMonth().plusDays(disclosureDelayDays);
+    }
+
+    static String previousYearSettlementYearMonth(String settlementYearMonth) {
+        return YearMonth.parse(settlementYearMonth, YEAR_MONTH_FORMATTER)
+                .minusYears(1)
+                .format(YEAR_MONTH_FORMATTER);
+    }
+
+    private static boolean isInterimSettlementMonth(YearMonth yearMonth) {
+        int month = yearMonth.getMonthValue();
+        return month == 3 || month == 6 || month == 9;
     }
 
     private Map<LocalDate, BigDecimal> getMarginDebtRates(String stockCode, LocalDate fromDate, LocalDate toDate) {
