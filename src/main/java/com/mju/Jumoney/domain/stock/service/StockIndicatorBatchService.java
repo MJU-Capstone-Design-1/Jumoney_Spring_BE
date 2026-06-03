@@ -194,6 +194,7 @@ public class StockIndicatorBatchService {
         BigDecimal debtRatio = required(currentFinancialRatio.debtRatio(), "debtRatio", stock, baseTime);
         Long operatingProfit = requiredLong(currentIncomeStatement.operatingProfit(), "operatingProfit", stock, baseTime);
         BigDecimal operatingProfitGrowthRate = required(currentFinancialRatio.operatingProfitGrowthRate(), "operatingProfitGrowthRate", stock, baseTime);
+        BigDecimal salesGrowthRate = currentFinancialRatio.salesGrowthRate();
         BigDecimal roe = required(currentFinancialRatio.roe(), "roe", stock, baseTime);
         BigDecimal per = required(currentPrice.per(), "per", stock, baseTime);
         BigDecimal pbr = required(currentPrice.pbr(), "pbr", stock, baseTime);
@@ -213,6 +214,7 @@ public class StockIndicatorBatchService {
                 debtRatio,
                 operatingProfit,
                 operatingProfitGrowthRate,
+                salesGrowthRate,
                 dps,
                 dividendYield,
                 payoutRatio,

@@ -45,9 +45,10 @@
 | 52주 고가 대비율 | `high52WeekRate`                | 주식현재가 시세 `FHKST01010100`                                                 | 모멘텀/리스크 지표                                                   |
 | 부채비율       | `debtRatio`                     | 국내주식 재무비율 `FHKST66430300`                                                | 안정성 지표                                                       |
 | 영업이익증가율    | `operatingProfitGrowthRate`     | 국내주식 재무비율 `FHKST66430300`                                                | 성장성 지표                                                       |
+| 매출액증가율      | `salesGrowthRate`               | 국내주식 재무비율 `FHKST66430300`의 `grs`                                       | 피터 린치 매출 성장 조건/fallback 정렬 기준                                  |
 | ROE        | `roe`                           | 국내주식 재무비율 `FHKST66430300`                                                | 수익성 지표                                                       |
 | EPS        | `currentEps`, `lastYearEps`     | 국내주식 재무비율 `FHKST66430300`                                                | 성장성 계산                                                       |
-| 매출액        | `currentSales`, `lastYearSales` | 국내주식 손익계산서 `FHKST66430200`                                               | 성장성 계산                                                       |
+| 매출액        | `currentSales`, `lastYearSales` | 국내주식 손익계산서 `FHKST66430200`                                               | 매출액/영업이익률 계산 원천                                               |
 | 영업이익       | `operatingProfit`               | 국내주식 손익계산서 `FHKST66430200`                                               | 수익성/안정성 필터                                                   |
 | DPS        | `dps`                           | 예탁원정보 배당일정 `HHKDB669102C0`                                               | 최근 1년 DPS 합계                                                 |
 | 배당수익률      | `dividendYield`                 | DPS + 현재가                                                                | 배치에서 계산                                                      |

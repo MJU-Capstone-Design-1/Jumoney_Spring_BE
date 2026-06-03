@@ -122,6 +122,7 @@
         - 부채비율 / debtRatio / DECIMAL / NOT NULL
         - 영업이익 / operatingProfit / BIGINT / NOT NULL
         - 영업이익 증가율 / operatingProfitGrowthRate / DECIMAL / NOT NULL
+        - 매출액 증가율 / salesGrowthRate / DECIMAL / NULL / KIS 재무비율 `grs`, 결측/변환 실패 시 NULL
         - 주당배당금 / dps / DECIMAL / NOT NULL / 기간 내 주당배당금(DPS) 합계
         - 배당수익률 / dividendYield / DECIMAL / NOT NULL / `DPS / 현재가 * 100`으로 계산
         - 배당성향 / payoutRatio / DECIMAL / NULL / `기간 내 주당배당금(DPS) 합계 / EPS * 100`으로 계산, DPS 또는 EPS 결측 시 NULL

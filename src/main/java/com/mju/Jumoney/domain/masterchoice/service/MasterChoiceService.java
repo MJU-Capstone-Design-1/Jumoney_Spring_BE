@@ -11,6 +11,7 @@ import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceCandidate;
 import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceRequest;
 import com.mju.Jumoney.domain.masterchoice.dto.MasterChoiceResponse;
 import com.mju.Jumoney.domain.masterchoice.exception.MasterChoiceErrorCode;
+import com.mju.Jumoney.domain.sector.enums.SectorType;
 import com.mju.Jumoney.domain.sector.service.GoodSectorService;
 import com.mju.Jumoney.domain.stock.domain.Stock;
 import com.mju.Jumoney.domain.stock.dto.StockCurrentPriceSnapshot;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 public class MasterChoiceService {
 
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 10;
+    private static final int DALIO_ALL_WEATHER_MAX_RECOMMENDATIONS_PER_SECTOR = 3;
 
     private final MasterRepository masterRepository;
     private final MasterOptionRepository masterOptionRepository;
@@ -60,13 +63,15 @@ public class MasterChoiceService {
                         request.sectorTypes()
                 )
                 .stream()
-                .filter(candidate -> candidate.getSortMetricValue() != null)
+                .filter(candidate -> hasSortableMetric(master.getMasterCode(), candidate))
                 .sorted(candidateComparator(master.getMasterCode(), goodSectorNames))
                 .toList();
 
-        List<MasterChoiceCandidate> topCandidates = eligibleCandidates.stream()
-                .limit(DEFAULT_RECOMMENDATION_LIMIT)
-                .toList();
+        List<MasterChoiceCandidate> topCandidates = selectTopCandidates(
+                master.getMasterCode(),
+                logicCodes,
+                eligibleCandidates
+        );
         Map<String, StockCurrentPriceSnapshot> currentPrices = stockCurrentPriceService.getCurrentPrices(
                 topCandidates.stream()
                         .map(candidate -> candidate.getStock().getStockCode())
@@ -76,7 +81,8 @@ public class MasterChoiceService {
         List<MasterChoiceResponse.RecommendedStockResponse> recommendations = topCandidates.stream()
                 .map(candidate -> toRecommendedStockResponse(
                         candidate,
-                        sortMetricKey(master.getMasterCode()),
+                        sortMetricKey(master.getMasterCode(), candidate),
+                        sortMetricValue(master.getMasterCode(), candidate),
                         currentPrices.get(candidate.getStock().getStockCode()),
                         goodSectorNames
                 ))
@@ -119,8 +125,10 @@ public class MasterChoiceService {
     }
 
     private void validateSectorSelection(List<MasterOption> selectedOptions, List<?> sectorTypes) {
-        boolean needsSectorSelection = selectedOptions.stream()
+        Set<MasterOptionLogicCode> logicCodes = selectedOptions.stream()
                 .map(MasterOption::getLogicCode)
+                .collect(Collectors.toSet());
+        boolean needsSectorSelection = logicCodes.stream()
                 .anyMatch(this::requiresSectorSelection);
         if (needsSectorSelection && (sectorTypes == null || sectorTypes.isEmpty())) {
             throw new CustomException(MasterChoiceErrorCode.MISSING_MASTER_SECTOR_SELECTION);
@@ -135,6 +143,43 @@ public class MasterChoiceService {
                 || logicCode == MasterOptionLogicCode.DALIO_ALL_WEATHER;
     }
 
+    private List<MasterChoiceCandidate> selectTopCandidates(
+            MasterCode masterCode,
+            List<MasterOptionLogicCode> logicCodes,
+            List<MasterChoiceCandidate> eligibleCandidates
+    ) {
+        if (masterCode == MasterCode.RAY_DALIO && logicCodes.contains(MasterOptionLogicCode.DALIO_ALL_WEATHER)) {
+            return limitDalioAllWeatherCandidatesBySector(eligibleCandidates);
+        }
+
+        return eligibleCandidates.stream()
+                .limit(DEFAULT_RECOMMENDATION_LIMIT)
+                .toList();
+    }
+
+    private List<MasterChoiceCandidate> limitDalioAllWeatherCandidatesBySector(
+            List<MasterChoiceCandidate> eligibleCandidates
+    ) {
+        Map<SectorType, Integer> recommendationCountBySector = new EnumMap<>(SectorType.class);
+        List<MasterChoiceCandidate> limitedCandidates = new ArrayList<>();
+
+        for (MasterChoiceCandidate candidate : eligibleCandidates) {
+            SectorType sectorType = candidate.getStock().getSector().getSectorName();
+            int recommendationCount = recommendationCountBySector.getOrDefault(sectorType, 0);
+            if (recommendationCount >= DALIO_ALL_WEATHER_MAX_RECOMMENDATIONS_PER_SECTOR) {
+                continue;
+            }
+
+            limitedCandidates.add(candidate);
+            recommendationCountBySector.put(sectorType, recommendationCount + 1);
+            if (limitedCandidates.size() == DEFAULT_RECOMMENDATION_LIMIT) {
+                break;
+            }
+        }
+
+        return limitedCandidates;
+    }
+
     private Comparator<MasterChoiceCandidate> candidateComparator(
             MasterCode masterCode,
             Set<String> goodSectorNames
@@ -142,34 +187,51 @@ public class MasterChoiceService {
         Comparator<MasterChoiceCandidate> comparator = Comparator
                 .comparing((MasterChoiceCandidate candidate) -> goodSectorService.hasGoodSectorMatch(candidate.getStock(), goodSectorNames), Comparator.reverseOrder());
 
+        if (masterCode == MasterCode.PETER_LYNCH) {
+            return comparator
+                    .thenComparing(candidate -> candidate.getSortMetricValue() != null, Comparator.reverseOrder())
+                    .thenComparing(MasterChoiceCandidate::getSortMetricValue, Comparator.nullsLast(BigDecimal::compareTo))
+                    .thenComparing(MasterChoiceCandidate::getFallbackSortMetricValue, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(candidate -> candidate.getStock().getStockCode());
+        }
+
         Comparator<MasterChoiceCandidate> sortMetricComparator = Comparator.comparing(
                 MasterChoiceCandidate::getSortMetricValue,
                 Comparator.nullsLast(BigDecimal::compareTo)
         );
-
-        if (masterCode == MasterCode.PETER_LYNCH) {
-            return comparator
-                    .thenComparing(sortMetricComparator)
-                    .thenComparing(candidate -> candidate.getStock().getStockCode());
-        }
 
         return comparator
                 .thenComparing(sortMetricComparator.reversed())
                 .thenComparing(candidate -> candidate.getStock().getStockCode());
     }
 
-    private String sortMetricKey(MasterCode masterCode) {
+    private boolean hasSortableMetric(MasterCode masterCode, MasterChoiceCandidate candidate) {
+        if (masterCode == MasterCode.PETER_LYNCH) {
+            return true;
+        }
+        return candidate.getSortMetricValue() != null;
+    }
+
+    private String sortMetricKey(MasterCode masterCode, MasterChoiceCandidate candidate) {
         return switch (masterCode) {
             case WARREN_BUFFETT -> "ROE";
-            case PETER_LYNCH -> "PEG";
+            case PETER_LYNCH -> candidate.getSortMetricValue() != null ? "PEG" : "SALES_GROWTH_RATE";
             case RAY_DALIO -> "MARKET_CAP";
             case WILLIAM_ONEIL -> "HIGH_52_WEEK_RATE";
         };
     }
 
+    private BigDecimal sortMetricValue(MasterCode masterCode, MasterChoiceCandidate candidate) {
+        if (masterCode == MasterCode.PETER_LYNCH && candidate.getSortMetricValue() == null) {
+            return candidate.getFallbackSortMetricValue();
+        }
+        return candidate.getSortMetricValue();
+    }
+
     private MasterChoiceResponse.RecommendedStockResponse toRecommendedStockResponse(
             MasterChoiceCandidate candidate,
             String sortMetricKey,
+            BigDecimal sortMetricValue,
             StockCurrentPriceSnapshot currentPrice,
             Set<String> goodSectorNames
     ) {
@@ -183,7 +245,7 @@ public class MasterChoiceService {
                 goodSectorService.goodSectorTags(stock, goodSectorNames),
                 candidate.matchedConditionCount(),
                 sortMetricKey,
-                candidate.getSortMetricValue(),
+                sortMetricValue,
                 currentPrice == null ? null : currentPrice.currentPrice(),
                 currentPrice == null ? null : currentPrice.changeRate()
         );
