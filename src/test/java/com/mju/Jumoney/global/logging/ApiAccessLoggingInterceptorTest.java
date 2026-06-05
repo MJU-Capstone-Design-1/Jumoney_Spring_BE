@@ -39,7 +39,7 @@ class ApiAccessLoggingInterceptorTest {
         request.setAttribute(ApiAccessLoggingInterceptor.REQUEST_START_TIME_ATTRIBUTE, System.currentTimeMillis() - 25);
         request.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/mock-investments/dashboard");
 
-        UserPrincipal principal = new UserPrincipal(7L, "USER");
+        UserPrincipal principal = new UserPrincipal(7L, "USER", "테스터");
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(principal, null, java.util.List.of());
         SecurityContextHolder.getContext().setAuthentication(authentication);

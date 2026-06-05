@@ -86,7 +86,11 @@ public class ApiAccessLoggingInterceptor implements HandlerInterceptor {
 
         Object principal = authentication.getPrincipal();
         if (principal instanceof UserPrincipal userPrincipal) {
-            return userPrincipal.userId() + "번 사용자";
+            String nickname = userPrincipal.nickname();
+            if (nickname == null || nickname.isBlank()) {
+                return userPrincipal.userId() + "번 사용자";
+            }
+            return userPrincipal.userId() + "번 사용자(" + nickname + ")";
         }
 
         return "비로그인 사용자";
