@@ -74,8 +74,8 @@ public class AuthService {
 
         // 3. JWT 발급 (Access, Refresh)
         String role = user.getRole().name();
-        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), role);
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role);
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), role, user.getNickname());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role, user.getNickname());
 
         // 4. Refresh Token을 DB가 아닌 Redis에 저장 (성능 최적화)
         long refreshTokenValidity = jwtProperties.getRefreshTokenValidity();
@@ -106,8 +106,8 @@ public class AuthService {
 
         // 새로운 Access, Refresh Token 생성 (RTR)
         String role = user.getRole().name();
-        String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), role);
-        String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role);
+        String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), role, user.getNickname());
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role, user.getNickname());
 
         // Redis 업데이트
         redisUtil.save(getRefreshTokenKey(user.getId()), newRefreshToken, java.time.Duration.ofMillis(jwtProperties.getRefreshTokenValidity()));
@@ -164,8 +164,8 @@ public class AuthService {
                 ));
 
         String role = user.getRole().name();
-        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), role);
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role);
+        String accessToken = jwtTokenProvider.createAccessToken(user.getId(), role, user.getNickname());
+        String refreshToken = jwtTokenProvider.createRefreshToken(user.getId(), role, user.getNickname());
 
         redisUtil.save(getRefreshTokenKey(user.getId()), refreshToken, java.time.Duration.ofMillis(jwtProperties.getRefreshTokenValidity()));
 

@@ -24,6 +24,7 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private static final String KEY_ROLE = "role";
+    private static final String KEY_NICKNAME = "nickname";
 
     private final JwtProperties jwtProperties;
     private SecretKey key;
@@ -34,19 +35,20 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String createAccessToken(Long userId, String role) {
-        return createToken(userId, role, jwtProperties.getAccessTokenValidity());
+    public String createAccessToken(Long userId, String role, String nickname) {
+        return createToken(userId, role, nickname, jwtProperties.getAccessTokenValidity());
     }
 
-    public String createRefreshToken(Long userId, String role) {
-        return createToken(userId, role, jwtProperties.getRefreshTokenValidity());
+    public String createRefreshToken(Long userId, String role, String nickname) {
+        return createToken(userId, role, nickname, jwtProperties.getRefreshTokenValidity());
     }
 
-    private String createToken(Long userId, String role, long validity) {
+    private String createToken(Long userId, String role, String nickname, long validity) {
         Date now = new Date();
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim(KEY_ROLE, role)
+                .claim(KEY_NICKNAME, nickname)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + validity))
                 .signWith(key)
@@ -77,8 +79,9 @@ public class JwtTokenProvider {
         Claims claims = getClaims(token);
         Long userId = Long.valueOf(claims.getSubject());
         String role = claims.get(KEY_ROLE, String.class);
+        String nickname = claims.get(KEY_NICKNAME, String.class);
 
-        UserPrincipal principal = new UserPrincipal(userId, role);
+        UserPrincipal principal = new UserPrincipal(userId, role, nickname);
         SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
 
         return new UsernamePasswordAuthenticationToken(principal, "", Collections.singleton(authority));
