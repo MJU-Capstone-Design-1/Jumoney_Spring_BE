@@ -4,12 +4,16 @@ import com.mju.Jumoney.domain.user.dto.AuthLoginResponse;
 import com.mju.Jumoney.domain.user.dto.LoginResult;
 import com.mju.Jumoney.domain.user.dto.TokenRefreshResponse;
 import com.mju.Jumoney.domain.user.service.AuthService;
+import com.mju.Jumoney.global.exception.CustomException;
 import com.mju.Jumoney.global.jwt.JwtProperties;
+import com.mju.Jumoney.global.jwt.JwtTokenProvider;
 import com.mju.Jumoney.global.jwt.UserPrincipal;
+import com.mju.Jumoney.global.logging.ApiAccessLoggingInterceptor;
 import com.mju.Jumoney.global.response.ApiResponse;
 import com.mju.Jumoney.global.response.SuccessCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -29,11 +33,13 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtProperties jwtProperties;
+    private final JwtTokenProvider jwtTokenProvider;
 
     // 카카오 로그인 콜백 (프론트엔드에서 카카오 인가 코드를 전달받아 처리)
     @Operation(summary = "카카오 로그인", description = "카카오에서 발급받은 인가 코드(code)를 이용해 로그인을 진행합니다.")
     @GetMapping("/kakao/login")
     public ResponseEntity<AuthLoginResponse> kakaoLogin(
+            HttpServletRequest request,
             @RequestParam("code") String authorizationCode,
             @RequestParam("redirectUri") String redirectUri
     ) {
@@ -44,6 +50,7 @@ public class AuthController {
 
         // 2. Refresh Token을 담을 HttpOnly + Secure 쿠키 생성
         ResponseCookie cookie = createRefreshTokenCookie(loginResult.refreshToken());
+        markActivityUser(request, loginResult.responseDto().userId());
 
         log.info("[AuthController] 프론트엔드로 AccessToken(Body) 및 RefreshToken(Cookie) 반환 완료");
 
@@ -56,6 +63,7 @@ public class AuthController {
     @Operation(summary = "토큰 재발급", description = "쿠키에 담긴 Refresh Token을 확인하여 새로운 토큰을 발급합니다.")
     @PostMapping("/refresh")
     public ResponseEntity<TokenRefreshResponse> refresh(
+            HttpServletRequest request,
             @CookieValue(value = "refreshToken", required = false) String refreshToken) {
 
         if (refreshToken == null) {
@@ -63,6 +71,7 @@ public class AuthController {
         }
 
         Map<String, String> tokens = authService.reissueTokens(refreshToken);
+        markActivityUser(request, jwtTokenProvider.getUserIdFromToken(tokens.get("accessToken")));
 
         ResponseCookie cookie = createRefreshTokenCookie(tokens.get("refreshToken"));
 
@@ -73,10 +82,14 @@ public class AuthController {
 
     @Operation(summary = "개발자용 임시 로그인", description = "카카오 연동 없이 닉네임만으로 토큰을 즉시 발급합니다. (테스트용)")
     @PostMapping("/dev/login")
-    public ResponseEntity<AuthLoginResponse> devLogin(@RequestParam("nickname") String nickname) {
+    public ResponseEntity<AuthLoginResponse> devLogin(
+            HttpServletRequest request,
+            @RequestParam("nickname") String nickname
+    ) {
         Map<String, Object> result = authService.devLogin(nickname);
 
         ResponseCookie cookie = createRefreshTokenCookie((String) result.get("refreshToken"));
+        markActivityUser(request, (Long) result.get("userId"));
 
         AuthLoginResponse responseBody = new AuthLoginResponse(
                 (String) result.get("accessToken"),
@@ -93,8 +106,21 @@ public class AuthController {
     @Operation(summary = "로그아웃", description = "로그인 사용자의 Refresh Token을 무효화하고 쿠키를 삭제합니다.")
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
+            HttpServletRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             @CookieValue(value = "refreshToken", required = false) String refreshToken) {
+
+        Long userId = getOptionalUserId(userPrincipal);
+        if (userId == null && refreshToken != null) {
+            try {
+                userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+            } catch (CustomException ignored) {
+                userId = null;
+            }
+        }
+        if (userId != null) {
+            markActivityUser(request, userId);
+        }
 
         authService.logout(getOptionalUserId(userPrincipal), refreshToken);
 
@@ -130,5 +156,9 @@ public class AuthController {
             return null;
         }
         return userPrincipal.userId();
+    }
+
+    private void markActivityUser(HttpServletRequest request, Long userId) {
+        ApiAccessLoggingInterceptor.RequestContextHolder.setUserLabel(request, userId + "번 사용자");
     }
 }
